@@ -1,0 +1,6 @@
+{
+  "name": "Candyverse",
+  "description": "Explora la Dulce Galaxia de Candyverse con nuestro catálogo de gomitas, chocolates, sours y regalos artesanales.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
