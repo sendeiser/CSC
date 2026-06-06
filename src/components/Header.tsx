@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { ShoppingBag, Star, User, Sparkles, LogOut, Menu, X } from 'lucide-react';
 import { ActiveScreen, CartItem, UserSession } from '../types';
+import { auth as authApi, setAuthToken } from '../lib/api';
 
 interface HeaderProps {
   activeScreen: ActiveScreen;
@@ -40,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Sparkles className="w-5 h-5 animate-pulse" />
             </div>
             <span className="font-headline font-bold text-xl sm:text-2xl tracking-tight bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
-              Candyverse
+              CSC
             </span>
           </div>
 
@@ -72,6 +73,17 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right actions */}
           <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
+            {/* Admin link */}
+            {session.isLoggedIn && session.role === 'admin' && (
+              <button
+                onClick={() => setActiveScreen('admin')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  activeScreen === 'admin' ? 'bg-purple-600 text-white' : 'text-purple-700 bg-purple-50 hover:bg-purple-100'
+                }`}
+              >
+                Admin
+              </button>
+            )}
             {/* Session Indicator */}
             {session.isLoggedIn ? (
               <div className="flex items-center space-x-3 bg-purple-50/70 border border-purple-100 rounded-full pl-3 pr-1 py-1">
@@ -79,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {session.name}
                 </span>
                 <button
-                  onClick={() => setSession({ isLoggedIn: false, email: null, name: null })}
+                  onClick={async () => { await authApi.logout().catch(() => {}); setAuthToken(null); setSession({ isLoggedIn: false, email: null, name: null, role: undefined }); }}
                   className="w-7 h-7 rounded-full bg-white hover:bg-pink-50 text-purple-600 hover:text-pink-600 flex items-center justify-center border border-purple-100 transition-colors shadow-sm"
                   title="Cerrar Sesión"
                 >
@@ -165,6 +177,16 @@ export const Header: React.FC<HeaderProps> = ({
               {item.label}
             </button>
           ))}
+          {session.isLoggedIn && session.role === 'admin' && (
+            <button
+              onClick={() => { setActiveScreen('admin'); setMobileMenuOpen(false); }}
+              className={`block w-full text-left px-3 py-2.5 rounded-md text-base font-semibold ${
+                activeScreen === 'admin' ? 'bg-purple-50 text-purple-700' : 'text-purple-700 hover:bg-purple-50'
+              }`}
+            >
+              ⚙️ Panel Admin
+            </button>
+          )}
           <hr className="border-pink-50 my-2" />
           
           {session.isLoggedIn ? (
@@ -173,8 +195,10 @@ export const Header: React.FC<HeaderProps> = ({
                 Conectado como <span className="text-purple-700">{session.name}</span>
               </div>
               <button
-                onClick={() => {
-                  setSession({ isLoggedIn: false, email: null, name: null });
+                onClick={async () => {
+                  await authApi.logout().catch(() => {});
+                  setAuthToken(null);
+                  setSession({ isLoggedIn: false, email: null, name: null, role: undefined });
                   setMobileMenuOpen(false);
                 }}
                 className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 border border-pink-200 text-pink-600 hover:bg-pink-50 rounded-lg text-sm font-semibold"

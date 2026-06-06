@@ -2,7 +2,6 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, Heart, ShoppingBag, ArrowLeft, ShieldCheck, Truck, Sparkles, MessageSquare, Plus, Minus, Tag } from 'lucide-react';
 import { ActiveScreen, Product } from '../types';
-import { PRODUCTS } from '../data';
 
 interface ProductDetailScreenProps {
   product: Product;
@@ -65,7 +64,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const isExplosionGalactica = product.id === 'gomitas-explosion-galactica';
   
   // Choose images based on whether it is Explosion Galactica or another item
-  const galleryImages = isExplosionGalactica ? GALACTIC_GALLERY : [product.image];
+  const galleryImages = isExplosionGalactica ? GALACTIC_GALLERY : [product.image_url];
   const [activeImage, setActiveImage] = React.useState(galleryImages[0]);
   
   // Set first size key as active
@@ -98,7 +97,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   // Read weight price
   const activePrice = product.sizes && product.sizes[selectedSize] 
     ? product.sizes[selectedSize] 
-    : product.price;
+    : product.base_price;
 
   const handleCreateFeedback = (e: React.FormEvent) => {
     e.preventDefault();
@@ -441,7 +440,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                     ¿Probaste este dulce celestial?
                   </h3>
                   <p className="text-xs text-slate-550 mb-4">
-                    Deja tu opinión sincera para guiar en su viaje a otros exploradores de Candyverse.
+                    Deja tu opinión sincera para ayudar a otros clientes de Chamical Candy Shop.
                   </p>
 
                   <form onSubmit={handleCreateFeedback} className="space-y-4">
@@ -517,26 +516,11 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           </h2>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {RELATED_PRODUCTS.map((relItem) => {
-              // Find matching full product from database if possible, otherwise map it
-              const originalProd = PRODUCTS.find(p => p.id === relItem.id) || {
-                id: relItem.id,
-                name: relItem.name,
-                description: 'Sabores celestiales elaborados en lotes limitados.',
-                category: relItem.category as any,
-                price: relItem.price,
-                image: relItem.image,
-                tags: ['ESTRELLAS'],
-                stars: 5,
-                reviews: 45
-              };
-
-              return (
+            {RELATED_PRODUCTS.map((relItem) => (
                 <div 
                   key={relItem.id}
                   onClick={() => {
-                    setSelectedProductById(originalProd.id);
-                    // scroll parent window back to top smoothly
+                    setSelectedProductById(relItem.id);
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                   className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md cursor-pointer transition-all group p-3 space-y-3"
@@ -566,8 +550,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              ))}
           </div>
         </div>
 

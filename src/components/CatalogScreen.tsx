@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, SlidersHorizontal, Star, Heart, ShoppingBag, Eye, Percent, CheckCircle2, RefreshCw } from 'lucide-react';
 import { ActiveScreen, Product } from '../types';
-import { PRODUCTS } from '../data';
+import { products as productsApi } from '../lib/api';
 
 interface CatalogScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
@@ -21,415 +21,230 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
   favorites,
   toggleFavorite
 }) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState<typeof CATEGORIES[number]>('Todos');
-  
-  // Advanced filters
+
   const [onlyVegan, setOnlyVegan] = React.useState(false);
   const [onlyOrganic, setOnlyOrganic] = React.useState(false);
   const [onlyNoSugar, setOnlyNoSugar] = React.useState(false);
   const [onlySale, setOnlySale] = React.useState(false);
-  
-  // Sort
+
   const [sortBy, setSortBy] = React.useState<'none' | 'priceAsc' | 'priceDesc' | 'stars'>('none');
   const [showFilters, setShowFilters] = React.useState(false);
 
-  // Filter and Sort Logic
-  const filteredProducts = React.useMemo(() => {
-    let result = [...PRODUCTS];
+  useEffect(() => {
+    setLoading(true)
+    const params: Record<string, string> = {}
+    if (selectedCategory !== 'Todos') params.category = selectedCategory
+    if (searchTerm.trim()) params.search = searchTerm
+    if (onlyVegan) params.vegan = 'true'
+    if (onlyOrganic) params.organic = 'true'
+    if (onlyNoSugar) params.noSugar = 'true'
+    if (onlySale) params.onSale = 'true'
+    if (sortBy !== 'none') params.sort = sortBy
 
-    // 1. Category
-    if (selectedCategory !== 'Todos') {
-      result = result.filter(p => p.category === selectedCategory);
-    }
-
-    // 2. Search query
-    if (searchTerm.trim() !== '') {
-      const query = searchTerm.toLowerCase();
-      result = result.filter(p => 
-        p.name.toLowerCase().includes(query) || 
-        p.description.toLowerCase().includes(query)
-      );
-    }
-
-    // 3. Diets
-    if (onlyVegan) {
-      result = result.filter(p => p.diet?.includes('Vegan'));
-    }
-    if (onlyOrganic) {
-      result = result.filter(p => p.diet?.includes('Orgánico'));
-    }
-    if (onlyNoSugar) {
-      result = result.filter(p => p.diet?.includes('Sin Azúcar'));
-    }
-
-    // 4. In Offers
-    if (onlySale) {
-      result = result.filter(p => p.onSale || p.bestseller);
-    }
-
-    // 5. Sorting
-    if (sortBy === 'priceAsc') {
-      result.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'priceDesc') {
-      result.sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'stars') {
-      result.sort((a, b) => b.stars - a.stars);
-    }
-
-    return result;
-  }, [selectedCategory, searchTerm, onlyVegan, onlyOrganic, onlyNoSugar, onlySale, sortBy]);
-
-  const resetFilters = () => {
-    setSearchTerm('');
-    setSelectedCategory('Todos');
-    setOnlyVegan(false);
-    setOnlyOrganic(false);
-    setOnlyNoSugar(false);
-    setOnlySale(false);
-    setSortBy('none');
-  };
+    productsApi.list(params)
+      .then(setProducts)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [selectedCategory, searchTerm, onlyVegan, onlyOrganic, onlyNoSugar, onlySale, sortBy])
 
   return (
-    <div className="bg-slate-50 min-h-screen py-8 sm:py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Title structure */}
-        <div className="mb-8 text-center sm:text-left">
-          <span className="text-xs font-bold uppercase tracking-widest text-pink-600">Nuestros Sabores</span>
-          <h1 className="font-headline font-black text-3xl sm:text-4xl text-slate-900 mt-1">
-            Explora la Galaxia Dulce
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Cada gominola y chocolate es cortado de manera individual, libre de sintéticos y empacado al vacío.
-          </p>
+    <div className="bg-white min-h-screen pt-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-4xl font-headline font-extrabold text-gray-900">Catálogo</h1>
+            <p className="text-gray-500 mt-1.5 text-sm">{products.length} dulces encontrados</p>
+          </div>
         </div>
 
-        {/* 1. Filtering & search control room */}
-        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-100 mb-8 space-y-4">
-          <div className="flex flex-col lg:flex-row gap-4 items-center">
-            
-            {/* Search Input */}
-            <div className="relative w-full lg:flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Busca por nombre o ingrediente (por ejemplo: 'nubes', 'fresa')..."
-                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-purple-500 focus:bg-white rounded-xl text-sm transition-all shadow-inner"
-              />
-            </div>
-
-            {/* Collapsible toggle / sort choice */}
-            <div className="flex w-full lg:w-auto items-center justify-between gap-3">
-              <button
-                id="toggle-filters-btn"
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center space-x-2 px-4 py-3 rounded-xl border text-sm font-semibold transition-colors w-full lg:w-auto justify-center cursor-pointer ${
-                  showFilters 
-                    ? 'border-purple-200 bg-purple-55 text-purple-700' 
-                    : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                }`}
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                <span>Filtros</span>
-                {(onlyNoSugar || onlyOrganic || onlyVegan || onlySale) && (
-                  <span className="w-2 h-2 rounded-full bg-pink-500" />
-                )}
-              </button>
-
-              <select
-                id="catalog-sort-select"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-4 py-3 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 focus:outline-none focus:border-purple-500 w-full lg:w-auto text-center"
-              >
-                <option value="none">Ordenar: Destacados</option>
-                <option value="priceAsc">Precio: Menor a Mayor</option>
-                <option value="priceDesc">Precio: Mayor a Menor</option>
-                <option value="stars">Calificación: Más Populares</option>
-              </select>
-            </div>
-
+        {/* Search + Filter Bar */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar dulces..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-11 pr-4 py-3 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none transition-all bg-pink-50/30"
+            />
           </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center space-x-2 px-5 py-3 border rounded-xl text-sm font-semibold transition-all ${
+              showFilters ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-pink-200 hover:bg-pink-50'
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Filtros</span>
+          </button>
+        </div>
 
-          {/* Categoría Pills Row */}
-          <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 mt-2">
-            {CATEGORIES.map((cat) => {
-              const isActive = selectedCategory === cat;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-4 py-2 rounded-full text-xs sm:text-sm font-medium transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-sm'
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Collapsible Advanced Filters Section */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.25 }}
-                className="overflow-hidden border-t border-slate-100 pt-4"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pb-2">
-                  
-                  {/* Vegan Filter */}
-                  <label className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50">
-                    <input
-                      type="checkbox"
-                      checked={onlyVegan}
-                      onChange={(e) => setOnlyVegan(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
-                    />
-                    <div className="text-sm">
-                      <p className="font-bold text-slate-800">Vegano</p>
-                      <p className="text-[10px] text-slate-500">100% orgánico vegetal</p>
-                    </div>
-                  </label>
-
-                  {/* Organic Filter */}
-                  <label className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50">
-                    <input
-                      type="checkbox"
-                      checked={onlyOrganic}
-                      onChange={(e) => setOnlyOrganic(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
-                    />
-                    <div className="text-sm">
-                      <p className="font-bold text-slate-800">Orgánico</p>
-                      <p className="text-[10px] text-slate-500">Ingredientes biológicos</p>
-                    </div>
-                  </label>
-
-                  {/* Sugar Free Filter */}
-                  <label className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50">
-                    <input
-                      type="checkbox"
-                      checked={onlyNoSugar}
-                      onChange={(e) => setOnlyNoSugar(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
-                    />
-                    <div className="text-sm">
-                      <p className="font-bold text-slate-800">Sin Azúcar</p>
-                      <p className="text-[10px] text-slate-500">Endulzado estelar</p>
-                    </div>
-                  </label>
-
-                  {/* On Sale Filter */}
-                  <label className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-slate-50">
-                    <input
-                      type="checkbox"
-                      checked={onlySale}
-                      onChange={(e) => setOnlySale(e.target.checked)}
-                      className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
-                    />
-                    <div className="text-sm">
-                      <p className="font-bold text-slate-800">Promociones</p>
-                      <p className="text-[10px] text-slate-500">Ofertas y bestsellers</p>
-                    </div>
-                  </label>
-
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <button 
-                    onClick={resetFilters}
-                    className="flex items-center space-x-1.5 text-xs font-bold text-pink-600 hover:text-pink-700 px-3 py-1.5 rounded-lg hover:bg-pink-50"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Restaurar todos los filtros</span>
+        {/* Advanced Filters */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-pink-50/60 border border-pink-100 rounded-2xl p-5 space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Dieta:</span>
+                  <button onClick={() => setOnlyVegan(!onlyVegan)} className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${onlyVegan ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-pink-200 hover:bg-pink-50'}`}>
+                    🌱 Vegano
+                  </button>
+                  <button onClick={() => setOnlyOrganic(!onlyOrganic)} className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${onlyOrganic ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-pink-200 hover:bg-pink-50'}`}>
+                    🌿 Orgánico
+                  </button>
+                  <button onClick={() => setOnlyNoSugar(!onlyNoSugar)} className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${onlyNoSugar ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-600 border-pink-200 hover:bg-pink-50'}`}>
+                    🚫 Sin Azúcar
                   </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Estado:</span>
+                  <button onClick={() => setOnlySale(!onlySale)} className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${onlySale ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-gray-600 border-pink-200 hover:bg-pink-50'}`}>
+                    🔥 En Oferta
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Ordenar:</span>
+                  {(['none', 'priceAsc', 'priceDesc', 'stars'] as const).map((opt) => (
+                    <button key={opt} onClick={() => setSortBy(opt)} className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${sortBy === opt ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-600 border-pink-200 hover:bg-pink-50'}`}>
+                      {opt === 'none' ? 'Por defecto' : opt === 'priceAsc' ? 'Menor precio' : opt === 'priceDesc' ? 'Mayor precio' : 'Mejor valorados'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
+        {/* Category Pills */}
+        <div className="flex flex-wrap gap-2">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
+                selectedCategory === cat
+                  ? 'bg-purple-600 text-white border-purple-600'
+                  : 'bg-white text-gray-600 border-pink-200 hover:bg-pink-50'
+              }`}
+            >
+              {cat === 'Todos' ? '✨ Todos' : cat}
+            </button>
+          ))}
         </div>
 
-        {/* 2. Grid list of products */}
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-3xl border border-slate-100 max-w-xl mx-auto px-6 shadow-sm space-y-4">
-            <Search className="w-12 h-12 text-slate-300 mx-auto" />
-            <h3 className="font-headline font-bold text-xl text-slate-900">
-              No encontramos planetas dulces
-            </h3>
-            <p className="text-sm text-slate-500 max-w-md mx-auto">
-              Intenta reduciendo el espectro de búsqueda o desactivando filtros como "Sin Azúcar" u "Orgánico".
-            </p>
-            <button
-              onClick={resetFilters}
-              className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl text-xs font-bold shadow hover:opacity-95"
-            >
-              Reiniciar Búsqueda
-            </button>
+        {/* Product Grid */}
+        {loading ? (
+          <div className="flex justify-center py-16">
+            <RefreshCw className="w-8 h-8 text-purple-600 animate-spin" />
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <p className="text-lg font-semibold">No se encontraron productos</p>
+            <p className="text-sm mt-1">Intenta con otros filtros o búsqueda.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
-            <AnimatePresence mode="popLayout">
-              {filteredProducts.map((product) => {
-                const isFav = !!favorites[product.id];
-                const originalPrice = product.onSale && product.discountPercentage 
-                  ? product.price / (1 - product.discountPercentage / 100) 
-                  : product.price;
-
-                return (
-                  <motion.div
-                    key={product.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md hover:border-pink-200/50 transition-all flex flex-col justify-between group h-full"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-16">
+            {products.map((product) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                layout
+                className="group bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col"
+              >
+                {/* Image Container */}
+                <div className="relative overflow-hidden aspect-square bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  {/* Tags */}
+                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                    {product.tags?.slice(0, 2).map((tag) => (
+                      <span key={tag} className="px-2 py-0.5 bg-white/85 backdrop-blur-sm text-[10px] font-bold text-purple-700 rounded-full shadow-sm uppercase tracking-wider">
+                        {tag}
+                      </span>
+                    ))}
+                    {product.onSale && product.discountPercentage && (
+                      <span className="px-2 py-0.5 bg-pink-500 text-white text-[10px] font-bold rounded-full shadow-sm flex items-center space-x-0.5">
+                        <Percent className="w-2.5 h-2.5" />
+                        <span>-{product.discountPercentage}%</span>
+                      </span>
+                    )}
+                  </div>
+                  {/* Favorites */}
+                  <button
+                    onClick={() => toggleFavorite(product.id)}
+                    className="absolute top-3 right-3 w-8 h-8 bg-white/85 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors"
                   >
-                    
-                    {/* Upper cover area */}
-                    <div className="relative aspect-square bg-slate-50/50 border-b border-slate-50 overflow-hidden">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onClick={() => {
-                          setSelectedProductById(product.id);
-                          setActiveScreen('detalle');
-                        }}
-                      />
-                      
-                      {/* Floating tags */}
-                      <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                        {product.bestseller && (
-                          <span className="bg-amber-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shadow-sm">
-                            Bestseller
-                          </span>
-                        )}
-                        {product.onSale && (
-                          <span className="bg-pink-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shadow-sm flex items-center gap-0.5">
-                            <Percent className="w-3 h-3" />
-                            <span>-{product.discountPercentage}%</span>
-                          </span>
-                        )}
-                        {!product.bestseller && !product.onSale && product.tags.slice(0, 1).map((t, i) => (
-                          <span key={i} className="bg-purple-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase shadow-sm">
-                            {t}
-                          </span>
-                        ))}
-                      </div>
+                    <Heart className={`w-4 h-4 ${favorites[product.id] ? 'text-pink-500 fill-pink-500' : 'text-gray-400'}`} />
+                  </button>
+                </div>
 
-                      {/* Floating Favorite Heart Toggle */}
+                {/* Info */}
+                <div className="p-4 flex flex-col flex-1 space-y-2">
+                  <h3 className="font-headline font-bold text-base text-gray-900 leading-tight">{product.name}</h3>
+                  <p className="text-xs text-gray-500 line-clamp-2 flex-1">{product.description}</p>
+
+                  {/* Stars */}
+                  <div className="flex items-center space-x-1.5">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star key={i} className={`w-3.5 h-3.5 ${i < product.stars ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`} />
+                    ))}
+                    <span className="text-[10px] text-gray-400 ml-1">({product.reviews})</span>
+                  </div>
+
+                  {/* Price + Add to Cart */}
+                  <div className="flex items-center justify-between pt-2 border-t border-pink-50">
+                    <div className="flex flex-col">
+                      {product.onSale && product.discountPercentage ? (
+                        <span className="text-lg font-bold text-pink-600">
+                          ${(product.base_price * (1 - product.discountPercentage / 100)).toFixed(2)}
+                          <span className="text-xs text-gray-400 line-through ml-1.5 font-normal">${product.base_price.toFixed(2)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-lg font-bold text-gray-900">${product.base_price.toFixed(2)}</span>
+                      )}
+                      {product.diet?.length ? (
+                        <span className="text-[10px] text-gray-400">{product.diet.join(' • ')}</span>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center space-x-1">
                       <button
-                        onClick={() => toggleFavorite(product.id)}
-                        className={`absolute top-3 right-3 p-2 rounded-full border shadow-sm transition-colors cursor-pointer ${
-                          isFav
-                            ? 'bg-pink-50 border-pink-100 text-pink-500'
-                            : 'bg-white/90 border-slate-100 text-slate-400 hover:text-pink-500'
-                        }`}
+                        onClick={() => { setSelectedProductById(product.id); setActiveScreen('detalle'); }}
+                        className="w-9 h-9 rounded-full border border-pink-200 text-purple-600 hover:bg-purple-50 transition-colors flex items-center justify-center"
+                        title="Ver detalle"
                       >
-                        <Heart className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => addToCart(product, Object.keys(product.sizes || {})[0] || '1 pieza', 1)}
+                        className="w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90 transition-opacity flex items-center justify-center shadow-sm"
+                        title="Añadir al carrito"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
                       </button>
                     </div>
-
-                    {/* Middle descriptive fields */}
-                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold tracking-widest text-slate-450 uppercase">
-                            {product.category}
-                          </span>
-                          <div className="flex items-center text-amber-400 space-x-0.5">
-                            <Star className="w-3.5 h-3.5 fill-current" />
-                            <span className="text-xs font-bold text-slate-650">{product.stars}.0</span>
-                          </div>
-                        </div>
-
-                        <h3 
-                          onClick={() => {
-                            setSelectedProductById(product.id);
-                            setActiveScreen('detalle');
-                          }}
-                          className="font-headline font-bold text-base text-slate-900 mt-1 hover:text-purple-700 transition-colors cursor-pointer line-clamp-1"
-                        >
-                          {product.name}
-                        </h3>
-                        
-                        <p className="text-slate-500 text-xs mt-1.5 leading-relaxed line-clamp-2">
-                          {product.description}
-                        </p>
-                      </div>
-
-                      {/* Extra attributes */}
-                      {product.diet && product.diet.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {product.diet.map((dk, id) => (
-                            <span key={id} className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
-                              {dk}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Cost metrics / details & cart button controls */}
-                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                        <div className="flex flex-col">
-                          {product.onSale && (
-                            <span className="text-[10px] text-slate-400 line-through">
-                              ${originalPrice.toFixed(2)}
-                            </span>
-                          )}
-                          <span className="text-base font-black text-slate-900">
-                            ${product.price.toFixed(2)}
-                          </span>
-                        </div>
-
-                        {/* Control buttons */}
-                        <div className="flex items-center space-x-1">
-                          <button
-                            title="Ver Detalle"
-                            onClick={() => {
-                              setSelectedProductById(product.id);
-                              setActiveScreen('detalle');
-                            }}
-                            className="p-2 text-slate-500 hover:text-purple-700 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              // By default use the first key of sizes if available, otherwise just default
-                              const defaultSize = product.sizes ? Object.keys(product.sizes)[0] : 'Estándar';
-                              addToCart(product, defaultSize, 1);
-                            }}
-                            className="flex items-center space-x-1 bg-purple-100 hover:bg-purple-600 text-purple-700 hover:text-white px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                          >
-                            <ShoppingBag className="w-3.5 h-3.5" />
-                            <span>Agregar</span>
-                          </button>
-                        </div>
-                      </div>
-
-                    </div>
-
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
-
       </div>
     </div>
   );

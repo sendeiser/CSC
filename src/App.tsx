@@ -1,116 +1,113 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
+import { AlertCircle, CheckCircle } from 'lucide-react';
 import { Header } from './components/Header';
 import { LandingScreen } from './components/LandingScreen';
 import { CatalogScreen } from './components/CatalogScreen';
 import { ProductDetailScreen } from './components/ProductDetailScreen';
 import { CartScreen } from './components/CartScreen';
 import { AuthScreens } from './components/AuthScreens';
-import { PRODUCTS } from './data';
+import { AdminPanel } from './components/AdminPanel';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
+import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken } from './lib/api';
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState<ActiveScreen>('inicio');
-  const [selectedProductId, setSelectedProductId] = useState<string>('gomitas-explosion-galactica');
-  
-  // Favorites map
-  const [favorites, setFavorites] = useState<Record<string, boolean>>({
-    'gomitas-explosion-galactica': true,
-    'trufas-galacticas': true
-  });
-
-  // Prefill the cart with the exact products shown in the design drawings!
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const ositos = PRODUCTS.find(p => p.id === 'ositos-cosmicos');
-    const cintas = PRODUCTS.find(p => p.id === 'cintas-neon');
-    
-    const prefilled: CartItem[] = [];
-    if (ositos) {
-      prefilled.push({
-        product: ositos,
-        quantity: 1,
-        selectedSize: '300g',
-        itemPrice: 36.00
-      });
-    }
-    if (cintas) {
-      prefilled.push({
-        product: cintas,
-        quantity: 1,
-        selectedSize: 'Pack Estándar',
-        itemPrice: 25.00
-      });
-    }
-    return prefilled;
-  });
-
-  // User session
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [favorites, setFavorites] = useState<Record<string, boolean>>({});
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [session, setSession] = useState<UserSession>({
     isLoggedIn: false,
     email: null,
     name: null
   });
-
-  // Toast feedback states
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
+
+  useEffect(() => {
+    productsApi.list().then(setAllProducts).catch(console.error)
+  }, [])
+
+  useEffect(() => {
+    const token = getAuthToken()
+    if (token) {
+      authApi.me()
+        .then(user => {
+          setSession({ isLoggedIn: true, email: user.email, name: user.name, role: user.role })
+          return favoritesApi.list()
+        })
+        .then(favs => {
+          const favMap: Record<string, boolean> = {}
+          favs.forEach((f: any) => { favMap[f.product_id] = true })
+          setFavorites(favMap)
+        })
+        .catch(() => setAuthToken(null))
+    }
+  }, [])
+
+  useEffect(() => {
+    if (session.isLoggedIn) {
+      cartApi.list()
+        .then(items => {
+          const mapped: CartItem[] = items.map((i: any) => ({
+            product: i.products,
+            quantity: i.quantity,
+            selectedSize: i.selected_size,
+            itemPrice: Number(i.item_price)
+          }))
+          setCart(mapped)
+        })
+        .catch(console.error)
+    } else {
+      setCart([])
+    }
+  }, [session.isLoggedIn])
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => {
-      setToast(null);
-    }, 3000);
+    setTimeout(() => setToast(null), 3000);
   };
 
-  const toggleFavorite = (id: string) => {
-    setFavorites(prev => {
-      const updated = { ...prev, [id]: !prev[id] };
-      const prod = PRODUCTS.find(p => p.id === id);
-      if (prod) {
-        showToast(
-          updated[id] 
-            ? `¡Añadido ${prod.name} a tus favoritos cósmicos! ❤️` 
-            : `Quitaste ${prod.name} de tus favoritos.`
-        );
-      }
-      return updated;
-    });
-  };
-
-  // Add items functionality
-  const addToCart = (product: Product, size: string, quantity: number) => {
-    // Read corresponding sizes cost weight
-    const priceVal = product.sizes && product.sizes[size] ? product.sizes[size] : product.price;
-
-    setCart(prev => {
-      const targetIndex = prev.findIndex(item => item.product.id === product.id && item.selectedSize === size);
-      
-      if (targetIndex !== -1) {
-        // Increase quantity
-        const updated = [...prev];
-        updated[targetIndex].quantity += quantity;
-        return updated;
+  const toggleFavorite = async (id: string) => {
+    const isFav = favorites[id]
+    try {
+      if (isFav) {
+        await favoritesApi.remove(id)
       } else {
-        // Append new item
-        return [...prev, {
-          product,
-          quantity,
-          selectedSize: size,
-          itemPrice: priceVal
-        }];
+        await favoritesApi.add(id)
       }
-    });
-
-    showToast(`¡Añadido ${quantity}x ${product.name} (${size}) a tu Bolsa! 🛍️`);
+      setFavorites(prev => ({ ...prev, [id]: !isFav }))
+      const prod = allProducts.find(p => p.id === id)
+      if (prod) {
+        showToast(isFav ? `Quitaste ${prod.name} de tus favoritos.` : `¡Añadido ${prod.name} a tus favoritos!`)
+      }
+    } catch {
+      showToast('Error al actualizar favoritos', 'info')
+    }
   };
 
-  // Find active product
-  const activeProduct = PRODUCTS.find(p => p.id === selectedProductId) || PRODUCTS[0];
+  const addToCart = async (product: Product, size: string, quantity: number) => {
+    const priceVal = product.sizes && product.sizes[size] ? product.sizes[size] : product.base_price;
+    try {
+      await cartApi.add({ product_id: product.id, quantity, selected_size: size, item_price: priceVal })
+      const items = await cartApi.list()
+      const mapped: CartItem[] = items.map((i: any) => ({
+        product: i.products,
+        quantity: i.quantity,
+        selectedSize: i.selected_size,
+        itemPrice: Number(i.item_price)
+      }))
+      setCart(mapped)
+      showToast(`¡Añadido ${quantity}x ${product.name} (${size}) a tu Bolsa!`)
+    } catch {
+      showToast('Error al añadir al carrito', 'info')
+    }
+  };
+
+  const activeProduct = allProducts.find(p => p.id === selectedProductId) || allProducts[0];
 
   return (
     <div className="bg-slate-50 min-h-screen text-slate-800 flex flex-col font-sans selection:bg-pink-200 selection:text-pink-900">
-      
-      {/* Dynamic Floating Toast Feedback Alerts */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -129,7 +126,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Persistent navbar header */}
       <Header
         activeScreen={activeScreen}
         setActiveScreen={setActiveScreen}
@@ -138,36 +134,22 @@ export default function App() {
         setSession={setSession}
       />
 
-      {/* Main viewport panels */}
       <main className="flex-1">
         <AnimatePresence mode="wait">
           {activeScreen === 'inicio' && (
-            <motion.div
-              key="inicio"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <LandingScreen
-                setActiveScreen={setActiveScreen}
-                setSelectedProductById={(id) => {
-                  setSelectedProductId(id);
-                  setActiveScreen('detalle');
-                }}
-                heroProduct={PRODUCTS[0]} // Gomitas de explosión galáctica
-              />
+            <motion.div key="inicio" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              {allProducts.length > 0 && (
+                <LandingScreen
+                  setActiveScreen={setActiveScreen}
+                  setSelectedProductById={(id) => { setSelectedProductId(id); setActiveScreen('detalle'); }}
+                  heroProduct={allProducts[0]}
+                />
+              )}
             </motion.div>
           )}
 
           {activeScreen === 'catalogo' && (
-            <motion.div
-              key="catalogo"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+            <motion.div key="catalogo" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
               <CatalogScreen
                 setActiveScreen={setActiveScreen}
                 setSelectedProductById={setSelectedProductId}
@@ -178,14 +160,8 @@ export default function App() {
             </motion.div>
           )}
 
-          {activeScreen === 'detalle' && (
-            <motion.div
-              key="detalle"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+          {activeScreen === 'detalle' && activeProduct && (
+            <motion.div key="detalle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
               <ProductDetailScreen
                 product={activeProduct}
                 setActiveScreen={setActiveScreen}
@@ -198,13 +174,7 @@ export default function App() {
           )}
 
           {activeScreen === 'carrito' && (
-            <motion.div
-              key="carrito"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+            <motion.div key="carrito" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
               <CartScreen
                 cart={cart}
                 setCart={setCart}
@@ -214,54 +184,34 @@ export default function App() {
           )}
 
           {activeScreen === 'login' && (
-            <motion.div
-              key="login"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <AuthScreens
-                type="login"
-                setActiveScreen={setActiveScreen}
-                setSession={setSession}
-              />
+            <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              <AuthScreens type="login" setActiveScreen={setActiveScreen} setSession={setSession} />
             </motion.div>
           )}
 
           {activeScreen === 'registro' && (
-            <motion.div
-              key="registro"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <AuthScreens
-                type="register"
-                setActiveScreen={setActiveScreen}
-                setSession={setSession}
-              />
+            <motion.div key="registro" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              <AuthScreens type="register" setActiveScreen={setActiveScreen} setSession={setSession} />
             </motion.div>
+          )}
+
+          {activeScreen === 'admin' && session.role === 'admin' && (
+            <AdminPanel setActiveScreen={setActiveScreen} setSession={setSession} />
           )}
         </AnimatePresence>
       </main>
 
-      {/* Footer bar credits */}
       <footer className="bg-slate-900 text-slate-400 py-10 border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
           <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center text-white text-[10px] font-bold">
-              C
-            </div>
-            <span className="font-headline font-bold text-slate-100">Candyverse Inc.</span>
+            <div className="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center text-white text-[10px] font-bold">C</div>
+            <span className="font-headline font-bold text-slate-100">Chamical Candy Shop</span>
           </div>
           <p className="font-sans text-center sm:text-right">
-            © {new Date().getFullYear()} Candyverse. Todos los derechos reservados. Sabor de calidad astronómica para toda la galaxia.
+            &copy; {new Date().getFullYear()} Chamical Candy Shop. Todos los derechos reservados.
           </p>
         </div>
       </footer>
-
     </div>
   );
 }
