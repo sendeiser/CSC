@@ -10,6 +10,7 @@ import { AuthScreens } from './components/AuthScreens';
 import { AdminPanel } from './components/AdminPanel';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken } from './lib/api';
+import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState<ActiveScreen>('inicio');
@@ -47,21 +48,41 @@ export default function App() {
 
   useEffect(() => {
     if (session.isLoggedIn) {
-      cartApi.list()
-        .then(items => {
-          const mapped: CartItem[] = items.map((i: any) => ({
-            product: i.products,
-            quantity: i.quantity,
-            selectedSize: i.selected_size,
-            itemPrice: Number(i.item_price)
-          }))
-          setCart(mapped)
-        })
-        .catch(console.error)
+      const localCart = getLocalCart()
+      const migrateLocal = localCart.length > 0
+        ? Promise.all(localCart.map(item =>
+            cartApi.add({
+              product_id: item.product.id,
+              quantity: item.quantity,
+              selected_size: item.selectedSize,
+              item_price: item.itemPrice
+            }).catch(() => {})
+          )).then(() => clearLocalCart())
+        : Promise.resolve()
+
+      migrateLocal.then(() => {
+        cartApi.list()
+          .then(items => {
+            const mapped: CartItem[] = items.map((i: any) => ({
+              product: i.products,
+              quantity: i.quantity,
+              selectedSize: i.selected_size,
+              itemPrice: Number(i.item_price)
+            }))
+            setCart(mapped)
+          })
+          .catch(console.error)
+      })
     } else {
-      setCart([])
+      setCart(getLocalCart())
     }
   }, [session.isLoggedIn])
+
+  useEffect(() => {
+    if (!session.isLoggedIn) {
+      saveLocalCart(cart)
+    }
+  }, [cart, session.isLoggedIn])
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, type });
@@ -69,6 +90,11 @@ export default function App() {
   };
 
   const toggleFavorite = async (id: string) => {
+    if (!session.isLoggedIn) {
+      showToast('Iniciá sesión para guardar favoritos', 'info')
+      setActiveScreen('login')
+      return
+    }
     const isFav = favorites[id]
     try {
       if (isFav) {
@@ -88,6 +114,25 @@ export default function App() {
 
   const addToCart = async (product: Product, size: string, quantity: number) => {
     const priceVal = product.sizes && product.sizes[size] ? product.sizes[size] : product.base_price;
+
+    if (!session.isLoggedIn) {
+      setCart(prev => {
+        const existing = prev.find(
+          i => i.product.id === product.id && i.selectedSize === size
+        )
+        if (existing) {
+          return prev.map(i =>
+            i.product.id === product.id && i.selectedSize === size
+              ? { ...i, quantity: i.quantity + quantity }
+              : i
+          )
+        }
+        return [...prev, { product, quantity, selectedSize: size, itemPrice: priceVal }]
+      })
+      showToast(`¡Añadido ${quantity}x ${product.name} (${size}) a tu Bolsa!`)
+      return
+    }
+
     try {
       await cartApi.add({ product_id: product.id, quantity, selected_size: size, item_price: priceVal })
       const items = await cartApi.list()
@@ -179,6 +224,7 @@ export default function App() {
                 cart={cart}
                 setCart={setCart}
                 setActiveScreen={setActiveScreen}
+                isLoggedIn={session.isLoggedIn}
               />
             </motion.div>
           )}

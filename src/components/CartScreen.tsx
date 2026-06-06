@@ -9,11 +9,12 @@ interface CartScreenProps {
   cart: CartItem[];
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   setActiveScreen: (screen: ActiveScreen) => void;
+  isLoggedIn: boolean;
 }
 
 type CheckoutStep = 'basket' | 'shipping' | 'success';
 
-export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActiveScreen }) => {
+export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActiveScreen, isLoggedIn }) => {
   const [step, setStep] = React.useState<CheckoutStep>('basket');
 
   const [promoCode, setPromoCode] = React.useState('');
@@ -53,35 +54,33 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
     const item = cart[index]
     const newQty = item.quantity + delta
     if (newQty <= 0) {
-      try {
-        // Need to get the cart item ID from API
-        const items = await cartApi.list()
-        const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize)
-        if (apiItem) await cartApi.remove(apiItem.id)
-        setCart(prev => prev.filter((_, i) => i !== index))
-      } catch { /* ignore */ }
+      setCart(prev => prev.filter((_, i) => i !== index))
       return
     }
-    try {
-      const items = await cartApi.list()
-      const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize)
-      if (apiItem) await cartApi.update(apiItem.id, newQty)
-      setCart(prev => {
-        const updated = [...prev]
-        updated[index] = { ...updated[index], quantity: newQty }
-        return updated
-      })
-    } catch { /* ignore */ }
+    if (isLoggedIn) {
+      try {
+        const items = await cartApi.list()
+        const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize)
+        if (apiItem) await cartApi.update(apiItem.id, newQty)
+      } catch { /* ignore */ }
+    }
+    setCart(prev => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], quantity: newQty }
+      return updated
+    })
   };
 
   const handleRemoveItem = async (index: number) => {
     const item = cart[index]
-    try {
-      const items = await cartApi.list()
-      const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize)
-      if (apiItem) await cartApi.remove(apiItem.id)
-      setCart(prev => prev.filter((_, i) => i !== index))
-    } catch { /* ignore */ }
+    if (isLoggedIn) {
+      try {
+        const items = await cartApi.list()
+        const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize)
+        if (apiItem) await cartApi.remove(apiItem.id)
+      } catch { /* ignore */ }
+    }
+    setCart(prev => prev.filter((_, i) => i !== index))
   };
 
   const handleCheckout = async () => {
