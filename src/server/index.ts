@@ -30,6 +30,10 @@ app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-app.listen(PORT, () => {
-  console.log(`CSC API running on http://localhost:${PORT}`)
-})
+if (process.env.NETLIFY !== 'true') {
+  app.listen(PORT, () => {
+    console.log(`CSC API running on http://localhost:${PORT}`)
+  })
+}
+
+export default app
