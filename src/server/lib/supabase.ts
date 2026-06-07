@@ -7,10 +7,13 @@ const supabaseUrl = process.env.SUPABASE_URL
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment')
+  console.warn('Missing SUPABASE_URL or SUPABASE_ANON_KEY - using placeholder (will fail at runtime)')
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const fallbackUrl = supabaseUrl || 'https://placeholder.supabase.co'
+const fallbackKey = supabaseAnonKey || 'placeholder-key'
+
+export const supabase = createClient(fallbackUrl, fallbackKey)
 
 const serviceKey = process.env.SUPABASE_SERVICE_KEY
 export const serviceClient = serviceKey
