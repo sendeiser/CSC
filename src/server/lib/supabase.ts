@@ -1,5 +1,6 @@
 import dotenv from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
+import ws from 'ws'
 
 dotenv.config()
 
@@ -13,7 +14,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const fallbackUrl = supabaseUrl || 'https://placeholder.supabase.co'
 const fallbackKey = supabaseAnonKey || 'placeholder-key'
 
-export const supabase = createClient(fallbackUrl, fallbackKey)
+export const supabase = createClient(fallbackUrl, fallbackKey, {
+  realtime: { transport: ws },
+})
 
 const serviceKey = process.env.SUPABASE_SERVICE_KEY
 export const serviceClient = serviceKey
