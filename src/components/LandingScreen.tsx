@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Star, MapPin, Clock, Phone, Instagram, ShoppingBag, Store, CandyCane, Package, Heart, ChevronRight, Send } from 'lucide-react';
+import { ArrowRight, Star, MapPin, Clock, Phone, Instagram, Store, Heart, ChevronRight, Send } from 'lucide-react';
+import { getCategoryIcon } from '../lib/categoryIcons';
 import { ActiveScreen, Product } from '../types';
-import { STORE_INFO, PRODUCTS } from '../data';
+import { PRODUCTS } from '../data';
 
 interface LandingScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
@@ -10,12 +11,12 @@ interface LandingScreenProps {
   heroProduct: Product;
 }
 
-const CATEGORIES = [
-  { key: 'Gomitas', icon: CandyCane, color: 'from-pink-400 to-rose-400', bg: 'bg-pink-50', text: 'text-pink-700' },
-  { key: 'Chocolates', icon: Package, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', text: 'text-amber-700' },
-  { key: 'Acidulados', icon: ShoppingBag, color: 'from-lime-400 to-green-400', bg: 'bg-lime-50', text: 'text-lime-700' },
-  { key: 'Caramelos', icon: CandyCane, color: 'from-sky-400 to-blue-400', bg: 'bg-sky-50', text: 'text-sky-700' },
-  { key: 'Regalos', icon: Heart, color: 'from-purple-400 to-violet-400', bg: 'bg-purple-50', text: 'text-purple-700' },
+const FALLBACK_CATEGORIES = [
+  { name: 'Gomitas', slug: 'Gomitas', icon: 'CandyCane', color: 'from-pink-400 to-rose-400', bg_color: 'bg-pink-50', text_color: 'text-pink-700' },
+  { name: 'Chocolates', slug: 'Chocolates', icon: 'Package', color: 'from-amber-500 to-orange-500', bg_color: 'bg-amber-50', text_color: 'text-amber-700' },
+  { name: 'Acidulados', slug: 'Acidulados', icon: 'ShoppingBag', color: 'from-lime-400 to-green-400', bg_color: 'bg-lime-50', text_color: 'text-lime-700' },
+  { name: 'Caramelos', slug: 'Caramelos', icon: 'CandyCane', color: 'from-sky-400 to-blue-400', bg_color: 'bg-sky-50', text_color: 'text-sky-700' },
+  { name: 'Regalos', slug: 'Regalos', icon: 'Heart', color: 'from-purple-400 to-violet-400', bg_color: 'bg-purple-50', text_color: 'text-purple-700' },
 ]
 
 export const LandingScreen: React.FC<LandingScreenProps> = ({
@@ -23,7 +24,24 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
   setSelectedProductById,
   heroProduct
 }) => {
-  const galleryProducts = PRODUCTS.slice(0, 6)
+  const [loading, setLoading] = useState(true)
+  const [sections, setSections] = useState<any[]>([])
+  const [categoriesList, setCategoriesList] = useState<any[]>([])
+  useEffect(() => {
+    const origin = window.location.origin
+    Promise.all([
+      fetch(`${origin}/api/homepage`).then(r => r.ok ? r.json() : []),
+      fetch(`${origin}/api/categories`).then(r => r.ok ? r.json() : []),
+    ])
+      .then(([sectionsData, categoriesData]) => {
+        setSections(sectionsData)
+        setCategoriesList(categoriesData)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const getSection = (type: string) => sections.find(s => s.section_type === type)
 
   return (
     <div className="bg-white overflow-hidden">
@@ -82,7 +100,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </button>
                 <a
-                  href={`https://wa.me/${STORE_INFO.whatsapp}`}
+                  href={`https://wa.me/${getSection('store')?.content?.whatsapp || '5493854000000'}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 border border-pink-200 text-base font-semibold rounded-xl text-purple-700 bg-white hover:bg-pink-50/50 transition-colors"
@@ -133,238 +151,280 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
       </section>
 
       {/* 2. Sobre Nosotros */}
-      <section className="py-20 sm:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:grid lg:grid-cols-12 lg:gap-12 lg:items-center">
-            <div className="lg:col-span-5 space-y-5">
-              <span className="text-xs font-bold tracking-widest text-pink-600 uppercase">Sobre Nosotros</span>
-              <h2 className="font-headline font-extrabold text-3xl sm:text-4xl text-gray-900 tracking-tight">
-                El dulce sabor de{' '}
-                <span className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-                  Chamical
-                </span>
-              </h2>
-              <div className="w-12 h-1 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full" />
-              <p className="text-base text-gray-600 leading-relaxed">
-                En <strong>Chamical Candy Shop</strong> nos apasiona endulzar tu día. Desde nuestra tienda en 
-                el corazón de Chamical, ofrecemos una gran variedad de golosinas, gomitas, chocolates y 
-                caramelos — todos disponibles por granel para que compres exactamente lo que necesitas.
-              </p>
-              <p className="text-base text-gray-600 leading-relaxed">
-                Trabajamos con proveedores de confianza para garantizar la mejor calidad y frescura. 
-                Ya sea para un cumpleaños, un evento especial o simplemente para darte un gusto, 
-                en CSC encontrás todo lo que buscas.
-              </p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                {['Atención personalizada', 'Venta por mayor y menor', 'Productos frescos'].map((item) => (
-                  <span key={item} className="inline-flex items-center space-x-1.5 text-xs font-semibold text-purple-700 bg-purple-50 px-3 py-1.5 rounded-full">
-                    <Heart className="w-3 h-3" />
-                    <span>{item}</span>
-                  </span>
-                ))}
+      {(() => {
+        const about = getSection('about')
+        const paragraphs = about?.content?.paragraphs || []
+        const tags = about?.content?.tags || []
+        const imageUrl = about?.content?.image_url || ''
+        return (
+          <section className="py-20 sm:py-24 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="lg:grid lg:grid-cols-12 lg:gap-12 lg:items-center">
+                <div className="lg:col-span-5 space-y-5">
+                  <span className="text-xs font-bold tracking-widest text-pink-600 uppercase">{about?.title || 'Sobre Nosotros'}</span>
+                  <h2 className="font-headline font-extrabold text-3xl sm:text-4xl text-gray-900 tracking-tight">
+                    {about?.subtitle || 'El dulce sabor de'}{' '}
+                    {!about?.subtitle && <span className="bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">Chamical</span>}
+                  </h2>
+                  <div className="w-12 h-1 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full" />
+                  {paragraphs.length > 0 ? paragraphs.map((p: string, i: number) => (
+                    <p key={i} className="text-base text-gray-600 leading-relaxed">{p}</p>
+                  )) : (
+                    <>
+                      <p className="text-base text-gray-600 leading-relaxed">
+                        En <strong>Chamical Candy Shop</strong> nos apasiona endulzar tu día. Desde nuestra tienda en 
+                        el corazón de Chamical, ofrecemos una gran variedad de golosinas, gomitas, chocolates y 
+                        caramelos — todos disponibles por granel para que compres exactamente lo que necesitas.
+                      </p>
+                      <p className="text-base text-gray-600 leading-relaxed">
+                        Trabajamos con proveedores de confianza para garantizar la mejor calidad y frescura. 
+                        Ya sea para un cumpleaños, un evento especial o simplemente para darte un gusto, 
+                        en CSC encontrás todo lo que buscas.
+                      </p>
+                    </>
+                  )}
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    {(tags.length > 0 ? tags : ['Atención personalizada', 'Venta por mayor y menor', 'Productos frescos']).map((item: string, i: number) => (
+                      <span key={i} className="inline-flex items-center space-x-1.5 text-xs font-semibold text-purple-700 bg-purple-50 px-3 py-1.5 rounded-full">
+                        <Heart className="w-3 h-3" />
+                        <span>{item}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-10 lg:mt-0 lg:col-span-7 flex justify-center">
+                  <div className="relative aspect-[4/3] w-full max-w-xl overflow-hidden rounded-2xl shadow-xl group">
+                    <img
+                      src={imageUrl || 'https://lh3.googleusercontent.com/aida-public/AB6AXuCFnupY6X3OeWe0OGFu9RFhJShIgtvC_FkNPvWvsDQsEqMffRmytrJKsrR8MospRiGaPeWN7K3hfxXv6HatHiFZ0_wG2H_Xf7sWsZvFo_2ilbtQ5wuV1ETbk3t-y_1unWmzIIGkjZo8hiKVjZ28cx-jgKjYPdRIeqCp-229-FlxD82IPCvBVRhxQcqT5TQKiTdIpwcr6jZx9zh1EkT0m44G30LttcE1FzFxB475xHOk3HD4HIoRUXfpBW4kdmSfOMW9hal3MbRXNfQ'}
+                      alt="Chamical Candy Shop"
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="mt-10 lg:mt-0 lg:col-span-7 flex justify-center">
-              <div className="relative aspect-[4/3] w-full max-w-xl overflow-hidden rounded-2xl shadow-xl group">
-                <img
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFnupY6X3OeWe0OGFu9RFhJShIgtvC_FkNPvWvsDQsEqMffRmytrJKsrR8MospRiGaPeWN7K3hfxXv6HatHiFZ0_wG2H_Xf7sWsZvFo_2ilbtQ5wuV1ETbk3t-y_1unWmzIIGkjZo8hiKVjZ28cx-jgKjYPdRIeqCp-229-FlxD82IPCvBVRhxQcqT5TQKiTdIpwcr6jZx9zh1EkT0m44G30LttcE1FzFxB475xHOk3HD4HIoRUXfpBW4kdmSfOMW9hal3MbRXNfQ"
-                  alt="Chamical Candy Shop"
-                  referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        )
+      })()}
 
       {/* 3. Nuestros Productos - Categorías */}
-      <section className="py-20 bg-gradient-to-tr from-pink-50/50 via-white to-purple-50/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-purple-600">Nuestros Productos</span>
-            <h2 className="mt-2 font-headline font-bold text-3xl sm:text-4xl text-gray-900">
-              ¿Qué antojo tenés hoy?
-            </h2>
-            <p className="mt-3 text-sm sm:text-base text-gray-500">
-              Elegí entre nuestras categorías y encontrá tu favorito
-            </p>
-          </div>
+      {(() => {
+        const catSection = getSection('categories')
+        const subtitle = catSection?.content?.subtitle || ''
+        return (
+          <section className="py-20 bg-gradient-to-tr from-pink-50/50 via-white to-purple-50/30">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="max-w-3xl mx-auto text-center mb-14">
+                <span className="text-xs font-bold uppercase tracking-widest text-purple-600">{catSection?.title || 'Nuestros Productos'}</span>
+                <h2 className="mt-2 font-headline font-bold text-3xl sm:text-4xl text-gray-900">
+                  {catSection?.subtitle || '¿Qué antojo tenés hoy?'}
+                </h2>
+                {subtitle && <p className="mt-3 text-sm sm:text-base text-gray-500">{subtitle}</p>}
+              </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
-            {CATEGORIES.map((cat) => {
-              const Icon = cat.icon
-              return (
-                <motion.button
-                  key={cat.key}
-                  whileHover={{ y: -4 }}
-                  onClick={() => setActiveScreen('catalogo')}
-                  className={`${cat.bg} rounded-2xl p-6 sm:p-8 text-center transition-all shadow-sm hover:shadow-md group cursor-pointer`}
-                >
-                  <div className={`w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform`}>
-                    <Icon className="w-7 h-7" />
-                  </div>
-                  <h3 className={`font-headline font-bold text-base ${cat.text}`}>{cat.key}</h3>
-                  <p className="text-xs text-gray-400 mt-1">Ver más</p>
-                </motion.button>
-              )
-            })}
-          </div>
-        </div>
-      </section>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
+                {(categoriesList.length > 0 ? categoriesList : FALLBACK_CATEGORIES).map((cat: any) => {
+                  const Icon = getCategoryIcon(cat.icon)
+                  return (
+                    <motion.button
+                      key={cat.slug}
+                      whileHover={{ y: -4 }}
+                      onClick={() => setActiveScreen('catalogo')}
+                      className={`${cat.bg_color || 'bg-pink-50'} rounded-2xl p-6 sm:p-8 text-center transition-all shadow-sm hover:shadow-md group cursor-pointer`}
+                    >
+                      <div className={`w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-white mb-4 group-hover:scale-110 transition-transform`}>
+                        <Icon className="w-7 h-7" />
+                      </div>
+                      <h3 className={`font-headline font-bold text-base ${cat.text_color || 'text-pink-700'}`}>{cat.name}</h3>
+                      <p className="text-xs text-gray-400 mt-1">Ver más</p>
+                    </motion.button>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+        )
+      })()}
 
       {/* 4. Nuestra Tienda */}
-      <section className="py-20 sm:py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-14">
-            <span className="text-xs font-bold tracking-widest text-pink-600 uppercase">Visitanos</span>
-            <h2 className="mt-2 font-headline font-extrabold text-3xl sm:text-4xl text-gray-900">
-              Nuestra Tienda
-            </h2>
-            <div className="w-12 h-1 bg-gradient-to-r from-pink-500 to-purple-600 mx-auto mt-4 rounded-full" />
-          </div>
+      {(() => {
+        const store = getSection('store')
+        const sContent = store?.content || {}
+        const hours: { day: string; time: string }[] = sContent.hours || []
+        return (
+          <section className="py-20 sm:py-24 bg-white">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="max-w-3xl mx-auto text-center mb-14">
+                <span className="text-xs font-bold tracking-widest text-pink-600 uppercase">{store?.title || 'Visitanos'}</span>
+                <h2 className="mt-2 font-headline font-extrabold text-3xl sm:text-4xl text-gray-900">
+                  {store?.subtitle || 'Nuestra Tienda'}
+                </h2>
+                <div className="w-12 h-1 bg-gradient-to-r from-pink-500 to-purple-600 mx-auto mt-4 rounded-full" />
+              </div>
 
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl p-8 sm:p-10 border border-pink-100 shadow-sm">
-              <div className="grid sm:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div className="flex items-start space-x-4">
-                    <MapPin className="w-6 h-6 text-pink-600 mt-0.5 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Dirección</h4>
-                      <p className="text-sm text-gray-600">{STORE_INFO.address}</p>
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl p-8 sm:p-10 border border-pink-100 shadow-sm">
+                  <div className="grid sm:grid-cols-2 gap-8">
+                    <div className="space-y-6">
+                      <div className="flex items-start space-x-4">
+                        <MapPin className="w-6 h-6 text-pink-600 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm">Dirección</h4>
+                          <p className="text-sm text-gray-600">{sContent.address || 'Av. Principal 123, Chamical, La Rioja'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-4">
+                        <Clock className="w-6 h-6 text-purple-600 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm">Horarios</h4>
+                          <div className="text-sm text-gray-600 space-y-1">
+                            {(hours.length > 0 ? hours : []).map((h) => (
+                              <p key={h.day}><span className="font-medium">{h.day}:</span> {h.time}</p>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-start space-x-4">
-                    <Clock className="w-6 h-6 text-purple-600 mt-0.5 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Horarios</h4>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        {STORE_INFO.hours.map((h) => (
-                          <p key={h.day}><span className="font-medium">{h.day}:</span> {h.time}</p>
-                        ))}
+                    <div className="space-y-6">
+                      <div className="flex items-start space-x-4">
+                        <Phone className="w-6 h-6 text-teal-600 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm">Contacto</h4>
+                          <p className="text-sm text-gray-600">{sContent.phone || ''}</p>
+                          <p className="text-sm text-gray-600">{sContent.email || ''}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start space-x-4">
+                        <Instagram className="w-6 h-6 text-pink-600 mt-0.5 shrink-0" />
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-sm">Redes</h4>
+                          <p className="text-sm text-gray-600">{sContent.instagram || ''}</p>
+                        </div>
+                      </div>
+                      <div className="pt-2">
+                        <span className="inline-flex items-center space-x-1.5 bg-pink-100 text-pink-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                          <Store className="w-3.5 h-3.5" />
+                          <span>Física y Online</span>
+                        </span>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-6">
-                  <div className="flex items-start space-x-4">
-                    <Phone className="w-6 h-6 text-teal-600 mt-0.5 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Contacto</h4>
-                      <p className="text-sm text-gray-600">{STORE_INFO.phone}</p>
-                      <p className="text-sm text-gray-600">{STORE_INFO.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-4">
-                    <Instagram className="w-6 h-6 text-pink-600 mt-0.5 shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-sm">Redes</h4>
-                      <p className="text-sm text-gray-600">{STORE_INFO.instagram}</p>
-                    </div>
-                  </div>
-                  <div className="pt-2">
-                    <span className="inline-flex items-center space-x-1.5 bg-pink-100 text-pink-700 text-xs font-bold px-3 py-1.5 rounded-full">
-                      <Store className="w-3.5 h-3.5" />
-                      <span>Física y Online</span>
-                    </span>
-                  </div>
-                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        )
+      })()}
 
       {/* 5. Galería */}
-      <section className="py-20 bg-gradient-to-tr from-pink-50/50 via-white to-purple-50/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-purple-600">Galería</span>
-            <h2 className="mt-2 font-headline font-bold text-3xl sm:text-4xl text-gray-900">
-              Nuestros Dulces
-            </h2>
-            <p className="mt-3 text-sm sm:text-base text-gray-500">
-              Algunos de nuestros productos destacados
-            </p>
-          </div>
+      {(() => {
+        const gallery = getSection('gallery')
+        const gContent = gallery?.content || {}
+        const limit = gContent.limit || 6
+        const galleryProducts = PRODUCTS.slice(0, limit)
+        return (
+          <section className="py-20 bg-gradient-to-tr from-pink-50/50 via-white to-purple-50/30">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="max-w-3xl mx-auto text-center mb-14">
+                <span className="text-xs font-bold uppercase tracking-widest text-purple-600">{gallery?.title || 'Galería'}</span>
+                <h2 className="mt-2 font-headline font-bold text-3xl sm:text-4xl text-gray-900">
+                  {gallery?.subtitle || 'Nuestros Dulces'}
+                </h2>
+                <p className="mt-3 text-sm sm:text-base text-gray-500">
+                  {gContent.subtitle || 'Algunos de nuestros productos destacados'}
+                </p>
+              </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-            {galleryProducts.map((product, idx) => (
-              <motion.div
-                key={product.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: idx * 0.08 }}
-                onClick={() => {
-                  setSelectedProductById(product.id)
-                  setActiveScreen('detalle')
-                }}
-                className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-pink-100 hover:shadow-lg transition-all hover:-translate-y-1"
-              >
-                <div className="aspect-square overflow-hidden bg-pink-50">
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                </div>
-                <div className="p-3 sm:p-4">
-                  <span className="text-[10px] font-semibold text-purple-600 uppercase tracking-wider">{product.category}</span>
-                  <h3 className="font-headline font-bold text-sm sm:text-base text-gray-900 mt-0.5 truncate">{product.name}</h3>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-sm font-bold text-pink-700">${product.base_price.toFixed(2)}</span>
-                    <span className="text-[10px] text-gray-400">Ver detalle</span>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+                {galleryProducts.map((product, idx) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: idx * 0.08 }}
+                    onClick={() => {
+                      setSelectedProductById(product.id)
+                      setActiveScreen('detalle')
+                    }}
+                    className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-pink-100 hover:shadow-lg transition-all hover:-translate-y-1"
+                  >
+                    <div className="aspect-square overflow-hidden bg-pink-50">
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </div>
+                    <div className="p-3 sm:p-4">
+                      <span className="text-[10px] font-semibold text-purple-600 uppercase tracking-wider">{product.category}</span>
+                      <h3 className="font-headline font-bold text-sm sm:text-base text-gray-900 mt-0.5 truncate">{product.name}</h3>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-sm font-bold text-pink-700">${product.base_price.toFixed(2)}</span>
+                        <span className="text-[10px] text-gray-400">Ver detalle</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
 
-          <div className="text-center mt-10">
-            <button
-              onClick={() => setActiveScreen('catalogo')}
-              className="inline-flex items-center space-x-2 px-8 py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-95 transition-all shadow-md hover:shadow-lg"
-            >
-              <span>Ver Catálogo Completo</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </section>
+              <div className="text-center mt-10">
+                <button
+                  onClick={() => setActiveScreen('catalogo')}
+                  className="inline-flex items-center space-x-2 px-8 py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-bold hover:opacity-95 transition-all shadow-md hover:shadow-lg"
+                >
+                  <span>Ver Catálogo Completo</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </section>
+        )
+      })()}
 
       {/* 6. Contacto / CTA */}
-      <section className="relative py-16 bg-gradient-to-br from-purple-800 to-pink-700 text-white overflow-hidden text-center">
-        <div className="absolute inset-0 bg-grid-white opacity-10" />
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 relative space-y-6">
-          <h2 className="font-headline font-black text-3xl sm:text-4xl">
-            ¿Tenés antojo?
-          </h2>
-          <p className="text-base text-pink-100 max-w-xl mx-auto">
-            Hacé tu pedido online o escribinos por WhatsApp y lo tenemos listo para retirar en el local.
-            También podés visitarnos en persona y elegir lo que más te guste.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
-            <a
-              href={`https://wa.me/${STORE_INFO.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center space-x-2 px-8 py-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold shadow-lg transition-transform transform hover:-translate-y-0.5"
-            >
-              <Send className="w-5 h-5" />
-              <span>Pedí por WhatsApp</span>
-            </a>
-            <button
-              onClick={() => setActiveScreen('catalogo')}
-              className="px-8 py-4 border border-white/40 text-white hover:bg-white/10 rounded-xl font-semibold transition-colors"
-            >
-              Explorar Catálogo
-            </button>
-          </div>
-        </div>
-      </section>
+      {(() => {
+        const contact = getSection('contact')
+        const cContent = contact?.content || {}
+        const whatsappNumber = cContent.whatsapp_number || '5493854000000'
+        return (
+          <section className="relative py-16 bg-gradient-to-br from-purple-800 to-pink-700 text-white overflow-hidden text-center">
+            <div className="absolute inset-0 bg-grid-white opacity-10" />
+            <div className="max-w-4xl mx-auto px-4 sm:px-6 relative space-y-6">
+              <h2 className="font-headline font-black text-3xl sm:text-4xl">
+                {contact?.title || '¿Tenés antojo?'}
+              </h2>
+              <p className="text-base text-pink-100 max-w-xl mx-auto">
+                Hacé tu pedido online o escribinos por WhatsApp y lo tenemos listo para retirar en el local.
+                También podés visitarnos en persona y elegir lo que más te guste.
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-2">
+                {cContent.show_whatsapp !== false && (
+                  <a
+                    href={`https://wa.me/${whatsappNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center space-x-2 px-8 py-4 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold shadow-lg transition-transform transform hover:-translate-y-0.5"
+                  >
+                    <Send className="w-5 h-5" />
+                    <span>Pedí por WhatsApp</span>
+                  </a>
+                )}
+                {cContent.show_catalog !== false && (
+                  <button
+                    onClick={() => setActiveScreen('catalogo')}
+                    className="px-8 py-4 border border-white/40 text-white hover:bg-white/10 rounded-xl font-semibold transition-colors"
+                  >
+                    Explorar Catálogo
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        )
+      })()}
 
     </div>
   );
