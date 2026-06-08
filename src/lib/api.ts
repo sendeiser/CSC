@@ -137,4 +137,32 @@ export const admin = {
   getPromoCodes: () => request<any[]>('/admin/promo-codes'),
   createPromoCode: (data: any) =>
     request<any>('/admin/promo-codes', { method: 'POST', body: JSON.stringify(data) }),
+  getHomepageSections: () => request<any[]>('/admin/homepage'),
+  updateHomepageSection: (id: string, data: any) =>
+    request<any>(`/admin/homepage/sections/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  reorderHomepageSections: (sections: { id: string; order_index: number; visible: boolean }[]) =>
+    request<any>('/admin/homepage/sections/reorder', { method: 'PUT', body: JSON.stringify({ sections }) }),
+  deleteHomepageSection: (id: string) =>
+    request<any>(`/admin/homepage/sections/${id}`, { method: 'DELETE' }),
+  getAbout: () => request<any>('/admin/about'),
+  updateAbout: (data: any) =>
+    request<any>('/admin/about', { method: 'PUT', body: JSON.stringify(data) }),
+  getCategories: () => request<any[]>('/admin/categories'),
+  createCategory: (data: any) =>
+    request<any>('/admin/categories', { method: 'POST', body: JSON.stringify(data) }),
+  updateCategory: (id: string, data: any) =>
+    request<any>(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCategory: (id: string) =>
+    request<any>(`/admin/categories/${id}`, { method: 'DELETE' }),
+}
+
+// Homepage (public)
+export const homepage = {
+  get: () => request<any[]>('/homepage'),
+  getAbout: () => request<any>('/homepage/about'),
+}
+
+// Categories (public)
+export const categories = {
+  list: () => request<any[]>('/categories'),
 }
