@@ -3,7 +3,7 @@ export interface Product {
   slug: string;
   name: string;
   description: string;
-  category: 'Gomitas' | 'Chocolates' | 'Acidulados' | 'Caramelos' | 'Regalos';
+  category: string;
   base_price: number;
   image_url: string;
   tags: string[];
@@ -26,9 +26,21 @@ export interface CartItem {
   itemPrice: number;
 }
 
-export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin';
+export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros';
 
-export type AdminSection = 'dashboard' | 'products' | 'orders' | 'users' | 'promos';
+export type AdminSection = 'dashboard' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'about-page' | 'categories';
+
+export interface HomepageSection {
+  id: string;
+  section_type: string;
+  title: string;
+  subtitle: string | null;
+  content: Record<string, any>;
+  order_index: number;
+  visible: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export interface UserSession {
   email: string | null;
