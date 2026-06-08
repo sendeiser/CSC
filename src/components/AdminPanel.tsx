@@ -1,12 +1,197 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, AlertCircle, RefreshCw, Star } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText } from 'lucide-react';
 import { AdminSection, Product } from '../types';
-import { admin as adminApi, products as productsApi, setAuthToken, getAuthToken } from '../lib/api';
+import { admin as adminApi, products as productsApi, categories as categoriesApi, setAuthToken, getAuthToken } from '../lib/api';
+import AdminHomepageEditor from './AdminHomepageEditor';
+import AdminAboutPageEditor from './AdminAboutPageEditor';
+import { getCategoryIcon } from '../lib/categoryIcons';
 
 interface AdminPanelProps {
   setActiveScreen: (screen: any) => void;
   setSession: React.Dispatch<React.SetStateAction<any>>;
+}
+
+function AdminCategoriesScreen() {
+  const [categories, setCategories] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [editing, setEditing] = useState<Record<string, any>>({})
+  const [newCategory, setNewCategory] = useState<any>(null)
+
+  const load = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await adminApi.getCategories()
+      setCategories(Array.isArray(data) ? data : [])
+    } catch (e: any) {
+      setError(e.message || 'Error al cargar')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  const startAdd = () => {
+    setNewCategory({ name: '', slug: '', icon: 'Package', color: 'from-purple-400 to-violet-400', bg_color: 'bg-purple-50', text_color: 'text-purple-700', order_index: categories.length + 1 })
+  }
+
+  const saveNew = async () => {
+    if (!newCategory.name.trim() || !newCategory.slug.trim()) return
+    try {
+      await adminApi.createCategory(newCategory)
+      setNewCategory(null)
+      await load()
+    } catch (e: any) {
+      setError(e.message || 'Error al crear')
+    }
+  }
+
+  const saveEdit = async (id: string) => {
+    try {
+      await adminApi.updateCategory(id, editing[id])
+      setEditing(prev => { const n = { ...prev }; delete n[id]; return n })
+      await load()
+    } catch (e: any) {
+      setError(e.message || 'Error al guardar')
+    }
+  }
+
+  const remove = async (id: string) => {
+    if (!confirm('¿Eliminar esta categoría? Los productos existentes conservarán su categoría.')) return
+    try {
+      await adminApi.deleteCategory(id)
+      await load()
+    } catch (e: any) {
+      setError(e.message || 'Error al eliminar')
+    }
+  }
+
+  const startEdit = (cat: any) => {
+    setEditing(prev => ({ ...prev, [cat.id]: { ...cat } }))
+  }
+
+  if (loading) return <div className="animate-pulse space-y-3">{Array.from({length: 5}).map((_, i) => <div key={i} className="h-10 bg-slate-100 rounded-xl" />)}</div>
+
+  return (
+    <div className="space-y-6 max-w-4xl">
+      <div className="flex items-center justify-between">
+        <h2 className="font-headline font-bold text-xl text-slate-800">Categorías de Productos</h2>
+        <button onClick={startAdd} className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"><Plus className="w-4 h-4" />Agregar categoría</button>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{error}</span>
+          <button onClick={load} className="ml-auto text-xs font-medium underline hover:no-underline">Reintentar</button>
+        </div>
+      )}
+
+      {newCategory && (
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
+          <h3 className="text-sm font-bold text-purple-800">Nueva categoría</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <input type="text" value={newCategory.name} onChange={e => setNewCategory({ ...newCategory, name: e.target.value })} placeholder="Nombre" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            <input type="text" value={newCategory.slug} onChange={e => setNewCategory({ ...newCategory, slug: e.target.value })} placeholder="Slug" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            <input type="text" value={newCategory.icon} onChange={e => setNewCategory({ ...newCategory, icon: e.target.value })} placeholder="Icono (ej: Package)" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            <input type="text" value={newCategory.color} onChange={e => setNewCategory({ ...newCategory, color: e.target.value })} placeholder="Color (ej: from-pink-400...)" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            <input type="text" value={newCategory.bg_color} onChange={e => setNewCategory({ ...newCategory, bg_color: e.target.value })} placeholder="Bg color" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            <input type="text" value={newCategory.text_color} onChange={e => setNewCategory({ ...newCategory, text_color: e.target.value })} placeholder="Text color" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            <input type="number" value={newCategory.order_index} onChange={e => setNewCategory({ ...newCategory, order_index: Number(e.target.value) })} placeholder="Orden" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => setNewCategory(null)} className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800">Cancelar</button>
+            <button onClick={saveNew} className="px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700">Guardar</button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="text-left px-4 py-3 font-medium text-slate-500">Orden</th>
+              <th className="text-left px-4 py-3 font-medium text-slate-500">Nombre</th>
+              <th className="text-left px-4 py-3 font-medium text-slate-500">Slug</th>
+              <th className="text-left px-4 py-3 font-medium text-slate-500">Icono</th>
+              <th className="text-left px-4 py-3 font-medium text-slate-500">Colores</th>
+              <th className="text-right px-4 py-3 font-medium text-slate-500">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {categories.map(cat => {
+              const isEditing = editing[cat.id]
+              const Icon = getCategoryIcon(isEditing?.icon || cat.icon)
+              return (
+                <tr key={cat.id} className="border-b border-slate-100 hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <input type="number" value={isEditing.order_index} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, order_index: Number(e.target.value) } })} className="w-16 px-2 py-1 border border-slate-200 rounded text-sm" />
+                    ) : (
+                      <span className="text-slate-600">{cat.order_index}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <input type="text" value={isEditing.name} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, name: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
+                    ) : (
+                      <span className="font-medium text-slate-800">{cat.name}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <input type="text" value={isEditing.slug} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, slug: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
+                    ) : (
+                      <code className="text-xs text-slate-500">{cat.slug}</code>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <input type="text" value={isEditing.icon} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, icon: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
+                    ) : (
+                      <span className="inline-flex items-center gap-1"><Icon className="w-4 h-4 text-slate-500" /><span className="text-xs text-slate-400">{cat.icon}</span></span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <div className="space-y-1">
+                        <input type="text" value={isEditing.color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="color" />
+                        <input type="text" value={isEditing.bg_color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, bg_color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="bg" />
+                        <input type="text" value={isEditing.text_color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, text_color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="text" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cat.bg_color} ${cat.text_color}`}>Preview</span>
+                        <span className={`w-4 h-4 rounded bg-gradient-to-br ${cat.color}`} />
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {isEditing ? (
+                        <>
+                          <button onClick={() => saveEdit(cat.id)} className="px-2 py-1 text-xs text-purple-600 font-medium hover:bg-purple-50 rounded"><Save className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setEditing(prev => { const n = { ...prev }; delete n[cat.id]; return n })} className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">Cancelar</button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => startEdit(cat)} className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">Editar</button>
+                          <button onClick={() => remove(cat.id)} className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 rounded">Eliminar</button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSession }) => {
@@ -134,6 +319,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     { id: 'orders', label: 'Pedidos', icon: <ShoppingCart className="w-4 h-4" /> },
     { id: 'users', label: 'Usuarios', icon: <Users className="w-4 h-4" /> },
     { id: 'promos', label: 'Cupones', icon: <Ticket className="w-4 h-4" /> },
+    { id: 'homepage', label: 'Homepage', icon: <Layout className="w-4 h-4" /> },
+    { id: 'about-page', label: 'Sobre Nosotros', icon: <FileText className="w-4 h-4" /> },
+    { id: 'categories', label: 'Categorías', icon: <Layout className="w-4 h-4" /> },
   ]
 
   return (
@@ -384,6 +572,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                   </div>
                 </div>
               )}
+
+              {section === 'homepage' && <AdminHomepageEditor />}
+              {section === 'about-page' && <AdminAboutPageEditor />}
+              {section === 'categories' && <AdminCategoriesScreen />}
             </>
           )}
         </div>
