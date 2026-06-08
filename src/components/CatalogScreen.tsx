@@ -12,7 +12,7 @@ interface CatalogScreenProps {
   toggleFavorite: (id: string) => void;
 }
 
-const CATEGORIES = ['Todos', 'Gomitas', 'Chocolates', 'Acidulados', 'Caramelos', 'Regalos'] as const;
+
 
 export const CatalogScreen: React.FC<CatalogScreenProps> = ({
   setActiveScreen,
@@ -21,10 +21,11 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
   favorites,
   toggleFavorite
 }) => {
+  const [categoriesList, setCategoriesList] = useState<any[]>([])
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [selectedCategory, setSelectedCategory] = React.useState<typeof CATEGORIES[number]>('Todos');
+  const [selectedCategory, setSelectedCategory] = React.useState<string>('Todos');
 
   const [onlyVegan, setOnlyVegan] = React.useState(false);
   const [onlyOrganic, setOnlyOrganic] = React.useState(false);
@@ -33,6 +34,13 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
 
   const [sortBy, setSortBy] = React.useState<'none' | 'priceAsc' | 'priceDesc' | 'stars'>('none');
   const [showFilters, setShowFilters] = React.useState(false);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(r => r.ok ? r.json() : [])
+      .then(setCategoriesList)
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     setLoading(true)
@@ -129,7 +137,7 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
 
         {/* Category Pills */}
         <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((cat) => (
+          {['Todos', ...categoriesList.map((c: any) => c.slug)].map((cat) => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
