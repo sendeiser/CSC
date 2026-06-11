@@ -16,6 +16,7 @@ export interface Product {
   sizes?: { [key: string]: number };
   unit_type?: 'weight' | 'piece';
   price_per_kg?: number;
+  stock: number;
   min_weight?: number;
   max_weight?: number;
   weight_step?: number;

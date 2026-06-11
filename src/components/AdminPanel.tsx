@@ -432,6 +432,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                           <th className="text-left px-4 py-3">Producto</th>
                           <th className="text-left px-4 py-3">Categoría</th>
                           <th className="text-left px-4 py-3">Precio</th>
+                          <th className="text-left px-4 py-3">Stock</th>
                           <th className="text-left px-4 py-3">Ventas</th>
                           <th className="text-right px-4 py-3">Acciones</th>
                         </tr>
@@ -468,6 +469,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                             </td>
                             <td className="px-4 py-3 text-slate-500">{p.category}</td>
                             <td className="px-4 py-3 font-medium">${p.base_price.toFixed(2)}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded ${p.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                {p.stock}{p.unit_type === 'weight' ? 'g' : ' uds'}
+                              </span>
+                            </td>
                             <td className="px-4 py-3 text-slate-500">{p.reviews}</td>
                             <td className="px-4 py-3 text-right">
                               <button onClick={() => { setEditingProduct(p); setShowProductForm(true) }} className="p-1.5 text-slate-400 hover:text-purple-600"><Edit3 className="w-4 h-4" /></button>
@@ -639,6 +645,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 </>
               )}
               <input type="text" placeholder="URL de imagen" value={editingProduct?.image_url || ''} onChange={e => setEditingProduct(p => ({ ...p, image_url: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              <input type="number" placeholder="Stock" value={editingProduct?.stock ?? ''} onChange={e => setEditingProduct(p => ({ ...p, stock: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               <button onClick={saveProduct} className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 text-sm">
                 {editingProduct?.id ? 'Guardar Cambios' : 'Crear Producto'}
               </button>

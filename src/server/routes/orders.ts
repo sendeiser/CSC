@@ -90,6 +90,22 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     return
   }
 
+  // Subtract stock for each item
+  for (const item of cartItems) {
+    const stockToSubtract = item.weight_grams || item.quantity
+    const { data: product } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', item.product_id)
+      .single()
+    if (product) {
+      await supabase
+        .from('products')
+        .update({ stock: Math.max(0, product.stock - stockToSubtract) })
+        .eq('id', item.product_id)
+    }
+  }
+
   await supabase.from('cart_items').delete().eq('user_id', req.user!.id)
 
   res.status(201).json({ ...order, items: orderItems })

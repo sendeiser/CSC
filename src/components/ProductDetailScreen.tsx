@@ -364,10 +364,15 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                     addToCart(product, selectedSize, quantity);
                   }
                 }}
-                className="flex-1 flex items-center justify-center space-x-2 px-8 py-4 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:opacity-95 text-white font-bold rounded-xl shadow-md cursor-pointer transition-transform duration-100 active:scale-95"
+                disabled={product.stock === 0 || (product.unit_type === 'weight' && product.stock < weightGrams)}
+                className={`flex-1 flex items-center justify-center space-x-2 px-8 py-4 font-bold rounded-xl shadow-md transition-all duration-100 ${
+                  product.stock === 0 || (product.unit_type === 'weight' && product.stock < weightGrams)
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:opacity-95 text-white cursor-pointer active:scale-95'
+                }`}
               >
                 <ShoppingBag className="w-5 h-5 animate-pulse" />
-                <span>{product.unit_type === 'weight' ? `Agregar ${weightGrams}g a la Bolsa` : 'Agregar a la Bolsa'}</span>
+                <span>{product.stock === 0 ? 'Agotado' : product.unit_type === 'weight' ? `Agregar ${weightGrams}g a la Bolsa` : 'Agregar a la Bolsa'}</span>
               </button>
             </div>
 

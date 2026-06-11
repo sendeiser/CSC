@@ -28,14 +28,35 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
   if (weight_grams) {
     const { data: product } = await supabase
       .from('products')
-      .select('price_per_kg, unit_type')
+      .select('price_per_kg, unit_type, stock')
       .eq('id', product_id)
       .single()
+
+    if (!product) {
+      res.status(404).json({ error: 'Producto no encontrado' })
+      return
+    }
+
+    if (product.stock < weight_grams) {
+      res.status(400).json({ error: 'Stock insuficiente' })
+      return
+    }
 
     if (product && product.unit_type === 'weight' && product.price_per_kg) {
       finalPrice = Math.round((weight_grams / 1000) * Number(product.price_per_kg) * 100) / 100
       finalSize = 'Granel'
       finalQty = 1
+    }
+  } else {
+    const { data: product } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', product_id)
+      .single()
+
+    if (product && product.stock < (quantity || 1)) {
+      res.status(400).json({ error: 'Stock insuficiente' })
+      return
     }
   }
 

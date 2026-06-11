@@ -182,6 +182,9 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                   />
                   {/* Tags */}
                   <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                    {product.stock === 0 && (
+                      <span className="px-2 py-0.5 bg-red-500 text-white text-[10px] font-bold rounded-full shadow-sm">AGOTADO</span>
+                    )}
                     {product.tags?.slice(0, 2).map((tag) => (
                       <span key={tag} className="px-2 py-0.5 bg-white/85 backdrop-blur-sm text-[10px] font-bold text-purple-700 rounded-full shadow-sm uppercase tracking-wider">
                         {tag}
@@ -251,8 +254,13 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                             addToCart(product, Object.keys(product.sizes || {})[0] || '1 pieza', 1);
                           }
                         }}
-                        className="w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90 transition-opacity flex items-center justify-center shadow-sm"
-                        title="Añadir al carrito"
+                        disabled={product.stock === 0}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-opacity ${
+                          product.stock === 0
+                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90'
+                        }`}
+                        title={product.stock === 0 ? 'Agotado' : 'Añadir al carrito'}
                       >
                         <ShoppingBag className="w-4 h-4" />
                       </button>
