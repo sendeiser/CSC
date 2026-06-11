@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu } from 'lucide-react';
 import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
@@ -209,6 +209,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
   const [newUser, setNewUser] = useState({ email: '', password: '', name: '', role: 'customer' });
   const [createUserError, setCreateUserError] = useState('');
   const [productCategories, setProductCategories] = useState<any[]>([]);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   useEffect(() => {
     loadSection(section)
@@ -331,47 +332,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {mobileSidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileSidebarOpen(false)}
+            className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col">
-        <div className="p-5 border-b border-slate-700">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">C</div>
-            <span className="font-headline font-bold">CSC Admin</span>
+      <aside className={`fixed md:sticky top-0 left-0 z-50 h-screen bg-slate-900 text-white flex flex-col transition-all duration-300 ${
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0 md:w-20 lg:w-64`}>
+        <div className="flex-shrink-0 p-5 border-b border-slate-700 flex items-center justify-between">
+          <div className="flex items-center space-x-2 overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">C</div>
+            <span className="font-headline font-bold hidden lg:block">CSC Admin</span>
           </div>
+          <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {navItems.map(item => (
             <button
               key={item.id}
-              onClick={() => setSection(item.id)}
+              onClick={() => { setSection(item.id); setMobileSidebarOpen(false) }}
               className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 section === item.id ? 'bg-purple-600 text-white' : 'text-slate-300 hover:bg-slate-800'
               }`}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              <span className="flex-shrink-0">{item.icon}</span>
+              <span className="hidden lg:inline">{item.label}</span>
             </button>
           ))}
         </nav>
-        <div className="p-4 border-t border-slate-700">
-          <button onClick={handleLogout} className="w-full text-xs text-slate-400 hover:text-white transition-colors text-left">Cerrar Sesión</button>
+        <div className="flex-shrink-0 p-4 border-t border-slate-700">
+          <button onClick={handleLogout} className="w-full text-xs text-slate-400 hover:text-white transition-colors text-left truncate">Cerrar Sesión</button>
         </div>
       </aside>
 
       {/* Main */}
-      <div className="flex-1 overflow-auto">
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between md:hidden">
-          <h2 className="font-headline font-bold text-lg">Admin</h2>
-          <div className="flex space-x-2">
-            {navItems.map(item => (
-              <button key={item.id} onClick={() => setSection(item.id)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${section === item.id ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                {item.label}
-              </button>
-            ))}
+      <div className="flex-1 flex flex-col min-w-0 max-h-screen">
+        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between md:px-6">
+          <div className="flex items-center space-x-3">
+            <button onClick={() => setMobileSidebarOpen(true)} className="md:hidden text-slate-600 hover:text-slate-900">
+              <Menu className="w-5 h-5" />
+            </button>
+            <h2 className="font-headline font-bold text-lg truncate">
+              {navItems.find(i => i.id === section)?.label || 'Admin'}
+            </h2>
           </div>
         </header>
 
-        <div className="p-6">
+        <div className="flex-1 p-4 md:p-6 overflow-y-auto">
           {loading ? (
             <div className="flex justify-center py-16"><RefreshCw className="w-8 h-8 text-purple-600 animate-spin" /></div>
           ) : (
