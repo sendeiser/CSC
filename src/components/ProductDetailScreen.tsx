@@ -7,7 +7,7 @@ interface ProductDetailScreenProps {
   product: Product;
   setActiveScreen: (screen: ActiveScreen) => void;
   setSelectedProductById: (id: string) => void;
-  addToCart: (product: Product, size: string, quantity: number) => void;
+  addToCart: (product: Product, size: string, quantity: number, weight_grams?: number) => void;
   favorites: Record<string, boolean>;
   toggleFavorite: (id: string) => void;
 }
@@ -71,6 +71,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const sizeKeys = product.sizes ? Object.keys(product.sizes) : ['Estándar'];
   const [selectedSize, setSelectedSize] = React.useState(sizeKeys[0]);
   const [quantity, setQuantity] = React.useState(1);
+  const [weightGrams, setWeightGrams] = React.useState(product.min_weight || 50);
   const [activeTab, setActiveTab] = React.useState<'info' | 'ingredientes' | 'comentarios'>('info');
   
   // Track live client side reviews to give mock inputs
@@ -91,14 +92,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     const keys = product.sizes ? Object.keys(product.sizes) : ['Estándar'];
     setSelectedSize(keys[0]);
     setQuantity(1);
+    setWeightGrams(product.min_weight || 50);
     setSuccessMsg(false);
     window.scrollTo(0, 0)
   }, [product]);
 
-  // Read weight price
-  const activePrice = product.sizes && product.sizes[selectedSize] 
-    ? product.sizes[selectedSize] 
-    : product.base_price;
+  const activePrice = product.unit_type === 'weight'
+    ? (weightGrams / 1000) * (product.price_per_kg || 0)
+    : product.sizes && product.sizes[selectedSize]
+      ? product.sizes[selectedSize]
+      : product.base_price;
 
   const handleCreateFeedback = (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,8 +246,36 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               {product.description}
             </p>
 
-            {/* Dynamic Weights choices (Renders if sizes exist) */}
-            {product.sizes && (
+            {/* Weight selector for granel products */}
+            {product.unit_type === 'weight' && (
+              <div className="space-y-2">
+                <h3 className="text-xs font-headline font-extrabold text-slate-700 uppercase tracking-widest flex items-center space-x-1">
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Seleccionar Peso:</span>
+                </h3>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={() => setWeightGrams(g => Math.max(product.min_weight || 50, g - (product.weight_step || 50)))}
+                    className="w-12 h-12 rounded-xl border-2 border-slate-200 flex items-center justify-center hover:border-purple-300 transition-colors cursor-pointer"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <div className="flex-1 text-center">
+                    <span className="text-3xl font-black text-slate-900">{weightGrams}g</span>
+                    <p className="text-sm text-slate-500 font-semibold">${((weightGrams / 1000) * (product.price_per_kg || 0)).toFixed(2)}</p>
+                  </div>
+                  <button
+                    onClick={() => setWeightGrams(g => Math.min(product.max_weight || 1000, g + (product.weight_step || 50)))}
+                    className="w-12 h-12 rounded-xl border-2 border-slate-200 flex items-center justify-center hover:border-purple-300 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Weights choices for piece products */}
+            {product.unit_type !== 'weight' && product.sizes && (
               <div className="space-y-2">
                 <h3 className="text-xs font-headline font-extrabold text-slate-700 uppercase tracking-widest flex items-center space-x-1">
                   <Tag className="w-3.5 h-3.5" />
@@ -273,44 +304,52 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               </div>
             )}
 
-            {/* Cost and quantity selector */}
+            {/* Cost display */}
             <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
               
               <div className="flex flex-col">
-                <span className="text-xs text-slate-400 font-medium">Subtotal Estimado:</span>
+                <span className="text-xs text-slate-400 font-medium">{product.unit_type === 'weight' ? 'Precio:' : 'Subtotal Estimado:'}</span>
                 <span className="text-2xl font-black text-slate-950">
-                  ${(activePrice * quantity).toFixed(2)}
+                  ${activePrice.toFixed(2)}
                 </span>
-                <span className="text-[10px] text-slate-500 mt-0.5">
-                  Precios con IVA incluido
-                </span>
+                {product.unit_type === 'weight' ? (
+                  <span className="text-[10px] text-slate-500 mt-0.5">
+                    ${(product.price_per_kg || 0).toFixed(2)} / kg
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-slate-500 mt-0.5">
+                    Precios con IVA incluido
+                  </span>
+                )}
               </div>
 
-              {/* Counter quantity */}
-              <div className="flex items-center space-x-3.5">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Cantidad:
+              {/* Quantity selector — only for piece products */}
+              {product.unit_type !== 'weight' && (
+                <div className="flex items-center space-x-3.5">
+                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Cantidad:
+                  </div>
+                  <div className="flex items-center space-x-1 border border-slate-200 rounded-xl bg-white p-1">
+                    <button
+                      disabled={quantity <= 1}
+                      onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 text-slate-650 disabled:opacity-30 cursor-pointer"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="w-8 text-center text-sm font-bold text-slate-900 leading-none">
+                      {quantity}
+                    </span>
+                    <button
+                      disabled={quantity >= 10}
+                      onClick={() => setQuantity(prev => Math.min(10, prev + 1))}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 text-slate-650 disabled:opacity-30 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-1 border border-slate-200 rounded-xl bg-white p-1">
-                  <button
-                    disabled={quantity <= 1}
-                    onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 text-slate-650 disabled:opacity-30 cursor-pointer"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-8 text-center text-sm font-bold text-slate-900 leading-none">
-                    {quantity}
-                  </span>
-                  <button
-                    disabled={quantity >= 10}
-                    onClick={() => setQuantity(prev => Math.min(10, prev + 1))}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-slate-100 text-slate-650 disabled:opacity-30 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+              )}
 
             </div>
 
@@ -319,12 +358,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               <button
                 id="addToCartDetail"
                 onClick={() => {
-                  addToCart(product, selectedSize, quantity);
+                  if (product.unit_type === 'weight') {
+                    addToCart(product, 'Granel', 1, weightGrams);
+                  } else {
+                    addToCart(product, selectedSize, quantity);
+                  }
                 }}
                 className="flex-1 flex items-center justify-center space-x-2 px-8 py-4 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:opacity-95 text-white font-bold rounded-xl shadow-md cursor-pointer transition-transform duration-100 active:scale-95"
               >
                 <ShoppingBag className="w-5 h-5 animate-pulse" />
-                <span>Agregar a la Bolsa</span>
+                <span>{product.unit_type === 'weight' ? `Agregar ${weightGrams}g a la Bolsa` : 'Agregar a la Bolsa'}</span>
               </button>
             </div>
 
