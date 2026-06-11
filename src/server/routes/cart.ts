@@ -19,20 +19,38 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
 })
 
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { product_id, quantity, selected_size, item_price } = req.body
+  const { product_id, quantity, selected_size, item_price, weight_grams } = req.body
+
+  let finalPrice = item_price
+  let finalSize = selected_size
+  let finalQty = quantity || 1
+
+  if (weight_grams) {
+    const { data: product } = await supabase
+      .from('products')
+      .select('price_per_kg, unit_type')
+      .eq('id', product_id)
+      .single()
+
+    if (product && product.unit_type === 'weight' && product.price_per_kg) {
+      finalPrice = Math.round((weight_grams / 1000) * Number(product.price_per_kg) * 100) / 100
+      finalSize = 'Granel'
+      finalQty = 1
+    }
+  }
 
   const { data: existing } = await supabase
     .from('cart_items')
     .select('*')
     .eq('user_id', req.user!.id)
     .eq('product_id', product_id)
-    .eq('selected_size', selected_size)
+    .eq('selected_size', finalSize)
     .single()
 
   if (existing) {
     const { data, error } = await supabase
       .from('cart_items')
-      .update({ quantity: existing.quantity + (quantity || 1) })
+      .update({ quantity: finalQty, item_price: finalPrice, selected_size: finalSize })
       .eq('id', existing.id)
       .select('*, products(*)')
       .single()
@@ -50,9 +68,9 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     .insert({
       user_id: req.user!.id,
       product_id,
-      quantity: quantity || 1,
-      selected_size,
-      item_price
+      quantity: finalQty,
+      selected_size: finalSize,
+      item_price: finalPrice
     })
     .select('*, products(*)')
     .single()
