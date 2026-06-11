@@ -249,10 +249,13 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             {/* Weight selector for granel products */}
             {product.unit_type === 'weight' && (
               <div className="space-y-2">
-                <h3 className="text-xs font-headline font-extrabold text-slate-700 uppercase tracking-widest flex items-center space-x-1">
-                  <Tag className="w-3.5 h-3.5" />
-                  <span>Seleccionar Peso:</span>
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-headline font-extrabold text-slate-700 uppercase tracking-widest flex items-center space-x-1">
+                    <Tag className="w-3.5 h-3.5" />
+                    <span>Seleccionar Peso:</span>
+                  </h3>
+                  <span className="text-[10px] text-purple-600 font-semibold bg-purple-50 px-2 py-0.5 rounded-full">Combinable con otros</span>
+                </div>
                 <div className="flex items-center space-x-3">
                   <button
                     onClick={() => setWeightGrams(g => Math.max(product.min_weight || 50, g - (product.weight_step || 50)))}

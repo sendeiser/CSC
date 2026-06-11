@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, SlidersHorizontal, Star, Heart, ShoppingBag, Eye, Percent, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Search, SlidersHorizontal, Star, Heart, ShoppingBag, Eye, Percent, CheckCircle2, RefreshCw, Scale } from 'lucide-react';
 import { ActiveScreen, Product } from '../types';
 import { products as productsApi } from '../lib/api';
 
@@ -135,6 +135,16 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
           )}
         </AnimatePresence>
 
+        {/* Granel info banner */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-2xl p-4 flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 flex-shrink-0">
+            <Scale className="w-5 h-5" />
+          </div>
+          <p className="text-xs sm:text-sm text-purple-800 font-medium">
+            Vendemos <strong>por gramos</strong> — elegí el peso exacto de cada producto y <strong>combiná</strong> distintos sabores en un solo pedido.
+          </p>
+        </div>
+
         {/* Category Pills */}
         <div className="flex flex-wrap gap-2">
           {['Todos', ...categoriesList.map((c: any) => c.slug)].map((cat) => (
@@ -223,9 +233,13 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                   <div className="flex items-center justify-between pt-2 border-t border-pink-50">
                     <div className="flex flex-col">
                       {product.unit_type === 'weight' ? (
-                        <span className="text-lg font-bold text-gray-900">
-                          ${(product.price_per_kg || 0).toFixed(2)} <span className="text-xs font-normal text-gray-500">/ kg</span>
-                        </span>
+                        <div>
+                          <span className="text-lg font-bold text-gray-900">
+                            ${(((product.min_weight || 50) / 1000) * (product.price_per_kg || 0)).toFixed(2)}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-1">/ {(product.min_weight || 50)}g</span>
+                          <div className="text-[10px] text-gray-400">${(product.price_per_kg || 0).toFixed(2)} / kg · <span className="text-purple-600 font-semibold">Combinable</span></div>
+                        </div>
                       ) : product.onSale && product.discountPercentage ? (
                         <span className="text-lg font-bold text-pink-600">
                           ${(product.base_price * (1 - product.discountPercentage / 100)).toFixed(2)}
