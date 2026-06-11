@@ -208,10 +208,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [newUser, setNewUser] = useState({ email: '', password: '', name: '', role: 'customer' });
   const [createUserError, setCreateUserError] = useState('');
+  const [productCategories, setProductCategories] = useState<any[]>([]);
 
   useEffect(() => {
     loadSection(section)
   }, [section])
+
+  useEffect(() => {
+    adminApi.getCategories().then(setProductCategories).catch(() => {})
+  }, [])
 
   const loadSection = async (s: AdminSection) => {
     setLoading(true)
@@ -593,8 +598,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               <input type="text" placeholder="Slug" value={editingProduct?.slug || ''} onChange={e => setEditingProduct(p => ({ ...p, slug: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               <input type="text" placeholder="Nombre" value={editingProduct?.name || ''} onChange={e => setEditingProduct(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               <textarea placeholder="Descripción" value={editingProduct?.description || ''} onChange={e => setEditingProduct(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm h-24" />
-              <select value={editingProduct?.category || 'Gomitas'} onChange={e => setEditingProduct(p => ({ ...p, category: e.target.value as any }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
-                {['Gomitas', 'Chocolates', 'Acidulados', 'Caramelos', 'Regalos'].map(c => <option key={c}>{c}</option>)}
+              <select value={editingProduct?.category || ''} onChange={e => setEditingProduct(p => ({ ...p, category: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <option value="">Seleccionar categoría</option>
+                {productCategories.map((c: any) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
               </select>
               <input type="number" step="0.01" placeholder="Precio Base" value={editingProduct?.base_price || ''} onChange={e => setEditingProduct(p => ({ ...p, base_price: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               <input type="text" placeholder="URL de imagen" value={editingProduct?.image_url || ''} onChange={e => setEditingProduct(p => ({ ...p, image_url: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
