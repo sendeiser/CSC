@@ -219,7 +219,11 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                   {/* Price + Add to Cart */}
                   <div className="flex items-center justify-between pt-2 border-t border-pink-50">
                     <div className="flex flex-col">
-                      {product.onSale && product.discountPercentage ? (
+                      {product.unit_type === 'weight' ? (
+                        <span className="text-lg font-bold text-gray-900">
+                          ${(product.price_per_kg || 0).toFixed(2)} <span className="text-xs font-normal text-gray-500">/ kg</span>
+                        </span>
+                      ) : product.onSale && product.discountPercentage ? (
                         <span className="text-lg font-bold text-pink-600">
                           ${(product.base_price * (1 - product.discountPercentage / 100)).toFixed(2)}
                           <span className="text-xs text-gray-400 line-through ml-1.5 font-normal">${product.base_price.toFixed(2)}</span>
@@ -240,7 +244,13 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => addToCart(product, Object.keys(product.sizes || {})[0] || '1 pieza', 1)}
+                        onClick={() => {
+                          if (product.unit_type === 'weight') {
+                            addToCart(product, 'Granel', 1, product.min_weight || 50);
+                          } else {
+                            addToCart(product, Object.keys(product.sizes || {})[0] || '1 pieza', 1);
+                          }
+                        }}
                         className="w-9 h-9 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:opacity-90 transition-opacity flex items-center justify-center shadow-sm"
                         title="Añadir al carrito"
                       >
