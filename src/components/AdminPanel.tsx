@@ -621,7 +621,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 <option value="">Seleccionar categoría</option>
                 {productCategories.map((c: any) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
               </select>
-              <input type="number" step="0.01" placeholder="Precio Base" value={editingProduct?.base_price || ''} onChange={e => setEditingProduct(p => ({ ...p, base_price: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              <select value={editingProduct?.unit_type || 'piece'} onChange={e => setEditingProduct(p => ({ ...p, unit_type: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+                <option value="piece">Por pieza</option>
+                <option value="weight">Por peso (granel)</option>
+              </select>
+              {editingProduct?.unit_type !== 'weight' && (
+                <input type="number" step="0.01" placeholder="Precio Base" value={editingProduct?.base_price || ''} onChange={e => setEditingProduct(p => ({ ...p, base_price: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              )}
+              {editingProduct?.unit_type === 'weight' && (
+                <>
+                  <input type="number" step="0.01" placeholder="Precio por KG" value={editingProduct?.price_per_kg || ''} onChange={e => setEditingProduct(p => ({ ...p, price_per_kg: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input type="number" placeholder="Min (g)" value={editingProduct?.min_weight || 50} onChange={e => setEditingProduct(p => ({ ...p, min_weight: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                    <input type="number" placeholder="Max (g)" value={editingProduct?.max_weight || 1000} onChange={e => setEditingProduct(p => ({ ...p, max_weight: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                    <input type="number" placeholder="Incremento (g)" value={editingProduct?.weight_step || 50} onChange={e => setEditingProduct(p => ({ ...p, weight_step: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                  </div>
+                </>
+              )}
               <input type="text" placeholder="URL de imagen" value={editingProduct?.image_url || ''} onChange={e => setEditingProduct(p => ({ ...p, image_url: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
               <button onClick={saveProduct} className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 text-sm">
                 {editingProduct?.id ? 'Guardar Cambios' : 'Crear Producto'}
