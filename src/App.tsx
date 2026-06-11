@@ -8,6 +8,7 @@ import { ProductDetailScreen } from './components/ProductDetailScreen';
 import { CartScreen } from './components/CartScreen';
 import { AuthScreens } from './components/AuthScreens';
 import { AdminPanel } from './components/AdminPanel';
+import { AboutUsScreen } from './components/AboutUsScreen';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken } from './lib/api';
 import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
@@ -149,7 +150,7 @@ export default function App() {
     }
   };
 
-  const activeProduct = allProducts.find(p => p.id === selectedProductId) || allProducts[0];
+  const activeProduct = allProducts.find(p => p.id === selectedProductId || p.slug === selectedProductId) || allProducts[0];
 
   return (
     <div className="bg-slate-50 min-h-screen text-slate-800 flex flex-col font-sans selection:bg-pink-200 selection:text-pink-900">
@@ -243,6 +244,12 @@ export default function App() {
 
           {activeScreen === 'admin' && session.role === 'admin' && (
             <AdminPanel setActiveScreen={setActiveScreen} setSession={setSession} />
+          )}
+
+          {activeScreen === 'nosotros' && (
+            <motion.div key="nosotros" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              <AboutUsScreen setActiveScreen={setActiveScreen} />
+            </motion.div>
           )}
         </AnimatePresence>
       </main>

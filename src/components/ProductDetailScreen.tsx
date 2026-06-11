@@ -24,32 +24,32 @@ const GALACTIC_GALLERY = [
 // Related items with beautiful assets
 const RELATED_PRODUCTS = [
   {
-    id: 'nubes-de-mango',
-    name: 'Nubes de Mango',
-    price: 38.00,
+    id: 'ositos-cosmicos',
+    name: 'Ositos Cósmicos',
+    price: 36.00,
     category: 'Gomitas',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBS7No9FsP6m-i1Z859w-B05BE2fQPrJ_5D6cFO_-Mj-avK6XgjHV9ALFtd4Q_pNRaspRewE4p3LLFZT3gy-SOxPk_AQfLwcnLdH7p6lAgsvuWUyeXiRspTy8AhEqEim05k7BuxOsiAstd1JFh7OjhELKsJrXjC9k41z_6ZfAd2zk3jK9d0PZhJs7epYKG_ZVApMcaT7XqYj4JVnL5ixiNAsu6_nQ1_0zb3IDLVraj4OTruvbsjlsW_oW3rBcooB2W3rkUz0xYxNSk'
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnTn-8eN_rgTy-4OoAKqTOyvmfJe77NZsy_yb5Rw1nconCv-rVZbv-sdRLjJkpIPEplZUYOA6LGKSVyzhMBztoYcSD1Sxsq2gZYRsZHto5J9oSWf-3lrop4Dh6X5ijmDL40Hl4erLX62j92n2qaOoPrktp6E2Mgf7EkTCBVj_zuE10WKqPYkqzUSMz2LA04nVGz04htPOJc8lE4Avun7SHMafBQiiw3eyjQ3Ovh2J45F4l0m6rMmUDSexmQ1_6rriHL9vATX-SYkQ'
   },
   {
-    id: 'crunch-de-chocolate',
-    name: 'Crunch de Chocolate',
-    price: 45.00,
-    category: 'Chocolates',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAPOz-Fogyy5begyn-XTC0kfsvJe2Q1lWMkwFfqIH0Y45egKu-Gv_7T-wmTGmU04yHWX8dTqIEnS1Vv2iCVe9obQaPnXvPT3U6djkdqZYY9D1NuOw_up4SUTkBZm_ize1uJHT1Qa3RBnL_LUKTrVDHS7Vm5Ds2GXGNIooKZJj0_09rlulAZt58PHdwI3CkvpBXfCe4U5cm4oK9MDsfKVV0PSwYYq6Jjw2YdHXrmYoL8dXk8uWNSR_tmi1LcLur6jlV6XVpJd8IGzqM'
-  },
-  {
-    id: 'ositos-acidos',
-    name: 'Ositos Ácidos',
-    price: 15.00,
+    id: 'cintas-neon',
+    name: 'Cintas Neón',
+    price: 25.00,
     category: 'Acidulados',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrengP_OE5zkCpV35zptHGX8HgDU2myQC0eSG-hqM63JkzhBcGucrPFSuO5BnBQiyjNbgVLfnctKm2nGsyoywoVSHjMugfaHvjrz0ybDXKnwDTcvoxQ993_5Ma6tZ21uWMGQwmVCjdKbnQdyQ3w7ZJOmf1pN-wVGp-mhuPgMTPAb2x17BWtYIUERE6dstRQKm6BGvUIYD-K0LyNCkVE33A6l7WJbQCiTtl3K7dLuFRPNLDs-AkQOBAshwsJGs2GV4x54QuFYChqyE'
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBKcX9ouLcbBZed9-5IMR9dZRT8qVFnD_9hxpyZ_pA213DQ8Bmnyxj7b0Zjjq0JnZwzee2Ym7kok6AhuuvoC-cVDO_-1KtDNzvY-YE6jQqu89oT_GffZ5Jm1GZRXqOib6aR0oeVgD_MM0uhle88ragzvYi0U6oxPMfxC-bC9gUkeMj8BRXXUz3rw3BhSArN7Amaualolqjz4rtqh14usosAeBWR-qomc0TXEZgPTYiNtWl0r1wFrErPenSxEJ5hhmwHEwbLgT7PETE'
   },
   {
-    id: 'remolinos-de-seda',
-    name: 'Remolinos de Seda',
-    price: 65.05,
+    id: 'trufas-galacticas',
+    name: 'Trufas Galácticas',
+    price: 89.00,
+    category: 'Chocolates',
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6PG13q1F54FjFcTqlALl73SWWjXh9dkTtBhWkdbaHptLs529Fxi1giKbBCIPUEL-iUV-nC1YC_Ps2G-rxI-0WKJC0XXBWR0WZXD31xtnDZbvKTEGaIpeM871GYMmL37-9tTzfmpQ8bLWc_OsXCUiVJAZWadhdOzPIbgISCO53AQcZmvnQPKbMlh6FRjmNG84G0LGWw8kqOomb5ZoH7G5FVdEw7Q-DGDFrL2ol9ggf8o3Mm_4GRlJc2OrVUxzu8mGpSWOee5PtpUA'
+  },
+  {
+    id: 'nubes-algodon',
+    name: 'Nubes de Algodón',
+    price: 55.00,
     category: 'Caramelos',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDsq6dQ9MHg6ou9SOMIS2WUwYJ9n0Lmdgmsrwk3mMYKJtgEhwmJAIpsKF7Wyy90J0XJiWjafUhL0TfPac4h4nPr5FQLOoH02tX1eWA5imfnlAxHAaSjwucTV2_IqWY3t3-xOaQhBtz6AzA5GX_Iholz_sPSC8-k7czFX_gNQk7syY7gRlJhormnguOjrbaCYof02dRIbnyxUZiJTFTEDhAzTi6Nygi757HrnqwkreJUZg4RQjYFGH_AHrxLCKEDWiADDzsQ0m2zwR4'
+    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD40m9zbl6ELzkkdCNfNeOQ1pZR2u75kMN7FNNp6a_Q2Ou-W7TtEMw2DQ-iT-fhihLw4uRyAJEwp99jm1WjpevuKN7TUwqkgQgXdFqZhs1TJ0OFYx6JSMgwYRPnsnEe_GV5_kgnEJwzPiaTZtWCOIHtImVYoK1LgnJaNaUlaGJchgOzz5EehtdD42YFy4tlhqxViag1NZqLiYvAPU1KTDLzmCXMMHuoh_5LvaW1AniJL_MhNlvF4DFOnRBKwBtrWDqTCGYS16BUAU0'
   }
 ];
 
@@ -92,6 +92,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     setSelectedSize(keys[0]);
     setQuantity(1);
     setSuccessMsg(false);
+    window.scrollTo(0, 0)
   }, [product]);
 
   // Read weight price
@@ -519,10 +520,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             {RELATED_PRODUCTS.map((relItem) => (
                 <div 
                   key={relItem.id}
-                  onClick={() => {
-                    setSelectedProductById(relItem.id);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
+                  onClick={() => setSelectedProductById(relItem.id)}
                   className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md cursor-pointer transition-all group p-3 space-y-3"
                 >
                   <div className="aspect-square rounded-xl bg-slate-50 overflow-hidden">

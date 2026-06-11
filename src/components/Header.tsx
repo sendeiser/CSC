@@ -25,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems = [
     { label: 'Inicio', screen: 'inicio' as ActiveScreen },
     { label: 'Catálogo', screen: 'catalogo' as ActiveScreen },
+    { label: 'Nosotros', screen: 'nosotros' as ActiveScreen },
   ];
 
   return (
