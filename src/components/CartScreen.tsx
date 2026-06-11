@@ -52,6 +52,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
 
   const handleQuantityChange = async (index: number, delta: number) => {
     const item = cart[index]
+    if (item.weight_grams) return  // weight items don't use quantity
     const newQty = item.quantity + delta
     if (newQty <= 0) {
       setCart(prev => prev.filter((_, i) => i !== index))
@@ -188,12 +189,18 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                     <img src={item.product.image_url} alt={item.product.name} className="w-20 h-20 rounded-xl object-cover bg-pink-100 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-headline font-bold text-sm text-gray-900 truncate">{item.product.name}</h3>
-                      <p className="text-[11px] text-gray-500 mt-0.5">Tamaño: {item.selectedSize}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">{item.weight_grams ? `${item.weight_grams}g` : `Tamaño: ${item.selectedSize}`}</p>
                       <div className="flex items-center justify-between mt-3">
                         <div className="flex items-center space-x-2">
-                          <button onClick={() => handleQuantityChange(index, -1)} className="w-7 h-7 rounded-full border border-pink-200 text-gray-500 hover:bg-pink-100 transition-colors flex items-center justify-center text-sm font-bold">-</button>
-                          <span className="text-sm font-bold w-6 text-center">{item.quantity}</span>
-                          <button onClick={() => handleQuantityChange(index, 1)} className="w-7 h-7 rounded-full border border-pink-200 text-gray-500 hover:bg-pink-100 transition-colors flex items-center justify-center text-sm font-bold">+</button>
+                          {item.weight_grams ? (
+                            <span className="text-sm font-bold text-gray-700">{item.weight_grams}g</span>
+                          ) : (
+                            <>
+                              <button onClick={() => handleQuantityChange(index, -1)} className="w-7 h-7 rounded-full border border-pink-200 text-gray-500 hover:bg-pink-100 transition-colors flex items-center justify-center text-sm font-bold">-</button>
+                              <span className="text-sm font-bold w-6 text-center">{item.quantity}</span>
+                              <button onClick={() => handleQuantityChange(index, 1)} className="w-7 h-7 rounded-full border border-pink-200 text-gray-500 hover:bg-pink-100 transition-colors flex items-center justify-center text-sm font-bold">+</button>
+                            </>
+                          )}
                         </div>
                         <div className="flex items-center space-x-3">
                           <span className="font-bold text-sm text-gray-900">${(item.itemPrice * item.quantity).toFixed(2)}</span>
