@@ -10,6 +10,8 @@ export const PRODUCTS = [
     stars: 5,
     reviews: 124,
     diet: ['Vegan', 'Orgánico'],
+    unit_type: 'weight',
+    price_per_kg: 50.00,
     sizes: {
       '250g': 12.50,
       '500g': 22.00,
@@ -29,6 +31,8 @@ export const PRODUCTS = [
     diet: ['Vegan', 'Sin Azúcar'],
     onSale: true,
     discountPercentage: 20,
+    unit_type: 'weight',
+    price_per_kg: 120.00,
     sizes: {
       '300g': 36.00,
       '500g': 55.00
@@ -141,6 +145,8 @@ export const PRODUCTS = [
     stars: 4,
     reviews: 112,
     diet: ['Vegan'],
+    unit_type: 'weight',
+    price_per_kg: 29.95,
     sizes: {
       'Pack 200g': 5.99,
       'Pack 500g': 12.00
@@ -173,6 +179,8 @@ export const PRODUCTS = [
     stars: 4,
     reviews: 94,
     diet: ['Vegan'],
+    unit_type: 'weight',
+    price_per_kg: 25.00,
     sizes: {
       'Bolsa 500g': 12.50,
       'Bolsa 1kg': 22.00
@@ -189,6 +197,8 @@ export const PRODUCTS = [
     stars: 4,
     reviews: 65,
     diet: ['Orgánico', 'Sin Azúcar'],
+    unit_type: 'weight',
+    price_per_kg: 59.33,
     sizes: {
       'Bolsita 150g': 8.90,
       'Bolsita 300g': 16.00
