@@ -56,7 +56,8 @@ export default function App() {
               product_id: item.product.id,
               quantity: item.quantity,
               selected_size: item.selectedSize,
-              item_price: item.itemPrice
+              item_price: item.itemPrice,
+              weight_grams: item.weight_grams
             }).catch(() => {})
           )).then(() => clearLocalCart())
         : Promise.resolve()
@@ -68,7 +69,8 @@ export default function App() {
               product: i.products,
               quantity: i.quantity,
               selectedSize: i.selected_size,
-              itemPrice: Number(i.item_price)
+              itemPrice: Number(i.item_price),
+              weight_grams: i.weight_grams
             }))
             setCart(mapped)
           })
@@ -113,38 +115,68 @@ export default function App() {
     }
   };
 
-  const addToCart = async (product: Product, size: string, quantity: number) => {
-    const priceVal = product.sizes && product.sizes[size] ? product.sizes[size] : product.base_price;
+  const addToCart = async (product: Product, size: string, quantity: number, weight_grams?: number) => {
+    let priceVal: number
+    let itemSize: string
+    let itemQty: number
+
+    if (product.unit_type === 'weight') {
+      itemSize = 'Granel'
+      itemQty = 1
+      priceVal = (weight_grams! / 1000) * product.price_per_kg!
+    } else {
+      itemSize = size
+      itemQty = quantity
+      priceVal = product.sizes && product.sizes[size] ? product.sizes[size] : product.base_price
+    }
+
+    const newItem: CartItem = {
+      product,
+      quantity: itemQty,
+      selectedSize: itemSize,
+      itemPrice: priceVal,
+      weight_grams: product.unit_type === 'weight' ? weight_grams : undefined
+    }
 
     if (!session.isLoggedIn) {
       setCart(prev => {
         const existing = prev.find(
-          i => i.product.id === product.id && i.selectedSize === size
+          i => i.product.id === product.id && i.selectedSize === itemSize
         )
         if (existing) {
           return prev.map(i =>
-            i.product.id === product.id && i.selectedSize === size
-              ? { ...i, quantity: i.quantity + quantity }
+            i.product.id === product.id && i.selectedSize === itemSize
+              ? { ...i, ...(product.unit_type === 'weight' ? { weight_grams, itemPrice: priceVal } : { quantity: i.quantity + itemQty }) }
               : i
           )
         }
-        return [...prev, { product, quantity, selectedSize: size, itemPrice: priceVal }]
+        return [...prev, newItem]
       })
-      showToast(`¡Añadido ${quantity}x ${product.name} (${size}) a tu Bolsa!`)
+      showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g' : itemQty + 'x'} ${product.name} a tu Bolsa!`)
       return
     }
 
     try {
-      await cartApi.add({ product_id: product.id, quantity, selected_size: size, item_price: priceVal })
+      const cartPayload: any = {
+        product_id: product.id,
+        quantity: itemQty,
+        selected_size: itemSize,
+        item_price: priceVal
+      }
+      if (product.unit_type === 'weight') {
+        cartPayload.weight_grams = weight_grams
+      }
+      await cartApi.add(cartPayload)
       const items = await cartApi.list()
       const mapped: CartItem[] = items.map((i: any) => ({
         product: i.products,
         quantity: i.quantity,
         selectedSize: i.selected_size,
-        itemPrice: Number(i.item_price)
+        itemPrice: Number(i.item_price),
+        weight_grams: i.weight_grams
       }))
       setCart(mapped)
-      showToast(`¡Añadido ${quantity}x ${product.name} (${size}) a tu Bolsa!`)
+      showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g' : itemQty + 'x'} ${product.name} a tu Bolsa!`)
     } catch {
       showToast('Error al añadir al carrito', 'info')
     }
