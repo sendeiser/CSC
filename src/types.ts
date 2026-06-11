@@ -13,9 +13,12 @@ export interface Product {
   bestseller?: boolean;
   on_sale?: boolean;
   discount_percentage?: number;
-  sizes?: {
-    [key: string]: number;
-  };
+  sizes?: { [key: string]: number };
+  unit_type?: 'weight' | 'piece';
+  price_per_kg?: number;
+  min_weight?: number;
+  max_weight?: number;
+  weight_step?: number;
   created_at: string;
 }
 
@@ -24,6 +27,7 @@ export interface CartItem {
   quantity: number;
   selectedSize: string;
   itemPrice: number;
+  weight_grams?: number;
 }
 
 export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros';
