@@ -184,12 +184,17 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
               >
                 {/* Image Container */}
                 <div className="relative overflow-hidden aspect-square bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
-                  />
+                  <button
+                    onClick={() => { setSelectedProductById(product.id); setActiveScreen('detalle'); }}
+                    className="w-full h-full block cursor-pointer"
+                  >
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  </button>
                   {/* Tags */}
                   <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
                     {product.stock === 0 && (
