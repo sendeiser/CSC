@@ -1,6 +1,7 @@
 import { Router, Response } from 'express'
 import { supabase } from '../lib/supabase'
 import { requireAuth, AuthenticatedRequest } from '../lib/auth'
+import { getPayment } from '../lib/mercadopago'
 
 const router = Router()
 
@@ -17,6 +18,83 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
   }
 
   res.json(data)
+})
+
+router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { payment_id, preference_id } = req.body
+
+    if (!payment_id || !preference_id) {
+      res.status(400).json({ error: 'payment_id y preference_id son requeridos' })
+      return
+    }
+
+    const payment = await getPayment(payment_id)
+    if (payment.status !== 'approved') {
+      res.status(400).json({ error: 'El pago no fue aprobado' })
+      return
+    }
+
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('preference_id', preference_id)
+      .eq('user_id', req.user!.id)
+      .eq('status', 'pending')
+      .single()
+
+    if (orderError || !order) {
+      res.status(404).json({ error: 'Orden no encontrada' })
+      return
+    }
+
+    const { data: cartItems } = await supabase
+      .from('cart_items')
+      .select('*')
+      .eq('user_id', req.user!.id)
+
+    if (cartItems?.length) {
+      const orderItemsData = cartItems.map((item: any) => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        selected_size: item.selected_size,
+        unit_price: item.item_price,
+        weight_grams: item.weight_grams,
+      }))
+
+      await supabase.from('order_items').insert(orderItemsData)
+
+      for (const item of cartItems) {
+        const stockToSubtract = item.weight_grams || item.quantity
+        const { data: product } = await supabase
+          .from('products')
+          .select('stock')
+          .eq('id', item.product_id)
+          .single()
+        if (product) {
+          await supabase
+            .from('products')
+            .update({ stock: Math.max(0, product.stock - stockToSubtract) })
+            .eq('id', item.product_id)
+        }
+      }
+    }
+
+    const { data: updatedOrder } = await supabase
+      .from('orders')
+      .update({ status: 'paid', payment_id })
+      .eq('id', order.id)
+      .select('*, order_items(*)')
+      .single()
+
+    await supabase.from('cart_items').delete().eq('user_id', req.user!.id)
+
+    res.json(updatedOrder)
+  } catch (err: any) {
+    console.error('confirm error:', err)
+    res.status(500).json({ error: err.message || 'Error al confirmar el pedido' })
+  }
 })
 
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -65,7 +143,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       shipping_name,
       shipping_address,
       shipping_city,
-      status: 'paid'
+      status: 'pending'
     })
     .select()
     .single()
