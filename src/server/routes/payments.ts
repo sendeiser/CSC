@@ -1,5 +1,5 @@
 import { Router, Response } from 'express'
-import { supabase } from '../lib/supabase'
+import { serviceClient } from '../lib/supabase'
 import { requireAuth, AuthenticatedRequest } from '../lib/auth'
 import { createPreference, getPayment } from '../lib/mercadopago'
 
@@ -9,7 +9,7 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
   try {
     const { shipping_name, shipping_address, shipping_city, promo_code } = req.body
 
-    const { data: cartItems, error: cartError } = await supabase
+    const { data: cartItems, error: cartError } = await serviceClient
       .from('cart_items')
       .select('*, products(*)')
       .eq('user_id', req.user!.id)
@@ -24,7 +24,7 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
     let promoCodeId = null
 
     if (promo_code) {
-      const { data: promo } = await supabase
+      const { data: promo } = await serviceClient
         .from('promo_codes')
         .select('*')
         .eq('code', promo_code.toUpperCase())
@@ -34,7 +34,7 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
       if (promo) {
         discountAmount = subTotal * (promo.percent / 100)
         promoCodeId = promo.id
-        await supabase.from('promo_codes').update({ used_count: promo.used_count + 1 }).eq('id', promo.id)
+        await serviceClient.from('promo_codes').update({ used_count: promo.used_count + 1 }).eq('id', promo.id)
       }
     }
 
@@ -55,7 +55,7 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
 
     const preference = await createPreference(mpItems, shipping_name, backUrls)
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await serviceClient
       .from('orders')
       .insert({
         user_id: req.user!.id,
@@ -92,7 +92,7 @@ router.post('/webhook', async (req, res) => {
       const payment = await getPayment(String(data.id))
 
       if (payment.status === 'approved' && payment.preference_id) {
-        const { data: order } = await supabase
+        const { data: order } = await serviceClient
           .from('orders')
           .select('*')
           .eq('preference_id', payment.preference_id)
@@ -100,7 +100,7 @@ router.post('/webhook', async (req, res) => {
           .single()
 
         if (order) {
-          const { data: orderItems } = await supabase
+          const { data: orderItems } = await serviceClient
             .from('order_items')
             .select('*')
             .eq('order_id', order.id)
@@ -108,13 +108,13 @@ router.post('/webhook', async (req, res) => {
           if (orderItems) {
             for (const item of orderItems) {
               const stockToSubtract = item.weight_grams || item.quantity
-              const { data: product } = await supabase
+              const { data: product } = await serviceClient
                 .from('products')
                 .select('stock')
                 .eq('id', item.product_id)
                 .single()
               if (product) {
-                await supabase
+                await serviceClient
                   .from('products')
                   .update({ stock: Math.max(0, product.stock - stockToSubtract) })
                   .eq('id', item.product_id)
@@ -122,12 +122,12 @@ router.post('/webhook', async (req, res) => {
             }
           }
 
-          await supabase
+          await serviceClient
             .from('orders')
             .update({ status: 'paid', payment_id: String(data.id) })
             .eq('id', order.id)
 
-          await supabase.from('cart_items').delete().eq('user_id', order.user_id)
+          await serviceClient.from('cart_items').delete().eq('user_id', order.user_id)
         }
       }
     }

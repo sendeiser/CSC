@@ -1,11 +1,11 @@
 import { Router, Response } from 'express'
-import { supabase } from '../lib/supabase'
+import { serviceClient } from '../lib/supabase'
 import { requireAuth, AuthenticatedRequest } from '../lib/auth'
 
 const router = Router()
 
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await supabase
+  const { data, error } = await serviceClient
     .from('cart_items')
     .select('*, products(*)')
     .eq('user_id', req.user!.id)
@@ -26,7 +26,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
   let finalQty = quantity || 1
 
   if (weight_grams) {
-    const { data: product } = await supabase
+    const { data: product } = await serviceClient
       .from('products')
       .select('price_per_kg, unit_type, stock')
       .eq('id', product_id)
@@ -38,7 +38,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     }
 
     if (product.stock < weight_grams) {
-      res.status(400).json({ error: 'Stock insuficiente' })
+      console.error(`[cart] Stock insuficiente: product ${product_id} tiene ${product.stock}, se pidieron ${weight_grams}g`)
+      res.status(400).json({ error: `Stock insuficiente: disponible ${product.stock}g` })
       return
     }
 
@@ -48,7 +49,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       finalQty = 1
     }
   } else {
-    const { data: product } = await supabase
+    const { data: product } = await serviceClient
       .from('products')
       .select('stock')
       .eq('id', product_id)
@@ -61,7 +62,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
   }
 
   // For weight items, match exact weight_grams to allow different weights of same product
-  let query = supabase
+  let query = serviceClient
     .from('cart_items')
     .select('*')
     .eq('user_id', req.user!.id)
@@ -75,7 +76,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
   const { data: existing } = await query.maybeSingle()
 
   if (existing) {
-    const { data, error } = await supabase
+    const { data, error } = await serviceClient
       .from('cart_items')
       .update({ quantity: finalQty, item_price: finalPrice, selected_size: finalSize, weight_grams: weight_grams || null })
       .eq('id', existing.id)
@@ -83,6 +84,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       .single()
 
     if (error) {
+      console.error('[cart] update error:', error.message, 'existing id:', existing.id)
       res.status(400).json({ error: error.message })
       return
     }
@@ -102,24 +104,26 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     insertData.weight_grams = weight_grams
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await serviceClient
     .from('cart_items')
     .insert(insertData)
     .select('*, products(*)')
     .single()
 
   if (error) {
+    console.error('[cart] insert error:', error.message, 'insertData:', JSON.stringify(insertData))
     res.status(400).json({ error: error.message })
     return
   }
 
+  console.log('[cart] created cart item:', data?.id)
   res.status(201).json(data)
 })
 
 router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { quantity } = req.body
 
-  const { data, error } = await supabase
+  const { data, error } = await serviceClient
     .from('cart_items')
     .update({ quantity })
     .eq('id', req.params.id)
@@ -136,7 +140,7 @@ router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response)
 })
 
 router.delete('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { error } = await supabase
+  const { error } = await serviceClient
     .from('cart_items')
     .delete()
     .eq('id', req.params.id)

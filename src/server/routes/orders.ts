@@ -1,12 +1,12 @@
 import { Router, Response } from 'express'
-import { supabase } from '../lib/supabase'
+import { serviceClient } from '../lib/supabase'
 import { requireAuth, AuthenticatedRequest } from '../lib/auth'
 import { getPayment } from '../lib/mercadopago'
 
 const router = Router()
 
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await supabase
+  const { data, error } = await serviceClient
     .from('orders')
     .select('*, order_items(*)')
     .eq('user_id', req.user!.id)
@@ -35,7 +35,7 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
       return
     }
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await serviceClient
       .from('orders')
       .select('*')
       .eq('preference_id', preference_id)
@@ -48,7 +48,7 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
       return
     }
 
-    const { data: cartItems } = await supabase
+    const { data: cartItems } = await serviceClient
       .from('cart_items')
       .select('*')
       .eq('user_id', req.user!.id)
@@ -63,17 +63,17 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
         weight_grams: item.weight_grams,
       }))
 
-      await supabase.from('order_items').insert(orderItemsData)
+      await serviceClient.from('order_items').insert(orderItemsData)
 
       for (const item of cartItems) {
         const stockToSubtract = item.weight_grams || item.quantity
-        const { data: product } = await supabase
+        const { data: product } = await serviceClient
           .from('products')
           .select('stock')
           .eq('id', item.product_id)
           .single()
         if (product) {
-          await supabase
+          await serviceClient
             .from('products')
             .update({ stock: Math.max(0, product.stock - stockToSubtract) })
             .eq('id', item.product_id)
@@ -81,14 +81,14 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
       }
     }
 
-    const { data: updatedOrder } = await supabase
+    const { data: updatedOrder } = await serviceClient
       .from('orders')
       .update({ status: 'paid', payment_id })
       .eq('id', order.id)
       .select('*, order_items(*)')
       .single()
 
-    await supabase.from('cart_items').delete().eq('user_id', req.user!.id)
+    await serviceClient.from('cart_items').delete().eq('user_id', req.user!.id)
 
     res.json(updatedOrder)
   } catch (err: any) {
@@ -100,7 +100,7 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { shipping_name, shipping_address, shipping_city, promo_code } = req.body
 
-  const { data: cartItems, error: cartError } = await supabase
+  const { data: cartItems, error: cartError } = await serviceClient
     .from('cart_items')
     .select('*, products(*)')
     .eq('user_id', req.user!.id)
@@ -115,7 +115,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
   let promoCodeId = null
 
   if (promo_code) {
-    const { data: promo } = await supabase
+    const { data: promo } = await serviceClient
       .from('promo_codes')
       .select('*')
       .eq('code', promo_code.toUpperCase())
@@ -125,14 +125,14 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     if (promo) {
       discountAmount = subTotal * (promo.percent / 100)
       promoCodeId = promo.id
-      await supabase.from('promo_codes').update({ used_count: promo.used_count + 1 }).eq('id', promo.id)
+      await serviceClient.from('promo_codes').update({ used_count: promo.used_count + 1 }).eq('id', promo.id)
     }
   }
 
   const shippingCost = subTotal > 150 || subTotal === 0 ? 0 : 35
   const total = subTotal - discountAmount + shippingCost
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await serviceClient
     .from('orders')
     .insert({
       user_id: req.user!.id,
@@ -161,7 +161,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     unit_price: item.item_price
   }))
 
-  const { error: itemsError } = await supabase.from('order_items').insert(orderItems)
+  const { error: itemsError } = await serviceClient.from('order_items').insert(orderItems)
 
   if (itemsError) {
     res.status(400).json({ error: itemsError.message })
@@ -171,26 +171,26 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
   // Subtract stock for each item
   for (const item of cartItems) {
     const stockToSubtract = item.weight_grams || item.quantity
-    const { data: product } = await supabase
+    const { data: product } = await serviceClient
       .from('products')
       .select('stock')
       .eq('id', item.product_id)
       .single()
     if (product) {
-      await supabase
+      await serviceClient
         .from('products')
         .update({ stock: Math.max(0, product.stock - stockToSubtract) })
         .eq('id', item.product_id)
     }
   }
 
-  await supabase.from('cart_items').delete().eq('user_id', req.user!.id)
+  await serviceClient.from('cart_items').delete().eq('user_id', req.user!.id)
 
   res.status(201).json({ ...order, items: orderItems })
 })
 
 router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await supabase
+  const { data, error } = await serviceClient
     .from('orders')
     .select('*, order_items(*)')
     .eq('id', req.params.id)
