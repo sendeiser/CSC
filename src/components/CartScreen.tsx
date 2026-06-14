@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Trash2, ArrowRight, Check, Sparkles, AlertCircle, MapPin, CreditCard, Gift, PartyPopper } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper } from 'lucide-react';
 import { ActiveScreen, CartItem } from '../types';
-import { cart as cartApi, orders as ordersApi } from '../lib/api';
+import { cart as cartApi, orders as ordersApi, payments as paymentsApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
 
 interface CartScreenProps {
@@ -26,8 +26,6 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [cityField, setCityField] = React.useState('');
   const [phoneField, setPhoneField] = React.useState('');
   const [shippingError, setShippingError] = React.useState('');
-
-  const [cardFormattedNum, setCardFormattedNum] = React.useState('');
   const [orderId, setOrderId] = React.useState('');
 
   const subTotal = cart.reduce((acc, item) => acc + (item.itemPrice * item.quantity), 0);
@@ -98,19 +96,43 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
     }
 
     try {
-      const result = await ordersApi.create({
+      const result = await paymentsApi.createPreference({
         shipping_name: fullName,
         shipping_address: addressLine,
         shipping_city: cityField,
-        promo_code: activeDiscount?.code
+        promo_code: activeDiscount?.code,
       })
-      setOrderId(result.id)
-      setCart([])
-      setStep('success')
+      window.location.href = result.init_point
     } catch (err: any) {
-      setShippingError(err.message || 'Error al procesar el pedido.')
+      setShippingError(err.message || 'Error al procesar el pago.')
     }
   };
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const paymentId = params.get('payment_id')
+    const preferenceId = params.get('preference_id')
+    const status = params.get('status')
+
+    if (paymentId && preferenceId && status === 'approved') {
+      window.history.replaceState({}, '', window.location.pathname)
+
+      const confirmOrder = async () => {
+        try {
+          const result = await ordersApi.confirm(paymentId, preferenceId)
+          setOrderId(result.id)
+          setCart([])
+          setStep('success')
+        } catch (err: any) {
+          setShippingError(err.message || 'Error al confirmar el pedido')
+          setStep('shipping')
+        }
+      }
+      confirmOrder()
+    } else if (status === 'failure' || (paymentId && status !== 'pending')) {
+      setShippingError('El pago no fue procesado. Intenta de nuevo.')
+    }
+  }, [])
 
   return (
     <div className="bg-white min-h-screen">
@@ -149,14 +171,24 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
             <div>
               <h2 className="text-2xl font-headline font-bold text-gray-900">¡Pedido Confirmado!</h2>
               <p className="text-gray-500 mt-2">Tu pedido #<span className="font-mono font-bold text-purple-700">{orderId.slice(0, 8).toUpperCase()}</span> está siendo procesado.</p>
-              <p className="text-sm text-gray-400 mt-1">Recibirás un correo con los detalles del envío.</p>
+              <p className="text-sm text-gray-400 mt-1">Te contactaremos si hay novedades.</p>
             </div>
-            <button
-              onClick={() => { setStep('basket'); setActiveDiscount(null); setActiveScreen('catalogo'); }}
-              className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg"
+            <a
+              href={`https://wa.me/54${phoneField ? phoneField.replace(/\D/g, '') : ''}?text=${encodeURIComponent(`Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-colors shadow-md"
             >
-              Seguir Comprando
-            </button>
+              <span>Contactar por WhatsApp</span>
+            </a>
+            <div className="pt-4">
+              <button
+                onClick={() => { setStep('basket'); setActiveDiscount(null); setActiveScreen('catalogo'); }}
+                className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg"
+              >
+                Seguir Comprando
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -289,20 +321,6 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Tarjeta de Crédito</label>
-                <div className="relative">
-                  <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={cardFormattedNum}
-                    onChange={(e) => setCardFormattedNum(e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim().slice(0, 19))}
-                    placeholder="4242 4242 4242 4242"
-                    className="w-full pl-11 pr-4 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white font-mono"
-                  />
-                </div>
-              </div>
-
               {shippingError && (
                 <div className="flex items-center space-x-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
                   <AlertCircle className="w-5 h-5 shrink-0" />
@@ -320,8 +338,8 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
               <div className="flex space-x-3">
                 <button onClick={() => setStep('basket')} className="flex-1 py-3 border border-pink-200 text-gray-600 font-semibold rounded-xl hover:bg-pink-50 transition-all text-sm">Volver</button>
                 <button onClick={handleCheckout} className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all text-sm flex items-center justify-center space-x-2">
-                  <Gift className="w-4 h-4" />
-                  <span>Confirmar Pedido</span>
+                  <CreditCard className="w-4 h-4" />
+                  <span>Pagar con Mercado Pago</span>
                 </button>
               </div>
             </div>
