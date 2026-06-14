@@ -60,18 +60,24 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     }
   }
 
-  const { data: existing } = await supabase
+  // For weight items, match exact weight_grams to allow different weights of same product
+  let query = supabase
     .from('cart_items')
     .select('*')
     .eq('user_id', req.user!.id)
     .eq('product_id', product_id)
     .eq('selected_size', finalSize)
-    .single()
+
+  if (weight_grams) {
+    query = query.eq('weight_grams', weight_grams)
+  }
+
+  const { data: existing } = await query.maybeSingle()
 
   if (existing) {
     const { data, error } = await supabase
       .from('cart_items')
-      .update({ quantity: finalQty, item_price: finalPrice, selected_size: finalSize })
+      .update({ quantity: finalQty, item_price: finalPrice, selected_size: finalSize, weight_grams: weight_grams || null })
       .eq('id', existing.id)
       .select('*, products(*)')
       .single()
@@ -84,15 +90,21 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     return
   }
 
+  const insertData: any = {
+    user_id: req.user!.id,
+    product_id,
+    quantity: finalQty,
+    selected_size: finalSize,
+    item_price: finalPrice,
+  }
+
+  if (weight_grams) {
+    insertData.weight_grams = weight_grams
+  }
+
   const { data, error } = await supabase
     .from('cart_items')
-    .insert({
-      user_id: req.user!.id,
-      product_id,
-      quantity: finalQty,
-      selected_size: finalSize,
-      item_price: finalPrice
-    })
+    .insert(insertData)
     .select('*, products(*)')
     .single()
 
