@@ -9,6 +9,7 @@ import favoriteRoutes from './routes/favorites'
 import adminRoutes from './routes/admin'
 import homepageRoutes from './routes/homepage'
 import categoriesRouter from './routes/categories'
+import paymentRoutes from './routes/payments'
 
 dotenv.config()
 
@@ -29,6 +30,7 @@ app.use('/api/favorites', favoriteRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/homepage', homepageRoutes)
 app.use('/api/categories', categoriesRouter)
+app.use('/api/payments', paymentRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
