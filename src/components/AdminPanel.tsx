@@ -77,9 +77,9 @@ function AdminCategoriesScreen() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h2 className="font-headline font-bold text-xl text-slate-800">Categorías de Productos</h2>
-        <button onClick={startAdd} className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"><Plus className="w-4 h-4" />Agregar categoría</button>
+        <button onClick={startAdd} className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 w-full sm:w-auto"><Plus className="w-4 h-4" />Agregar categoría</button>
       </div>
 
       {error && (
@@ -93,7 +93,7 @@ function AdminCategoriesScreen() {
       {newCategory && (
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 space-y-3">
           <h3 className="text-sm font-bold text-purple-800">Nueva categoría</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             <input type="text" value={newCategory.name} onChange={e => setNewCategory({ ...newCategory, name: e.target.value })} placeholder="Nombre" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
             <input type="text" value={newCategory.slug} onChange={e => setNewCategory({ ...newCategory, slug: e.target.value })} placeholder="Slug" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
             <input type="text" value={newCategory.icon} onChange={e => setNewCategory({ ...newCategory, icon: e.target.value })} placeholder="Icono (ej: Package)" className="px-3 py-2 border border-slate-200 rounded-lg text-sm" />
@@ -110,85 +110,87 @@ function AdminCategoriesScreen() {
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-4 py-3 font-medium text-slate-500">Orden</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-500">Nombre</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-500">Slug</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-500">Icono</th>
-              <th className="text-left px-4 py-3 font-medium text-slate-500">Colores</th>
-              <th className="text-right px-4 py-3 font-medium text-slate-500">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map(cat => {
-              const isEditing = editing[cat.id]
-              const Icon = getCategoryIcon(isEditing?.icon || cat.icon)
-              return (
-                <tr key={cat.id} className="border-b border-slate-100 hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    {isEditing ? (
-                      <input type="number" value={isEditing.order_index} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, order_index: Number(e.target.value) } })} className="w-16 px-2 py-1 border border-slate-200 rounded text-sm" />
-                    ) : (
-                      <span className="text-slate-600">{cat.order_index}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {isEditing ? (
-                      <input type="text" value={isEditing.name} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, name: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
-                    ) : (
-                      <span className="font-medium text-slate-800">{cat.name}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {isEditing ? (
-                      <input type="text" value={isEditing.slug} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, slug: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
-                    ) : (
-                      <code className="text-xs text-slate-500">{cat.slug}</code>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {isEditing ? (
-                      <input type="text" value={isEditing.icon} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, icon: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
-                    ) : (
-                      <span className="inline-flex items-center gap-1"><Icon className="w-4 h-4 text-slate-500" /><span className="text-xs text-slate-400">{cat.icon}</span></span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {isEditing ? (
-                      <div className="space-y-1">
-                        <input type="text" value={isEditing.color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="color" />
-                        <input type="text" value={isEditing.bg_color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, bg_color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="bg" />
-                        <input type="text" value={isEditing.text_color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, text_color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="text" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cat.bg_color} ${cat.text_color}`}>Preview</span>
-                        <span className={`w-4 h-4 rounded bg-gradient-to-br ${cat.color}`} />
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-4 py-3 font-medium text-slate-500 whitespace-nowrap">Orden</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-500">Nombre</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-500 hidden sm:table-cell">Slug</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-500 hidden md:table-cell">Icono</th>
+                <th className="text-left px-4 py-3 font-medium text-slate-500 hidden lg:table-cell">Colores</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-500">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map(cat => {
+                const isEditing = editing[cat.id]
+                const Icon = getCategoryIcon(isEditing?.icon || cat.icon)
+                return (
+                  <tr key={cat.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {isEditing ? (
-                        <>
-                          <button onClick={() => saveEdit(cat.id)} className="px-2 py-1 text-xs text-purple-600 font-medium hover:bg-purple-50 rounded"><Save className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => setEditing(prev => { const n = { ...prev }; delete n[cat.id]; return n })} className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">Cancelar</button>
-                        </>
+                        <input type="number" value={isEditing.order_index} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, order_index: Number(e.target.value) } })} className="w-16 px-2 py-1 border border-slate-200 rounded text-sm" />
                       ) : (
-                        <>
-                          <button onClick={() => startEdit(cat)} className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">Editar</button>
-                          <button onClick={() => remove(cat.id)} className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 rounded">Eliminar</button>
-                        </>
+                        <span className="text-slate-600">{cat.order_index}</span>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input type="text" value={isEditing.name} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, name: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
+                      ) : (
+                        <span className="font-medium text-slate-800">{cat.name}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      {isEditing ? (
+                        <input type="text" value={isEditing.slug} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, slug: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
+                      ) : (
+                        <code className="text-xs text-slate-500">{cat.slug}</code>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {isEditing ? (
+                        <input type="text" value={isEditing.icon} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, icon: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" />
+                      ) : (
+                        <span className="inline-flex items-center gap-1"><Icon className="w-4 h-4 text-slate-500" /><span className="text-xs text-slate-400">{cat.icon}</span></span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      {isEditing ? (
+                        <div className="space-y-1 min-w-[140px]">
+                          <input type="text" value={isEditing.color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="color" />
+                          <input type="text" value={isEditing.bg_color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, bg_color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="bg" />
+                          <input type="text" value={isEditing.text_color} onChange={e => setEditing({ ...editing, [cat.id]: { ...isEditing, text_color: e.target.value } })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="text" />
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cat.bg_color} ${cat.text_color}`}>Preview</span>
+                          <span className={`w-4 h-4 rounded bg-gradient-to-br ${cat.color}`} />
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">
+                        {isEditing ? (
+                          <>
+                            <button onClick={() => saveEdit(cat.id)} className="px-2 py-1 text-xs text-purple-600 font-medium hover:bg-purple-50 rounded"><Save className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setEditing(prev => { const n = { ...prev }; delete n[cat.id]; return n })} className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">Cancelar</button>
+                          </>
+                        ) : (
+                          <>
+                            <button onClick={() => startEdit(cat)} className="px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 rounded">Editar</button>
+                            <button onClick={() => remove(cat.id)} className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 rounded">Eliminar</button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
@@ -419,31 +421,185 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
 
               {section === 'products' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <h1 className="text-2xl font-headline font-bold text-slate-900">Productos ({products.length})</h1>
-                    <button onClick={() => { setEditingProduct({}); setShowProductForm(true) }} className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700">
+                    <button onClick={() => { setEditingProduct({}); setShowProductForm(true) }} className="flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 w-full sm:w-auto">
                       <Plus className="w-4 h-4" /><span>Nuevo</span>
                     </button>
                   </div>
                   <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                        <tr>
-                          <th className="text-left px-4 py-3">Producto</th>
-                          <th className="text-left px-4 py-3">Categoría</th>
-                          <th className="text-left px-4 py-3">Precio</th>
-                          <th className="text-left px-4 py-3">Stock</th>
-                          <th className="text-left px-4 py-3">Ventas</th>
-                          <th className="text-right px-4 py-3">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {products.map(p => (
-                          <tr key={p.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center space-x-3">
-                                <img src={p.image_url} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-slate-100" />
-                                <span className="font-medium text-slate-900">{p.name}</span>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                          <tr>
+                            <th className="text-left px-4 py-3">Producto</th>
+                            <th className="text-left px-4 py-3 hidden md:table-cell">Categoría</th>
+                            <th className="text-left px-4 py-3">Precio</th>
+                            <th className="text-left px-4 py-3">Stock</th>
+                            <th className="text-left px-4 py-3 hidden md:table-cell">Ventas</th>
+                            <th className="text-right px-4 py-3">Acciones</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {products.map(p => (
+                            <tr key={p.id} className="hover:bg-slate-50">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center space-x-3">
+                                  <img src={p.image_url} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-slate-100 flex-shrink-0 hidden sm:block" />
+                                  <span className="font-medium text-slate-900 truncate max-w-[120px] sm:max-w-none">{p.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{p.category}</td>
+                              <td className="px-4 py-3 font-medium whitespace-nowrap">${p.base_price.toFixed(2)}</td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded ${p.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                                  {p.stock}{p.unit_type === 'weight' ? 'g' : ' uds'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{p.reviews}</td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <button onClick={() => { setEditingProduct(p); setShowProductForm(true) }} className="p-1.5 text-slate-400 hover:text-purple-600"><Edit3 className="w-4 h-4" /></button>
+                                <button onClick={() => deleteProduct(p.id)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {section === 'orders' && (
+                <div className="space-y-4">
+                  <h1 className="text-2xl font-headline font-bold text-slate-900">Pedidos ({orders.length})</h1>
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                          <tr><th className="text-left px-4 py-3">ID</th><th className="text-left px-4 py-3 hidden md:table-cell">Cliente</th><th className="text-left px-4 py-3">Total</th><th className="text-left px-4 py-3">Estado</th><th className="text-left px-4 py-3 hidden md:table-cell">Fecha</th><th className="text-right px-4 py-3">Acción</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {orders.map((o: any) => (
+                            <tr key={o.id} className="hover:bg-slate-50">
+                              <td className="px-4 py-3 font-mono text-xs text-slate-500">#{o.id.slice(0, 8)}</td>
+                              <td className="px-4 py-3 font-medium text-slate-900 hidden md:table-cell">{o.profiles?.name || '—'}</td>
+                              <td className="px-4 py-3 font-medium whitespace-nowrap">${Number(o.total).toFixed(2)}</td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  o.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
+                                  o.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
+                                  o.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
+                                  o.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                  'bg-slate-100 text-slate-600'
+                                }`}>{o.status}</span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 text-xs hidden md:table-cell">{new Date(o.created_at).toLocaleDateString()}</td>
+                              <td className="px-4 py-3 text-right">
+                                <select
+                                  value={o.status}
+                                  onChange={(e) => updateOrderStatus(o.id, e.target.value)}
+                                  className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white"
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="paid">Paid</option>
+                                  <option value="shipped">Shipped</option>
+                                  <option value="delivered">Delivered</option>
+                                  <option value="cancelled">Cancelled</option>
+                                </select>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {section === 'users' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <h1 className="text-2xl font-headline font-bold text-slate-900">Usuarios ({users.length})</h1>
+                    <button onClick={() => { setNewUser({ email: '', password: '', name: '', role: 'admin' }); setShowCreateUser(true) }} className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 w-full sm:w-auto justify-center">
+                      <Plus className="w-4 h-4" /><span>Crear Admin</span>
+                    </button>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                          <tr><th className="text-left px-4 py-3">Nombre</th><th className="text-left px-4 py-3">Rol</th><th className="text-left px-4 py-3 hidden md:table-cell">Creado</th><th className="text-right px-4 py-3">Cambiar Rol</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {users.map((u: any) => (
+                            <tr key={u.id} className="hover:bg-slate-50">
+                              <td className="px-4 py-3 font-medium text-slate-900 truncate max-w-[160px] sm:max-w-none">{u.name || '—'}</td>
+                              <td className="px-4 py-3">
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{u.role}</span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500 text-xs hidden md:table-cell">{new Date(u.created_at).toLocaleDateString()}</td>
+                              <td className="px-4 py-3 text-right">
+                                <select
+                                  value={u.role}
+                                  onChange={(e) => updateUserRole(u.id, e.target.value)}
+                                  className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white"
+                                >
+                                  <option value="customer">customer</option>
+                                  <option value="admin">admin</option>
+                                </select>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {section === 'promos' && (
+                <div className="space-y-4">
+                  <h1 className="text-2xl font-headline font-bold text-slate-900">Cupones</h1>
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
+                    <h3 className="text-sm font-semibold text-slate-700">Nuevo Cupón</h3>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <input type="text" placeholder="Código" value={newPromo.code} onChange={e => setNewPromo(p => ({ ...p, code: e.target.value.toUpperCase() }))} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                      <div className="flex gap-3">
+                        <input type="number" placeholder="%" value={newPromo.percent} onChange={e => setNewPromo(p => ({ ...p, percent: Number(e.target.value) }))} className="w-20 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                        <input type="number" placeholder="Usos" value={newPromo.max_uses} onChange={e => setNewPromo(p => ({ ...p, max_uses: Number(e.target.value) }))} className="w-24 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+                        <button onClick={createPromo} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"><Plus className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
+                          <tr><th className="text-left px-4 py-3">Código</th><th className="text-left px-4 py-3">%</th><th className="text-left px-4 py-3">Usos</th><th className="text-left px-4 py-3">Activo</th></tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {promos.map((p: any) => (
+                            <tr key={p.id} className="hover:bg-slate-50">
+                              <td className="px-4 py-3 font-mono font-bold text-slate-900">{p.code}</td>
+                              <td className="px-4 py-3">{p.percent}%</td>
+                              <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{p.used_count}/{p.max_uses || '∞'}</td>
+                              <td className="px-4 py-3">{p.active ? <Check className="w-4 h-4 text-emerald-500" /> : <X className="w-4 h-4 text-red-500" />}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {section === 'homepage' && <AdminHomepageEditor />}
+              {section === 'about-page' && <AdminAboutPageEditor />}
+              {section === 'categories' && <AdminCategoriesScreen />}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Create User Modal */}
@@ -466,150 +622,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
           </motion.div>
         </div>
       )}
-                            </td>
-                            <td className="px-4 py-3 text-slate-500">{p.category}</td>
-                            <td className="px-4 py-3 font-medium">${p.base_price.toFixed(2)}</td>
-                            <td className="px-4 py-3">
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded ${p.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                                {p.stock}{p.unit_type === 'weight' ? 'g' : ' uds'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-slate-500">{p.reviews}</td>
-                            <td className="px-4 py-3 text-right">
-                              <button onClick={() => { setEditingProduct(p); setShowProductForm(true) }} className="p-1.5 text-slate-400 hover:text-purple-600"><Edit3 className="w-4 h-4" /></button>
-                              <button onClick={() => deleteProduct(p.id)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {section === 'orders' && (
-                <div className="space-y-4">
-                  <h1 className="text-2xl font-headline font-bold text-slate-900">Pedidos ({orders.length})</h1>
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                        <tr><th className="text-left px-4 py-3">ID</th><th className="text-left px-4 py-3">Cliente</th><th className="text-left px-4 py-3">Total</th><th className="text-left px-4 py-3">Estado</th><th className="text-left px-4 py-3">Fecha</th><th className="text-right px-4 py-3">Acción</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {orders.map((o: any) => (
-                          <tr key={o.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-mono text-xs text-slate-500">#{o.id.slice(0, 8)}</td>
-                            <td className="px-4 py-3 font-medium text-slate-900">{o.profiles?.name || '—'}</td>
-                            <td className="px-4 py-3 font-medium">${Number(o.total).toFixed(2)}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                o.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-                                o.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                                o.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
-                                o.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                'bg-slate-100 text-slate-600'
-                              }`}>{o.status}</span>
-                            </td>
-                            <td className="px-4 py-3 text-slate-500 text-xs">{new Date(o.created_at).toLocaleDateString()}</td>
-                            <td className="px-4 py-3 text-right">
-                              <select
-                                value={o.status}
-                                onChange={(e) => updateOrderStatus(o.id, e.target.value)}
-                                className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white"
-                              >
-                                <option value="pending">Pending</option>
-                                <option value="paid">Paid</option>
-                                <option value="shipped">Shipped</option>
-                                <option value="delivered">Delivered</option>
-                                <option value="cancelled">Cancelled</option>
-                              </select>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {section === 'users' && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h1 className="text-2xl font-headline font-bold text-slate-900">Usuarios ({users.length})</h1>
-                    <button onClick={() => { setNewUser({ email: '', password: '', name: '', role: 'admin' }); setShowCreateUser(true) }} className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700">
-                      <Plus className="w-4 h-4" /><span>Crear Admin</span>
-                    </button>
-                  </div>
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                        <tr><th className="text-left px-4 py-3">Nombre</th><th className="text-left px-4 py-3">Rol</th><th className="text-left px-4 py-3">Creado</th><th className="text-right px-4 py-3">Cambiar Rol</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {users.map((u: any) => (
-                          <tr key={u.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-medium text-slate-900">{u.name || '—'}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'}`}>{u.role}</span>
-                            </td>
-                            <td className="px-4 py-3 text-slate-500 text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
-                            <td className="px-4 py-3 text-right">
-                              <select
-                                value={u.role}
-                                onChange={(e) => updateUserRole(u.id, e.target.value)}
-                                className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white"
-                              >
-                                <option value="customer">customer</option>
-                                <option value="admin">admin</option>
-                              </select>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {section === 'promos' && (
-                <div className="space-y-4">
-                  <h1 className="text-2xl font-headline font-bold text-slate-900">Cupones</h1>
-                  <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-700">Nuevo Cupón</h3>
-                    <div className="flex space-x-3">
-                      <input type="text" placeholder="Código" value={newPromo.code} onChange={e => setNewPromo(p => ({ ...p, code: e.target.value.toUpperCase() }))} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                      <input type="number" placeholder="%" value={newPromo.percent} onChange={e => setNewPromo(p => ({ ...p, percent: Number(e.target.value) }))} className="w-20 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                      <input type="number" placeholder="Usos" value={newPromo.max_uses} onChange={e => setNewPromo(p => ({ ...p, max_uses: Number(e.target.value) }))} className="w-24 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                      <button onClick={createPromo} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"><Plus className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                        <tr><th className="text-left px-4 py-3">Código</th><th className="text-left px-4 py-3">%</th><th className="text-left px-4 py-3">Usos</th><th className="text-left px-4 py-3">Activo</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {promos.map((p: any) => (
-                          <tr key={p.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-mono font-bold text-slate-900">{p.code}</td>
-                            <td className="px-4 py-3">{p.percent}%</td>
-                            <td className="px-4 py-3 text-slate-500">{p.used_count}/{p.max_uses || '∞'}</td>
-                            <td className="px-4 py-3">{p.active ? <Check className="w-4 h-4 text-emerald-500" /> : <X className="w-4 h-4 text-red-500" />}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {section === 'homepage' && <AdminHomepageEditor />}
-              {section === 'about-page' && <AdminAboutPageEditor />}
-              {section === 'categories' && <AdminCategoriesScreen />}
-            </>
-          )}
-        </div>
-      </div>
 
       {/* Product Form Modal */}
       {showProductForm && (
