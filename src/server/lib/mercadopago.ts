@@ -30,7 +30,6 @@ export async function createPreference(
     })),
     payer: { name: payerName },
     back_urls: backUrls,
-    auto_return: 'approved' as const,
     notification_url: `${process.env.PUBLIC_URL || ''}/api/payments/webhook`,
   }
 
