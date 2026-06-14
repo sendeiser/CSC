@@ -98,6 +98,12 @@ export const cart = {
     request<{ message: string }>(`/cart/${id}`, { method: 'DELETE' }),
 }
 
+// Payments
+export const payments = {
+  createPreference: (data: { shipping_name: string; shipping_address: string; shipping_city: string; promo_code?: string }) =>
+    request<{ init_point: string; preference_id: string }>('/payments/create-preference', { method: 'POST', body: JSON.stringify(data) }),
+}
+
 // Orders
 export const orders = {
   list: () =>
@@ -108,6 +114,9 @@ export const orders = {
 
   get: (id: string) =>
     request<any>(`/orders/${id}`),
+
+  confirm: (payment_id: string, preference_id: string) =>
+    request<any>('/orders/confirm', { method: 'POST', body: JSON.stringify({ payment_id, preference_id }) }),
 }
 
 // Favorites
