@@ -11,6 +11,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { AboutUsScreen } from './components/AboutUsScreen';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken } from './lib/api';
+import { supabase } from './lib/supabase';
 import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
 
 export default function App() {
@@ -31,20 +32,39 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const token = getAuthToken()
-    if (token) {
-      authApi.me()
-        .then(user => {
+    const initSession = async () => {
+      const existingToken = getAuthToken()
+      if (existingToken) {
+        try {
+          const user = await authApi.me()
           setSession({ isLoggedIn: true, email: user.email, name: user.name, role: user.role })
-          return favoritesApi.list()
-        })
-        .then(favs => {
+          const favs = await favoritesApi.list()
           const favMap: Record<string, boolean> = {}
           favs.forEach((f: any) => { favMap[f.product_id] = true })
           setFavorites(favMap)
-        })
-        .catch(() => setAuthToken(null))
+          return
+        } catch {
+          setAuthToken(null)
+        }
+      }
+
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.access_token) {
+        setAuthToken(session.access_token)
+        window.location.hash = ''
+        try {
+          const user = await authApi.me()
+          setSession({ isLoggedIn: true, email: user.email, name: user.name, role: user.role })
+          const favs = await favoritesApi.list()
+          const favMap: Record<string, boolean> = {}
+          favs.forEach((f: any) => { favMap[f.product_id] = true })
+          setFavorites(favMap)
+        } catch {
+          setAuthToken(null)
+        }
+      }
     }
+    initSession()
   }, [])
 
   useEffect(() => {
@@ -86,6 +106,13 @@ export default function App() {
       saveLocalCart(cart)
     }
   }, [cart, session.isLoggedIn])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('payment_id') && params.get('preference_id') && params.get('status')) {
+      setActiveScreen('carrito')
+    }
+  }, [])
 
   const showToast = (message: string, type: 'success' | 'info' = 'success') => {
     setToast({ message, type });

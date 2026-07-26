@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ShoppingBag, Star, User, Sparkles, LogOut, Menu, X } from 'lucide-react';
 import { ActiveScreen, CartItem, UserSession } from '../types';
 import { auth as authApi, setAuthToken } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 interface HeaderProps {
   activeScreen: ActiveScreen;
@@ -92,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {session.name}
                 </span>
                 <button
-                  onClick={async () => { await authApi.logout().catch(() => {}); setAuthToken(null); setSession({ isLoggedIn: false, email: null, name: null, role: undefined }); }}
+                  onClick={async () => { await Promise.all([authApi.logout().catch(() => {}), supabase.auth.signOut().catch(() => {})]); setAuthToken(null); setSession({ isLoggedIn: false, email: null, name: null, role: undefined }); }}
                   className="w-7 h-7 rounded-full bg-white hover:bg-pink-50 text-purple-600 hover:text-pink-600 flex items-center justify-center border border-purple-100 transition-colors shadow-sm"
                   title="Cerrar Sesión"
                 >
@@ -197,7 +198,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <button
                 onClick={async () => {
-                  await authApi.logout().catch(() => {});
+                  await Promise.all([authApi.logout().catch(() => {}), supabase.auth.signOut().catch(() => {})]);
                   setAuthToken(null);
                   setSession({ isLoggedIn: false, email: null, name: null, role: undefined });
                   setMobileMenuOpen(false);

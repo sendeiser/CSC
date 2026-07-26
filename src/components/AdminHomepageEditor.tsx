@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Eye, EyeOff, Trash2, Plus, X, Save, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, Trash2, Plus, X, Save, AlertCircle, GripVertical } from 'lucide-react'
 import { admin as adminApi } from '../lib/api'
 
 type SectionType = 'about' | 'categories' | 'store' | 'gallery' | 'contact'
@@ -124,11 +124,13 @@ const SECTION_LABELS: Record<string, string> = {
 
 // ── per-section card with local state ──────────────────────
 
-function SectionCard({ section, onRefresh }: { section: any; onRefresh: () => void; key?: string }) {
+function SectionCard({ section, onRefresh, onDragStart, isDragging }: { section: any; onRefresh: () => void; onDragStart: (e: React.DragEvent) => void; isDragging: boolean }) {
   const [title, setTitle] = useState(section.title || '')
   const [subtitle, setSubtitle] = useState(section.subtitle || '')
   const [content, setContent] = useState(section.content || {})
   const [saving, setSaving] = useState(false)
+  const [toggling, setToggling] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const Editor = SECTION_EDITORS[section.section_type]
 
   useEffect(() => {
@@ -150,41 +152,55 @@ function SectionCard({ section, onRefresh }: { section: any; onRefresh: () => vo
   }
 
   const toggleVisibility = async () => {
+    setToggling(true)
     try {
       await adminApi.updateHomepageSection(section.id, { visible: !section.visible })
       onRefresh()
     } catch (e: any) {
       console.error(e)
+    } finally {
+      setToggling(false)
     }
   }
 
   const remove = async () => {
     if (!confirm('¿Eliminar esta sección?')) return
+    setDeleting(true)
     try {
       await adminApi.deleteHomepageSection(section.id)
       onRefresh()
     } catch (e: any) {
       console.error(e)
+    } finally {
+      setDeleting(false)
     }
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
-        <div className="flex-1 min-w-0">
-          <span className="text-xs font-mono text-purple-600 uppercase">{SECTION_LABELS[section.section_type] || section.section_type}</span>
-          <h3 className="text-sm font-semibold text-slate-800 truncate">
-            {title || 'Sin título'}
-            {!section.visible && <span className="ml-2 text-xs text-slate-400 font-normal">(oculta)</span>}
-          </h3>
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+      className={`bg-white rounded-xl border border-slate-200 overflow-hidden ${isDragging ? 'opacity-50 ring-2 ring-purple-400' : ''}`}
+    >
+        <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
+          <div className="cursor-grab active:cursor-grabbing" title="Arrastrar para reordenar">
+            <GripVertical className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="text-xs font-mono text-purple-600 uppercase">{SECTION_LABELS[section.section_type] || section.section_type}</span>
+            <h3 className="text-sm font-semibold text-slate-800 truncate">
+              {title || 'Sin título'}
+              {!section.visible && <span className="ml-2 text-xs text-slate-400 font-normal">(oculta)</span>}
+            </h3>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={toggleVisibility} disabled={toggling} className="p-1.5 hover:bg-slate-200 rounded-lg disabled:opacity-50" title={section.visible ? 'Ocultar' : 'Mostrar'}>
+              {toggling ? <span className="w-4 h-4 block border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> : section.visible ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
+            </button>
+            <button onClick={remove} disabled={deleting} className="p-1.5 hover:bg-red-100 rounded-lg text-red-500 disabled:opacity-50" title="Eliminar">{deleting ? <span className="w-4 h-4 block border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={toggleVisibility} className="p-1.5 hover:bg-slate-200 rounded-lg" title={section.visible ? 'Ocultar' : 'Mostrar'}>
-            {section.visible ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
-          </button>
-          <button onClick={remove} className="p-1.5 hover:bg-red-100 rounded-lg text-red-500" title="Eliminar"><Trash2 className="w-4 h-4" /></button>
-        </div>
-      </div>
 
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 gap-3">
@@ -223,6 +239,7 @@ export default function AdminHomepageEditor() {
   const [sections, setSections] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -238,6 +255,18 @@ export default function AdminHomepageEditor() {
   }
 
   useEffect(() => { load() }, [])
+
+  const handleDrop = async (targetIndex: number) => {
+    if (dragIndex === null || dragIndex === targetIndex) return
+    const reordered = [...sections]
+    const [removed] = reordered.splice(dragIndex, 1)
+    reordered.splice(targetIndex, 0, removed)
+    setDragIndex(null)
+    try {
+      await adminApi.reorderHomepageSections(reordered.map((s, idx) => ({ id: s.id, order_index: idx + 1, visible: s.visible })))
+    } catch {}
+    load()
+  }
 
   if (loading) return <div className="animate-pulse space-y-3">{Array.from({length: 4}).map((_, i) => <div key={i} className="h-24 bg-slate-100 rounded-xl" />)}</div>
 
@@ -256,8 +285,19 @@ export default function AdminHomepageEditor() {
         </div>
       )}
 
-      {sections.map(section => (
-        <SectionCard key={section.id} section={section} onRefresh={load} />
+      {sections.map((section, i) => (
+        <div
+          key={section.id}
+          onDragOver={e => { if (dragIndex !== null && dragIndex !== i) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } }}
+          onDrop={e => { e.preventDefault(); handleDrop(i) }}
+        >
+          <SectionCard
+            section={section}
+            onRefresh={load}
+            isDragging={dragIndex === i}
+            onDragStart={() => setDragIndex(i)}
+          />
+        </div>
       ))}
     </div>
   )

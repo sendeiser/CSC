@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper } from 'lucide-react';
 import { ActiveScreen, CartItem } from '../types';
-import { cart as cartApi, orders as ordersApi, payments as paymentsApi } from '../lib/api';
+import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
 
 interface CartScreenProps {
@@ -122,7 +122,22 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           const result = await ordersApi.confirm(paymentId, preferenceId)
           setOrderId(result.id)
           setCart([])
-          setStep('success')
+
+          const sections = await homepageApi.get()
+          const storeSection = sections?.find((s: any) => s.section_type === 'store')
+          const whatsapp = storeSection?.content?.whatsapp_number || storeSection?.content?.whatsapp || '5493854000000'
+
+          const itemsList = (result.order_items || []).map((i: any) =>
+            `• ${i.quantity}x ${i.selected_size} - $${Number(i.unit_price).toFixed(2)}`
+          ).join('\n')
+
+          const msg = encodeURIComponent(
+            `✅ *Compra confirmada!*\n\n*Pedido:* #${result.id.slice(0, 8).toUpperCase()}\n*Pago:* ${result.payment_id || paymentId}\n\n*Productos:*\n${itemsList}\n\n*Total:* $${Number(result.total).toFixed(2)}\n\nGracias por tu compra! 🚀`
+          )
+
+          setTimeout(() => {
+            window.location.href = `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${msg}`
+          }, 2000)
         } catch (err: any) {
           setShippingError(err.message || 'Error al confirmar el pedido')
           setStep('shipping')

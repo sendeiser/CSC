@@ -51,7 +51,7 @@ router.post('/login', async (req: Request, res: Response) => {
     .from('profiles')
     .select('*')
     .eq('id', data.user.id)
-    .single()
+    .maybeSingle()
 
   res.json({
     user: {
@@ -77,7 +77,15 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) 
     .from('profiles')
     .select('*')
     .eq('id', req.user!.id)
-    .single()
+    .maybeSingle()
+
+  if (!profile) {
+    await supabase.from('profiles').insert({
+      id: req.user!.id,
+      name: req.user!.email.split('@')[0],
+      role: 'customer'
+    })
+  }
 
   res.json({
     id: req.user!.id,

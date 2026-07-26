@@ -26,7 +26,7 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     .from('profiles')
     .select('role')
     .eq('id', data.user.id)
-    .single()
+    .maybeSingle()
 
   req.user = {
     id: data.user.id,
@@ -54,7 +54,7 @@ export async function requireAdmin(req: AuthenticatedRequest, res: Response, nex
     .from('profiles')
     .select('role')
     .eq('id', data.user.id)
-    .single()
+    .maybeSingle()
 
   req.user = {
     id: data.user.id,

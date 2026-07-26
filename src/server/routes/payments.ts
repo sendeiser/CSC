@@ -42,6 +42,7 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
     const total = subTotal - discountAmount + shippingCost
 
     const mpItems = cartItems.map((item: any) => ({
+      id: item.product_id,
       title: item.products.name,
       quantity: item.weight_grams ? 1 : item.quantity,
       unit_price: item.item_price,
@@ -79,8 +80,11 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
 
     res.json({ init_point: preference.init_point, preference_id: preference.id })
   } catch (err: any) {
-    console.error('create-preference error:', err)
-    res.status(500).json({ error: err.message || 'Error al crear preferencia de pago' })
+    console.error('create-preference error:', err?.message || err)
+    if (err?.response?.data) console.error('MP response:', JSON.stringify(err.response.data, null, 2))
+    if (err?.status) console.error('MP status:', err.status)
+    if (err?.cause) console.error('MP cause:', err.cause)
+    res.status(500).json({ error: err?.message || 'Error al crear preferencia de pago', detail: err?.response?.data })
   }
 })
 

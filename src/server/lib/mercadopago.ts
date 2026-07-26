@@ -1,10 +1,15 @@
 import { MercadoPagoConfig, Preference, Payment } from 'mercadopago'
 
-const client = new MercadoPagoConfig({
-  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN || '',
-})
+function getClient() {
+  const token = process.env.MERCADO_PAGO_ACCESS_TOKEN
+  if (!token) console.error('[MP] ERROR: MERCADO_PAGO_ACCESS_TOKEN is empty')
+  return new MercadoPagoConfig({
+    accessToken: token || '',
+  })
+}
 
 interface PreferenceItem {
+  id?: string
   title: string
   quantity: number
   unit_price: number
@@ -23,6 +28,7 @@ export async function createPreference(
 ): Promise<PreferenceResult> {
   const body = {
     items: items.map(item => ({
+      id: item.id,
       title: item.title,
       quantity: Number(item.quantity),
       unit_price: Number(item.unit_price),
@@ -33,11 +39,11 @@ export async function createPreference(
     notification_url: `${process.env.PUBLIC_URL || ''}/api/payments/webhook`,
   }
 
-  const preference = await new Preference(client).create({ body })
+  const preference = await new Preference(getClient()).create({ body })
   return { id: preference.id!, init_point: preference.init_point! }
 }
 
 export async function getPayment(paymentId: string) {
-  const payment = await new Payment(client).get({ id: paymentId })
+  const payment = await new Payment(getClient()).get({ id: paymentId })
   return { status: payment.status, preference_id: payment.preference_id }
 }
