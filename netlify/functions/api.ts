@@ -8,7 +8,7 @@ export const handler = async (event: any, context: any) => {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'ok', env: { url: !!process.env.SUPABASE_URL, key: !!process.env.SUPABASE_ANON_KEY, netlify: process.env.NETLIFY, cors: process.env.CORS_ORIGIN } })
+      body: JSON.stringify({ status: 'ok', env: { url: !!process.env.SUPABASE_URL, anon_key: !!process.env.SUPABASE_ANON_KEY, service_key: !!process.env.SUPABASE_SERVICE_KEY, mp_token: !!process.env.MERCADO_PAGO_ACCESS_TOKEN, netlify: process.env.NETLIFY, cors: process.env.CORS_ORIGIN } })
     }
   }
   try {
