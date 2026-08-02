@@ -88,7 +88,7 @@ export const cart = {
   list: () =>
     request<any[]>('/cart'),
 
-  add: (data: { product_id: string; quantity: number; selected_size: string; item_price: number }) =>
+  add: (data: { product_id: string; quantity: number; selected_size: string; item_price: number; weight_grams?: number }) =>
     request<any>('/cart', { method: 'POST', body: JSON.stringify(data) }),
 
   update: (id: string, quantity: number) =>

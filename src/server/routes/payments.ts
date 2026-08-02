@@ -41,12 +41,23 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
     const shippingCost = subTotal > 150 || subTotal === 0 ? 0 : 35
     const total = subTotal - discountAmount + shippingCost
 
+    const discountRatio = subTotal > 0 ? (subTotal - discountAmount) / subTotal : 1
+
     const mpItems = cartItems.map((item: any) => ({
       id: item.product_id,
       title: item.products.name,
       quantity: item.weight_grams ? 1 : item.quantity,
-      unit_price: item.item_price,
+      unit_price: Math.max(0.01, Number((item.item_price * discountRatio).toFixed(2))),
     }))
+
+    if (shippingCost > 0) {
+      mpItems.push({
+        id: 'shipping',
+        title: 'Costo de envío',
+        quantity: 1,
+        unit_price: shippingCost,
+      })
+    }
 
     const backUrls = {
       success: `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/?payment_success=1`,
@@ -54,7 +65,7 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
       pending: `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/?payment_pending=1`,
     }
 
-    const preference = await createPreference(mpItems, shipping_name, backUrls)
+    const preference = await createPreference(mpItems, shipping_name, backUrls, req.user?.email)
 
     const { data: order, error: orderError } = await serviceClient
       .from('orders')
@@ -77,6 +88,18 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
       res.status(400).json({ error: orderError.message })
       return
     }
+
+    // Save order_items immediately when preference is created
+    const orderItemsData = cartItems.map((item: any) => ({
+      order_id: order.id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      selected_size: item.selected_size,
+      unit_price: item.item_price,
+      weight_grams: item.weight_grams,
+    }))
+
+    await serviceClient.from('order_items').insert(orderItemsData)
 
     res.json({ init_point: preference.init_point, preference_id: preference.id })
   } catch (err: any) {

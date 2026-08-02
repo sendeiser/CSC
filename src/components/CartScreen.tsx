@@ -126,11 +126,11 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
 
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const paymentId = params.get('payment_id')
-    const preferenceId = params.get('preference_id')
-    const status = params.get('status')
+    const paymentId = params.get('payment_id') || params.get('collection_id')
+    const preferenceId = params.get('preference_id') || ''
+    const status = params.get('status') || params.get('collection_status')
 
-    if (paymentId && preferenceId && status === 'approved') {
+    if (paymentId && (status === 'approved' || status === 'accredited')) {
       window.history.replaceState({}, '', window.location.pathname)
 
       const confirmOrder = async () => {
@@ -138,6 +138,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           const result = await ordersApi.confirm(paymentId, preferenceId)
           setOrderId(result.id)
           setCart([])
+          setStep('success')
 
           const itemsList = (result.order_items || []).map((i: any) =>
             `• ${i.quantity}x ${i.selected_size} - $${Number(i.unit_price).toFixed(2)}`
@@ -148,16 +149,17 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           )
 
           setTimeout(() => {
-            window.location.href = `https://wa.me/${WHATSAPP_NUMERO}?text=${msg}`
-          }, 2000)
+            window.open(`https://wa.me/${WHATSAPP_NUMERO}?text=${msg}`, '_blank')
+          }, 1500)
         } catch (err: any) {
           setShippingError(err.message || 'Error al confirmar el pedido')
           setStep('shipping')
         }
       }
       confirmOrder()
-    } else if (status === 'failure' || (paymentId && status !== 'pending')) {
-      setShippingError('El pago no fue procesado. Intenta de nuevo.')
+    } else if (status === 'failure' || status === 'rejected') {
+      setShippingError('El pago no fue procesado o fue rechazado. Intenta de nuevo.')
+      setStep('shipping')
     }
   }, [])
 

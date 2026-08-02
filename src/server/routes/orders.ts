@@ -24,48 +24,82 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
   try {
     const { payment_id, preference_id } = req.body
 
-    if (!payment_id || !preference_id) {
-      res.status(400).json({ error: 'payment_id y preference_id son requeridos' })
+    if (!payment_id && !preference_id) {
+      res.status(400).json({ error: 'payment_id o preference_id son requeridos' })
       return
     }
 
-    const payment = await getPayment(payment_id)
-    if (payment.status !== 'approved') {
-      res.status(400).json({ error: 'El pago no fue aprobado' })
-      return
+    if (payment_id) {
+      const payment = await getPayment(payment_id)
+      if (payment.status !== 'approved') {
+        res.status(400).json({ error: 'El pago no fue aprobado' })
+        return
+      }
     }
 
-    const { data: order, error: orderError } = await serviceClient
+    // Search for existing order by preference_id or payment_id
+    let query = serviceClient
       .from('orders')
-      .select('*')
-      .eq('preference_id', preference_id)
+      .select('*, order_items(*)')
       .eq('user_id', req.user!.id)
-      .eq('status', 'pending')
-      .single()
+
+    if (preference_id) {
+      query = query.eq('preference_id', preference_id)
+    } else if (payment_id) {
+      query = query.eq('payment_id', payment_id)
+    }
+
+    const { data: order, error: orderError } = await query.single()
 
     if (orderError || !order) {
       res.status(404).json({ error: 'Orden no encontrada' })
       return
     }
 
-    const { data: cartItems } = await serviceClient
-      .from('cart_items')
-      .select('*')
-      .eq('user_id', req.user!.id)
+    // If order was already confirmed/paid (e.g. by Webhook), return it directly!
+    if (order.status === 'paid') {
+      await serviceClient.from('cart_items').delete().eq('user_id', req.user!.id)
+      res.json(order)
+      return
+    }
 
-    if (cartItems?.length) {
-      const orderItemsData = cartItems.map((item: any) => ({
-        order_id: order.id,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        selected_size: item.selected_size,
-        unit_price: item.item_price,
-        weight_grams: item.weight_grams,
-      }))
+    // If order items were not yet saved, populate them from cart_items
+    if (!order.order_items || order.order_items.length === 0) {
+      const { data: cartItems } = await serviceClient
+        .from('cart_items')
+        .select('*')
+        .eq('user_id', req.user!.id)
 
-      await serviceClient.from('order_items').insert(orderItemsData)
+      if (cartItems?.length) {
+        const orderItemsData = cartItems.map((item: any) => ({
+          order_id: order.id,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          selected_size: item.selected_size,
+          unit_price: item.item_price,
+          weight_grams: item.weight_grams,
+        }))
 
-      for (const item of cartItems) {
+        await serviceClient.from('order_items').insert(orderItemsData)
+
+        for (const item of cartItems) {
+          const stockToSubtract = item.weight_grams || item.quantity
+          const { data: product } = await serviceClient
+            .from('products')
+            .select('stock')
+            .eq('id', item.product_id)
+            .single()
+          if (product) {
+            await serviceClient
+              .from('products')
+              .update({ stock: Math.max(0, product.stock - stockToSubtract) })
+              .eq('id', item.product_id)
+          }
+        }
+      }
+    } else {
+      // Stock subtraction for pre-existing order_items
+      for (const item of order.order_items) {
         const stockToSubtract = item.weight_grams || item.quantity
         const { data: product } = await serviceClient
           .from('products')
@@ -83,7 +117,7 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
 
     const { data: updatedOrder } = await serviceClient
       .from('orders')
-      .update({ status: 'paid', payment_id })
+      .update({ status: 'paid', payment_id: payment_id || order.payment_id })
       .eq('id', order.id)
       .select('*, order_items(*)')
       .single()
