@@ -1,6 +1,5 @@
 import dotenv from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
-import ws from 'ws'
 
 dotenv.config()
 
@@ -14,8 +13,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 const fallbackUrl = supabaseUrl || 'https://placeholder.supabase.co'
 const fallbackKey = supabaseAnonKey || 'placeholder-key'
 
+// No usar 'ws' (WebSockets) - no compatible con entornos serverless (Netlify Functions)
 export const supabase = createClient(fallbackUrl, fallbackKey, {
-  realtime: { transport: ws },
+  auth: { autoRefreshToken: false, persistSession: false },
 })
 
 const serviceKey = process.env.SUPABASE_SERVICE_KEY

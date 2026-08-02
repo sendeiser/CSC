@@ -1,7 +1,6 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import path from 'path'
 import authRoutes from './routes/auth'
 import productRoutes from './routes/products'
 import cartRoutes from './routes/cart'
@@ -24,8 +23,8 @@ app.use(cors({
 }))
 app.use(express.json())
 
-// Serve uploaded images statically
-app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')))
+// En entornos serverless (Netlify), las imágenes se sirven desde Supabase Storage.
+// express.static no funciona en filesystem de solo lectura.
 
 app.use('/api/auth', authRoutes)
 app.use('/api/products', productRoutes)
