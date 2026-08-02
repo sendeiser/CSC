@@ -50,6 +50,7 @@ router.get('/users', requireAdmin, async (req: AuthenticatedRequest, res: Respon
 })
 
 router.put('/users/:id/role', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const db = serviceClient || supabase
   const { role } = req.body
 
   if (!['customer', 'admin'].includes(role)) {
@@ -57,19 +58,23 @@ router.put('/users/:id/role', requireAdmin, async (req: AuthenticatedRequest, re
     return
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('profiles')
     .update({ role })
     .eq('id', req.params.id)
     .select()
-    .single()
 
   if (error) {
     res.status(400).json({ error: error.message })
     return
   }
 
-  res.json(data)
+  if (!data || data.length === 0) {
+    res.status(404).json({ error: 'Usuario o perfil no encontrado' })
+    return
+  }
+
+  res.json(data[0])
 })
 
 router.post('/create-user', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
@@ -100,7 +105,8 @@ router.post('/create-user', requireAdmin, async (req: AuthenticatedRequest, res:
     return
   }
 
-  const { error: profileError } = await supabase
+  const db = serviceClient || supabase
+  const { error: profileError } = await db
     .from('profiles')
     .update({ role: userRole, name: name || null })
     .eq('id', authUser.user.id)
