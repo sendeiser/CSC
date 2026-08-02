@@ -169,28 +169,34 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
 
   return (
     <div className="bg-white min-h-screen">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+      {/* Header strip */}
+      <div className="bg-gradient-to-r from-purple-900 to-pink-900 text-white py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-headline font-extrabold text-gray-900">Tu Bolsa</h1>
-            <p className="text-gray-500 mt-1 text-sm">{cart.length} artículos</p>
+            <h1 className="font-headline font-extrabold text-2xl sm:text-3xl">Tu Bolsa 🛍️</h1>
+            <p className="text-purple-200 text-sm mt-1">{cart.length} artículo{cart.length !== 1 ? 's' : ''}</p>
           </div>
           {step !== 'success' && (
             <div className="hidden sm:flex items-center space-x-2 text-sm">
-              {(['basket', 'checkout', 'success'] as const).map((s, i) => (
+              {(['basket', 'checkout'] as const).map((s, i) => (
                 <React.Fragment key={s}>
-                  {i > 0 && <div className="w-6 h-px bg-pink-200" />}
+                  {i > 0 && <div className="w-6 h-px bg-white/30" />}
                   <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
-                    step === s ? 'bg-purple-100 text-purple-700' : 'text-gray-400'
+                    step === s ? 'bg-white/20 text-white' : 'text-white/40'
                   }`}>
-                    {i + 1}. {s === 'basket' ? 'Bolsa' : s === 'checkout' ? 'Datos y Pago' : 'Completado'}
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      step === s ? 'bg-pink-400' : 'bg-white/10'
+                    }`}>{i + 1}</span>
+                    <span>{s === 'basket' ? 'Bolsa' : 'Pago'}</span>
                   </div>
                 </React.Fragment>
               ))}
             </div>
           )}
         </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {step === 'success' && (
           <motion.div
@@ -290,31 +296,38 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                     key={`${item.product.id}-${item.selectedSize}`}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
                     layout
-                    className="flex items-start space-x-4 bg-pink-50/30 border border-pink-100 rounded-2xl p-4"
+                    className="flex items-start space-x-4 bg-white border border-pink-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <img src={item.product.image_url} alt={item.product.name} decoding="async" loading="lazy" className="w-20 h-20 rounded-xl object-cover bg-pink-100 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-headline font-bold text-sm text-gray-900 truncate">{item.product.name}</h3>
-                      <p className="text-[11px] text-gray-500 mt-0.5">{item.weight_grams ? `${item.weight_grams}g` : `Tamaño: ${item.selectedSize}`}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider">{item.product.category}</span>
+                          <h3 className="font-headline font-bold text-sm sm:text-base text-gray-900 leading-tight">{item.product.name}</h3>
+                          <p className="text-xs text-gray-400 mt-0.5">{item.weight_grams ? `${item.weight_grams}g · Granel` : `Tamaño: ${item.selectedSize}`}</p>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveItem(index)}
+                          className="p-1.5 rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                       <div className="flex items-center justify-between mt-3">
                         <div className="flex items-center space-x-2">
                           {item.weight_grams ? (
-                            <span className="text-sm font-bold text-gray-700">{item.weight_grams}g</span>
+                            <span className="text-sm font-bold bg-purple-50 text-purple-700 px-3 py-1 rounded-full">{item.weight_grams}g</span>
                           ) : (
-                            <>
-                              <button onClick={() => handleQuantityChange(index, -1)} className="w-7 h-7 rounded-full border border-pink-200 text-gray-500 hover:bg-pink-100 transition-colors flex items-center justify-center text-sm font-bold">-</button>
+                            <div className="flex items-center bg-gray-100 rounded-full p-0.5 space-x-1">
+                              <button onClick={() => handleQuantityChange(index, -1)} className="w-7 h-7 rounded-full bg-white shadow-sm text-gray-600 hover:text-red-500 transition-colors flex items-center justify-center font-bold text-sm">−</button>
                               <span className="text-sm font-bold w-6 text-center">{item.quantity}</span>
-                              <button onClick={() => handleQuantityChange(index, 1)} className="w-7 h-7 rounded-full border border-pink-200 text-gray-500 hover:bg-pink-100 transition-colors flex items-center justify-center text-sm font-bold">+</button>
-                            </>
+                              <button onClick={() => handleQuantityChange(index, 1)} className="w-7 h-7 rounded-full bg-white shadow-sm text-gray-600 hover:text-purple-600 transition-colors flex items-center justify-center font-bold text-sm">+</button>
+                            </div>
                           )}
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <span className="font-bold text-sm text-gray-900">${(item.itemPrice * item.quantity).toFixed(2)}</span>
-                          <button onClick={() => handleRemoveItem(index)} className="text-pink-400 hover:text-pink-600 transition-colors">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <span className="font-bold text-base text-gray-900">${(item.itemPrice * item.quantity).toFixed(2)}</span>
                       </div>
                     </div>
                   </motion.div>
@@ -325,8 +338,8 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
             {/* Right - Summary */}
             {cart.length > 0 && (
               <div className="space-y-4">
-                <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-100 rounded-2xl p-6 space-y-4">
-                  <h3 className="font-headline font-bold text-gray-900">Resumen</h3>
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-100 rounded-2xl p-6 space-y-4 lg:sticky lg:top-24">
+                  <h3 className="font-headline font-bold text-gray-900 text-lg">Resumen del pedido</h3>
 
                   {/* Promo Code */}
                   {!activeDiscount ? (
@@ -335,32 +348,37 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                         type="text"
                         value={promoCode}
                         onChange={(e) => setPromoCode(e.target.value)}
-                        placeholder="Cupón"
-                        className="flex-1 px-3 py-2 border border-pink-200 rounded-lg text-xs focus:ring-2 focus:ring-purple-400 outline-none bg-white"
+                        placeholder="Cupón de descuento"
+                        className="flex-1 px-3.5 py-2.5 border border-pink-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-400 outline-none bg-white"
                       />
-                      <button type="submit" className="px-3 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700">Aplicar</button>
+                      <button type="submit" className="px-4 py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition-colors">Aplicar</button>
                     </form>
                   ) : (
-                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                      <span className="text-xs font-semibold text-emerald-700">{activeDiscount.code} (-{activeDiscount.percent}%)</span>
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+                      <span className="text-xs font-bold text-emerald-700">✅ {activeDiscount.code} (-{activeDiscount.percent}%)</span>
                       <button onClick={() => setActiveDiscount(null)} className="text-emerald-500 hover:text-emerald-700"><Trash2 className="w-3.5 h-3.5" /></button>
                     </div>
                   )}
                   {promoError && <p className="text-[11px] text-red-500">{promoError}</p>}
 
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="font-semibold">${subTotal.toFixed(2)}</span></div>
-                    {discountAmount > 0 && <div className="flex justify-between text-emerald-600"><span>Descuento</span><span>-${discountAmount.toFixed(2)}</span></div>}
-                    <div className="border-t border-pink-200 pt-2 flex justify-between text-base"><span className="font-bold">Total</span><span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span></div>
+                  <div className="space-y-2.5 text-sm pt-1">
+                    <div className="flex justify-between text-gray-600"><span>Subtotal</span><span className="font-semibold text-gray-800">${subTotal.toFixed(2)}</span></div>
+                    {discountAmount > 0 && <div className="flex justify-between text-emerald-600 font-semibold"><span>Descuento</span><span>-${discountAmount.toFixed(2)}</span></div>}
+                    <div className="border-t border-purple-200 pt-2.5 flex justify-between text-base">
+                      <span className="font-bold text-gray-900">Total</span>
+                      <span className="font-extrabold text-purple-700 text-lg">${grandTotal.toFixed(2)}</span>
+                    </div>
                   </div>
 
                   <button
                     onClick={() => setStep('checkout')}
-                    className="w-full py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2"
+                    className="w-full py-3.5 candy-gradient-bg text-white font-bold rounded-xl shadow-lg shadow-purple-300/40 hover:shadow-purple-400/50 hover:opacity-95 transition-all flex items-center justify-center space-x-2 text-sm"
                   >
                     <span>Proceder al Pago</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
+
+                  <p className="text-[10px] text-gray-400 text-center">🔒 Pago seguro — Tus datos están protegidos</p>
                 </div>
               </div>
             )}

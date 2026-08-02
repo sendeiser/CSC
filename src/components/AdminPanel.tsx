@@ -260,6 +260,73 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [showProductForm, setShowProductForm] = useState(false);
   const [newPromo, setNewPromo] = useState({ code: '', percent: 10, max_uses: 100 });
+
+  // Image Search State
+  const [imgSearchQuery, setImgSearchQuery] = useState('');
+  const [imgSearchResults, setImgSearchResults] = useState<any[]>([]);
+  const [imgSearchLoading, setImgSearchLoading] = useState(false);
+  const [imgSearchError, setImgSearchError] = useState('');
+  const [showImgSearch, setShowImgSearch] = useState(false);
+
+  // Image Upload State
+  const [imgUploadFile, setImgUploadFile] = useState<File | null>(null);
+  const [imgUploadPreview, setImgUploadPreview] = useState<string>('');
+  const [imgUploading, setImgUploading] = useState(false);
+
+  const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || '';
+  const PEXELS_KEY = import.meta.env.VITE_PEXELS_API_KEY || '';
+
+  const searchImages = async (query: string) => {
+    if (!query.trim()) return;
+    setImgSearchLoading(true);
+    setImgSearchError('');
+    try {
+      let results: any[] = [];
+      if (PEXELS_KEY) {
+        const res = await fetch(
+          `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=20`,
+          { headers: { Authorization: PEXELS_KEY } }
+        );
+        const data = await res.json();
+        results = (data.photos || []).map((p: any) => ({
+          id: p.id,
+          thumb: p.src.small,
+          regular: p.src.large,
+          alt: p.alt,
+          author: p.photographer,
+          source: 'Pexels',
+        }));
+      } else if (UNSPLASH_KEY) {
+        const res = await fetch(
+          `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=20&client_id=${UNSPLASH_KEY}`
+        );
+        const data = await res.json();
+        results = (data.results || []).map((p: any) => ({
+          id: p.id,
+          thumb: p.urls.small,
+          regular: p.urls.regular,
+          alt: p.alt_description || p.description || query,
+          author: p.user?.name,
+          source: 'Unsplash',
+        }));
+      } else {
+        // Fallback: Picsum with query as seed
+        results = Array.from({ length: 16 }, (_, i) => ({
+          id: `${query}-${i}`,
+          thumb: `https://picsum.photos/seed/${encodeURIComponent(query)}${i}/300/200`,
+          regular: `https://picsum.photos/seed/${encodeURIComponent(query)}${i}/800/600`,
+          alt: `${query} ${i + 1}`,
+          author: 'Picsum',
+          source: 'Picsum (Aleatorio)',
+        }));
+      }
+      setImgSearchResults(results);
+    } catch (err: any) {
+      setImgSearchError('Error al buscar imágenes. Verifica tu conexión.');
+    } finally {
+      setImgSearchLoading(false);
+    }
+  };
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
 
   const handleSelectAllProducts = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -344,16 +411,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
   const saveProduct = async () => {
     if (!editingProduct) return
     try {
+      let imageUrl = editingProduct.image_url || ''
+
+      // If a local file was selected, upload it first
+      if (imgUploadFile) {
+        setImgUploading(true)
+        const formData = new FormData()
+        formData.append('image', imgUploadFile)
+        const token = getAuthToken()
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        })
+        if (!res.ok) {
+          const err = await res.json()
+          throw new Error(err.error || 'Error al subir imagen')
+        }
+        const { url } = await res.json()
+        imageUrl = url
+        setImgUploading(false)
+      }
+
+      const payload = { ...editingProduct, image_url: imageUrl }
+
       if (editingProduct.id) {
-        await productsApi.update(editingProduct.id, editingProduct)
+        await productsApi.update(editingProduct.id, payload)
       } else {
-        await adminApi.createPromoCode(editingProduct)
+        await productsApi.create(payload)
       }
       setShowProductForm(false)
       setEditingProduct(null)
+      setImgUploadFile(null)
+      setImgUploadPreview('')
       loadSection('products')
-    } catch (err) {
-      console.error(err)
+    } catch (err: any) {
+      setImgUploading(false)
+      showAlert({ title: 'Error al guardar', message: err.message || 'No se pudo guardar el producto', type: 'error' })
     }
   }
 
@@ -1270,44 +1364,557 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
         </div>
       )}
 
-      {/* Product Form Modal */}
+      {/* Product Form Modal — Premium Redesign */}
       {showProductForm && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-headline font-bold text-lg">{editingProduct?.id ? 'Editar Producto' : 'Nuevo Producto'}</h3>
-              <button onClick={() => setShowProductForm(false)}><X className="w-5 h-5 text-slate-400" /></button>
-            </div>
-            <div className="space-y-3">
-              <input type="text" placeholder="Slug" value={editingProduct?.slug || ''} onChange={e => setEditingProduct(p => ({ ...p, slug: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-              <input type="text" placeholder="Nombre" value={editingProduct?.name || ''} onChange={e => setEditingProduct(p => ({ ...p, name: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-              <textarea placeholder="Descripción" value={editingProduct?.description || ''} onChange={e => setEditingProduct(p => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm h-24" />
-              <select value={editingProduct?.category || ''} onChange={e => setEditingProduct(p => ({ ...p, category: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
-                <option value="">Seleccionar categoría</option>
-                {productCategories.map((c: any) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
-              </select>
-              <select value={editingProduct?.unit_type || 'piece'} onChange={e => setEditingProduct(p => ({ ...p, unit_type: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
-                <option value="piece">Por pieza</option>
-                <option value="weight">Por peso (granel)</option>
-              </select>
-              {editingProduct?.unit_type !== 'weight' && (
-                <input type="number" step="0.01" placeholder="Precio Base" value={editingProduct?.base_price || ''} onChange={e => setEditingProduct(p => ({ ...p, base_price: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-              )}
-              {editingProduct?.unit_type === 'weight' && (
-                <>
-                  <input type="number" step="0.01" placeholder="Precio por KG" value={editingProduct?.price_per_kg || ''} onChange={e => setEditingProduct(p => ({ ...p, price_per_kg: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                  <div className="grid grid-cols-3 gap-2">
-                    <input type="number" placeholder="Min (g)" value={editingProduct?.min_weight || 50} onChange={e => setEditingProduct(p => ({ ...p, min_weight: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                    <input type="number" placeholder="Max (g)" value={editingProduct?.max_weight || 1000} onChange={e => setEditingProduct(p => ({ ...p, max_weight: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                    <input type="number" placeholder="Incremento (g)" value={editingProduct?.weight_step || 50} onChange={e => setEditingProduct(p => ({ ...p, weight_step: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                  </div>
-                </>
-              )}
-              <input type="text" placeholder="URL de imagen" value={editingProduct?.image_url || ''} onChange={e => setEditingProduct(p => ({ ...p, image_url: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-              <input type="number" placeholder="Stock" value={editingProduct?.stock ?? ''} onChange={e => setEditingProduct(p => ({ ...p, stock: Number(e.target.value) }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-              <button onClick={saveProduct} className="w-full py-3 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 text-sm">
-                {editingProduct?.id ? 'Guardar Cambios' : 'Crear Producto'}
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <motion.div
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 80 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 35 }}
+            className="bg-white w-full sm:rounded-2xl sm:max-w-2xl max-h-[96vh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl rounded-t-2xl"
+          >
+            {/* Header */}
+            <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div className="flex items-center space-x-3">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${editingProduct?.id ? 'bg-amber-100' : 'bg-purple-100'}`}>
+                  {editingProduct?.id ? <Edit3 className="w-4 h-4 text-amber-700" /> : <Plus className="w-4 h-4 text-purple-700" />}
+                </div>
+                <div>
+                  <h3 className="font-headline font-bold text-base text-slate-900">
+                    {editingProduct?.id ? 'Editar Producto' : 'Nuevo Producto'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    {editingProduct?.id ? `ID: ${editingProduct.id.slice(0, 8)}...` : 'Completa los datos del nuevo producto'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowProductForm(false); setEditingProduct(null); }}
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+
+              {/* Image Picker Section */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Imagen del Producto
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { setShowImgSearch((s) => !s); setImgSearchResults([]); setImgSearchQuery(''); }}
+                    className={`text-[11px] font-bold px-3 py-1 rounded-lg transition-colors ${
+                      showImgSearch ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                    }`}
+                  >
+                    {showImgSearch ? '✕ Cerrar buscador' : '🔍 Buscar imagen'}
+                  </button>
+                </div>
+
+                {/* Current image preview */}
+                {editingProduct?.image_url ? (
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group">
+                    <img
+                      src={editingProduct.image_url}
+                      alt="Vista previa"
+                      className="w-full h-32 object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end justify-between p-3">
+                      <span className="text-white text-[10px] font-semibold bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                        Imagen Seleccionada
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct((p) => ({ ...p, image_url: '' }))}
+                        className="text-white bg-red-500/80 hover:bg-red-600 p-1 rounded-lg backdrop-blur-sm transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : imgUploadPreview ? (
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group">
+                    <img
+                      src={imgUploadPreview}
+                      alt="Vista previa local"
+                      className="w-full h-32 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end justify-between p-3">
+                      <span className="text-white text-[10px] font-semibold bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
+                        📁 Archivo local (se subirá al guardar)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { setImgUploadFile(null); setImgUploadPreview(''); }}
+                        className="text-white bg-red-500/80 hover:bg-red-600 p-1 rounded-lg backdrop-blur-sm transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Upload local */}
+                    <label
+                      htmlFor="product-img-upload"
+                      className="h-24 rounded-xl border-2 border-dashed border-purple-200 bg-purple-50/40 flex flex-col items-center justify-center text-purple-500 space-y-1 cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                      </svg>
+                      <span className="text-xs font-semibold">Subir imagen</span>
+                      <span className="text-[10px] text-purple-400">JPG, PNG, WEBP · máx 5MB</span>
+                      <input
+                        id="product-img-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          setImgUploadFile(file)
+                          const preview = URL.createObjectURL(file)
+                          setImgUploadPreview(preview)
+                          // Clear any URL that was set
+                          setEditingProduct((p) => ({ ...p, image_url: '' }))
+                        }}
+                      />
+                    </label>
+                    {/* Search online */}
+                    <div
+                      className="h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 space-y-1 cursor-pointer hover:border-purple-300 hover:bg-purple-50/30 transition-colors"
+                      onClick={() => setShowImgSearch(true)}
+                    >
+                      <Eye className="w-7 h-7" />
+                      <span className="text-xs font-semibold">Buscar en línea</span>
+                      <span className="text-[10px] text-slate-400">Pexels / Unsplash</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Image Search Panel */}
+                {showImgSearch && (
+                  <div className="bg-slate-900 rounded-2xl p-4 space-y-3 shadow-xl">
+                    <div className="flex items-center space-x-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder={`Buscar en ${PEXELS_KEY ? 'Pexels' : UNSPLASH_KEY ? 'Unsplash' : 'Picsum'}... (ej: gomitas, chocolate)`}
+                          value={imgSearchQuery}
+                          onChange={(e) => setImgSearchQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && searchImages(imgSearchQuery)}
+                          className="w-full pl-9 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => searchImages(imgSearchQuery)}
+                        disabled={imgSearchLoading || !imgSearchQuery.trim()}
+                        className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 flex-shrink-0"
+                      >
+                        {imgSearchLoading ? '...' : 'Buscar'}
+                      </button>
+                    </div>
+
+                    {/* Quick search terms */}
+                    <div className="flex flex-wrap gap-1.5">
+                      {['gomitas', 'chocolate', 'caramelos', 'turrones', 'candy', 'sweet', 'dulces', 'alfajor'].map((term) => (
+                        <button
+                          key={term}
+                          type="button"
+                          onClick={() => { setImgSearchQuery(term); searchImages(term); }}
+                          className="px-2.5 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 text-[10px] font-semibold rounded-lg transition-colors"
+                        >
+                          {term}
+                        </button>
+                      ))}
+                    </div>
+
+                    {imgSearchError && (
+                      <p className="text-red-400 text-xs text-center py-2">{imgSearchError}</p>
+                    )}
+
+                    {!PEXELS_KEY && !UNSPLASH_KEY && imgSearchResults.length === 0 && !imgSearchLoading && (
+                      <div className="bg-amber-900/40 border border-amber-700/50 rounded-xl p-3 text-xs text-amber-300">
+                        <p className="font-bold mb-1">💡 Configurar API de Imágenes</p>
+                        <p>Para mejores resultados, agrega <code className="bg-black/30 px-1 rounded">VITE_PEXELS_API_KEY</code> o <code className="bg-black/30 px-1 rounded">VITE_UNSPLASH_ACCESS_KEY</code> en tu archivo <code className="bg-black/30 px-1 rounded">.env</code>. Usando imágenes aleatorias de Picsum mientras tanto.</p>
+                      </div>
+                    )}
+
+                    {/* Results Grid */}
+                    {imgSearchResults.length > 0 && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-56 overflow-y-auto pr-1">
+                        {imgSearchResults.map((img) => {
+                          const isChosen = editingProduct?.image_url === img.regular;
+                          return (
+                            <div
+                              key={img.id}
+                              onClick={() => {
+                                setEditingProduct((p) => ({ ...p, image_url: img.regular }));
+                                setShowImgSearch(false);
+                              }}
+                              className={`relative cursor-pointer rounded-xl overflow-hidden border-2 transition-all group ${
+                                isChosen ? 'border-purple-500 ring-2 ring-purple-400' : 'border-transparent hover:border-purple-400'
+                              }`}
+                            >
+                              <img
+                                src={img.thumb}
+                                alt={img.alt}
+                                className="w-full h-20 object-cover"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                                {isChosen ? (
+                                  <span className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center">
+                                    <Check className="w-4 h-4 text-white" />
+                                  </span>
+                                ) : (
+                                  <span className="opacity-0 group-hover:opacity-100 text-white text-[10px] font-bold bg-black/60 px-2 py-0.5 rounded-full">
+                                    Seleccionar
+                                  </span>
+                                )}
+                              </div>
+                              {img.author && (
+                                <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 bg-black/50">
+                                  <p className="text-[8px] text-white/70 truncate">{img.author} · {img.source}</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {imgSearchLoading && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                          <div key={i} className="h-20 rounded-xl bg-slate-700 animate-pulse" />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Manual URL fallback */}
+                <div className="flex items-center space-x-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="url"
+                      placeholder="O pega directamente una URL de imagen..."
+                      value={editingProduct?.image_url || ''}
+                      onChange={(e) => setEditingProduct((p) => ({ ...p, image_url: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                    />
+                  </div>
+                  {editingProduct?.image_url && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingProduct((p) => ({ ...p, image_url: '' }))}
+                      className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl border border-slate-200 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Basic Info Section */}
+              <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Información Básica</h4>
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-600 block mb-1">Nombre del Producto *</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Gomitas de Frutilla x 500g"
+                      value={editingProduct?.name || ''}
+                      onChange={(e) => {
+                        const name = e.target.value;
+                        const slug = name.toLowerCase()
+                          .replace(/\s+/g, '-')
+                          .replace(/[^a-z0-9-]/g, '')
+                          .replace(/-+/g, '-');
+                        setEditingProduct((p) => ({ ...p, name, slug }));
+                      }}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-600 block">Slug (URL interna)</label>
+                      <span className="text-[10px] text-slate-400">Auto-generado desde el nombre</span>
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">/producto/</span>
+                      <input
+                        type="text"
+                        placeholder="mi-producto"
+                        value={editingProduct?.slug || ''}
+                        onChange={(e) => setEditingProduct((p) => ({ ...p, slug: e.target.value }))}
+                        className="w-full pl-20 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-purple-400 bg-white text-slate-600"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-600 block mb-1">Descripción</label>
+                    <textarea
+                      placeholder="Describe el producto: sabor, características, presentación..."
+                      value={editingProduct?.description || ''}
+                      onChange={(e) => setEditingProduct((p) => ({ ...p, description: e.target.value }))}
+                      rows={3}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-medium outline-none focus:ring-2 focus:ring-purple-400 bg-white resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Category */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Categoría</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {productCategories.map((c: any) => {
+                    const isSelected = editingProduct?.category === c.slug;
+                    return (
+                      <button
+                        key={c.slug}
+                        type="button"
+                        onClick={() => setEditingProduct((p) => ({ ...p, category: c.slug }))}
+                        className={`flex items-center space-x-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                          isSelected
+                            ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-purple-300 hover:bg-purple-50'
+                        }`}
+                      >
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] ${isSelected ? 'bg-white/20' : c.bg_color}`}>
+                          {getCategoryIcon(c.icon) ? React.createElement(getCategoryIcon(c.icon), { className: 'w-3 h-3' }) : null}
+                        </span>
+                        <span className="truncate">{c.name}</span>
+                        {isSelected && <Check className="w-3 h-3 flex-shrink-0 ml-auto" />}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setEditingProduct((p) => ({ ...p, category: '' }))}
+                    className={`flex items-center space-x-2 px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                      !editingProduct?.category
+                        ? 'bg-slate-700 text-white border-slate-700'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="text-[10px]">Sin categoría</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Unit Type & Pricing */}
+              <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Tipo de Venta & Precio</h4>
+
+                {/* Unit Type Toggle */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingProduct((p) => ({ ...p, unit_type: 'piece' }))}
+                    className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border text-xs font-bold transition-all ${
+                      (editingProduct?.unit_type || 'piece') !== 'weight'
+                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-purple-200'
+                    }`}
+                  >
+                    <Package className="w-5 h-5 mb-1" />
+                    Por Unidad / Pieza
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingProduct((p) => ({ ...p, unit_type: 'weight' }))}
+                    className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl border text-xs font-bold transition-all ${
+                      editingProduct?.unit_type === 'weight'
+                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-purple-200'
+                    }`}
+                  >
+                    <TrendingUp className="w-5 h-5 mb-1" />
+                    Por Peso (Granel)
+                  </button>
+                </div>
+
+                {/* Piece pricing */}
+                {(editingProduct?.unit_type || 'piece') !== 'weight' && (
+                  <div>
+                    <label className="text-[11px] font-bold text-slate-600 block mb-1">Precio por Unidad ($) *</label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={editingProduct?.base_price || ''}
+                        onChange={(e) => setEditingProduct((p) => ({ ...p, base_price: Number(e.target.value) }))}
+                        className="w-full pl-8 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Weight pricing */}
+                {editingProduct?.unit_type === 'weight' && (
+                  <div className="space-y-2.5">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Precio por Kg ($) *</label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00 por Kg"
+                          value={editingProduct?.price_per_kg || ''}
+                          onChange={(e) => setEditingProduct((p) => ({ ...p, price_per_kg: Number(e.target.value), base_price: Number(e.target.value) }))}
+                          className="w-full pl-8 pr-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Mínimo (g)</label>
+                        <input
+                          type="number"
+                          placeholder="50"
+                          value={editingProduct?.min_weight ?? 50}
+                          onChange={(e) => setEditingProduct((p) => ({ ...p, min_weight: Number(e.target.value) }))}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Máximo (g)</label>
+                        <input
+                          type="number"
+                          placeholder="1000"
+                          value={editingProduct?.max_weight ?? 1000}
+                          onChange={(e) => setEditingProduct((p) => ({ ...p, max_weight: Number(e.target.value) }))}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-600 block mb-1">Paso (g)</label>
+                        <input
+                          type="number"
+                          placeholder="50"
+                          value={editingProduct?.weight_step ?? 50}
+                          onChange={(e) => setEditingProduct((p) => ({ ...p, weight_step: Number(e.target.value) }))}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Stock */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Stock Disponible
+                  </label>
+                  {(editingProduct?.stock ?? 0) > 0 ? (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                      ✓ En Stock
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                      ✗ Sin Stock
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      placeholder="0"
+                      min="0"
+                      value={editingProduct?.stock ?? ''}
+                      onChange={(e) => setEditingProduct((p) => ({ ...p, stock: Number(e.target.value) }))}
+                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                    />
+                  </div>
+                  <span className="text-xs text-slate-500 font-medium">
+                    {editingProduct?.unit_type === 'weight' ? 'gramos (g)' : 'unidades'}
+                  </span>
+                </div>
+
+                {/* Quick stock presets */}
+                <div className="flex flex-wrap gap-2">
+                  {(editingProduct?.unit_type === 'weight' ? [500, 1000, 2000, 5000] : [10, 25, 50, 100]).map((qty) => (
+                    <button
+                      key={qty}
+                      type="button"
+                      onClick={() => setEditingProduct((p) => ({ ...p, stock: qty }))}
+                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
+                        editingProduct?.stock === qty
+                          ? 'bg-purple-700 text-white'
+                          : 'bg-slate-100 text-slate-700 hover:bg-purple-100'
+                      }`}
+                    >
+                      {editingProduct?.unit_type === 'weight' ? `${qty}g` : `${qty} uds`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex-shrink-0 px-5 py-4 border-t border-slate-100 flex items-center justify-between space-x-3 bg-slate-50/70">
+              {editingProduct?.base_price ? (
+                <div>
+                  <span className="text-[10px] text-slate-500">Precio configurado</span>
+                  <p className="text-lg font-black text-purple-700">
+                    ${Number(editingProduct.base_price).toFixed(2)}
+                    {editingProduct.unit_type === 'weight' ? ' / kg' : ''}
+                  </p>
+                </div>
+              ) : (
+                <div />
+              )}
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowProductForm(false); setEditingProduct(null); }}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={saveProduct}
+                  disabled={imgUploading}
+                  className="inline-flex items-center space-x-2 px-5 py-2.5 bg-purple-700 hover:bg-purple-800 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-lg transition-colors"
+                >
+                  {imgUploading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Subiendo imagen...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>{editingProduct?.id ? 'Guardar Cambios' : 'Crear Producto'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>

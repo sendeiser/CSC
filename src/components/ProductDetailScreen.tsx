@@ -126,18 +126,21 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const isFav = !!favorites[product.id];
 
   return (
-    <div className="bg-slate-50 min-h-screen py-8 sm:py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Back Link Button */}
-        <button
-          onClick={() => setActiveScreen('catalogo')}
-          className="inline-flex items-center space-x-2 text-sm font-semibold text-slate-600 hover:text-purple-700 transition-colors mb-6 cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Volver al Catálogo</span>
-        </button>
+    <div className="bg-white min-h-screen">
+      {/* Breadcrumb strip */}
+      <div className="bg-gradient-to-r from-purple-900 to-pink-900 py-5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <button
+            onClick={() => setActiveScreen('catalogo')}
+            className="inline-flex items-center space-x-2 text-sm font-semibold text-purple-200 hover:text-white transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span>Volver al Catálogo</span>
+          </button>
+        </div>
+      </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* 1. Primary Grid Structure details */}
         <div className="bg-white rounded-3xl p-4 sm:p-8 lg:p-12 shadow-sm border border-slate-100 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14">
           
@@ -145,20 +148,30 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <div className="lg:col-span-6 flex flex-col space-y-4">
             
             {/* Visual canvas */}
-            <div className="relative aspect-square rounded-2xl bg-slate-50 border border-slate-100 overflow-hidden flex items-center justify-center">
-              <img
+            <div className="relative aspect-square rounded-3xl bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 overflow-hidden flex items-center justify-center border border-purple-100/50 shadow-lg shadow-purple-100/30">
+              <motion.img
+                key={activeImage}
+                initial={{ opacity: 0, scale: 1.05 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35 }}
                 src={activeImage}
                 alt={product.name}
                 referrerPolicy="no-referrer"
                 decoding="async"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
               />
+              {/* Stock badge */}
+              {product.stock === 0 && (
+                <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow">
+                  Agotado
+                </div>
+              )}
               <button
                 onClick={() => toggleFavorite(product.id)}
-                className={`absolute top-4 right-4 p-3 rounded-full border shadow-md transition-colors cursor-pointer ${
+                className={`absolute top-4 right-4 p-3 rounded-2xl shadow-xl transition-all ${
                   isFav 
-                    ? 'bg-pink-50 border-pink-100 text-pink-500 animate-pulse' 
-                    : 'bg-white/90 border-slate-100 text-slate-400 hover:text-pink-500'
+                    ? 'bg-pink-500 text-white shadow-pink-300/60' 
+                    : 'bg-white/90 text-slate-400 hover:text-pink-500 hover:bg-white'
                 }`}
               >
                 <Heart className={`w-5 h-5 ${isFav ? 'fill-current' : ''}`} />
@@ -209,18 +222,17 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             </div>
 
           </div>
-
           {/* Right Description and controls */}
           <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
             
             {/* Header Product details */}
             <div className="space-y-3.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="bg-purple-150 text-purple-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                <span className="bg-purple-50 border border-purple-100 text-purple-700 text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wider">
                   {product.category}
                 </span>
                 {product.diet?.map((di, index) => (
-                  <span key={index} className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded">
+                  <span key={index} className="bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
                     {di}
                   </span>
                 ))}
@@ -231,13 +243,13 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               </h1>
 
               <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-0.5 text-amber-400">
+                <div className="flex items-center space-x-0.5">
                   {[1, 2, 3, 4, 5].map((st) => (
-                    <Star key={st} className={`w-4 h-4 ${st <= product.stars ? 'fill-current' : 'text-slate-200'}`} />
+                    <Star key={st} className={`w-4 h-4 ${st <= product.stars ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />
                   ))}
                 </div>
-                <span className="text-xs text-slate-500 font-bold">
-                  ({product.reviews + localFeedback.length - 3} valoraciones certificadas)
+                <span className="text-xs text-slate-500 font-semibold">
+                  ({product.reviews + localFeedback.length - 3} valoraciones)
                 </span>
               </div>
             </div>
@@ -369,13 +381,13 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                   }
                 }}
                 disabled={product.stock === 0 || (product.unit_type === 'weight' && product.stock < weightGrams)}
-                className={`flex-1 flex items-center justify-center space-x-2 px-8 py-4 font-bold rounded-xl shadow-md transition-all duration-100 ${
+                className={`flex-1 flex items-center justify-center space-x-2.5 px-8 py-4 font-bold rounded-2xl shadow-lg transition-all duration-150 text-base ${
                   product.stock === 0 || (product.unit_type === 'weight' && product.stock < weightGrams)
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-600 hover:opacity-95 text-white cursor-pointer active:scale-95'
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'candy-gradient-bg text-white shadow-purple-300/50 hover:shadow-purple-400/60 hover:opacity-95 cursor-pointer active:scale-98 hover:-translate-y-0.5'
                 }`}
               >
-                <ShoppingBag className="w-5 h-5 animate-pulse" />
+                <ShoppingBag className="w-5 h-5" />
                 <span>{product.stock === 0 ? 'Agotado' : product.unit_type === 'weight' ? `Agregar ${weightGrams}g a la Bolsa` : 'Agregar a la Bolsa'}</span>
               </button>
             </div>
@@ -462,27 +474,24 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                 {/* Review listings */}
                 <div className="space-y-4 max-w-3xl">
                   {localFeedback.map((opinion, idx) => (
-                    <div key={idx} className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 space-y-2">
+                    <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3 hover:shadow-md transition-shadow">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-9 h-9 rounded-full candy-gradient-bg text-white flex items-center justify-center font-bold text-sm shadow">
                             {opinion.name[0]}
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-slate-900">{opinion.name}</p>
+                            <p className="text-sm font-bold text-slate-900">{opinion.name}</p>
                             <p className="text-[10px] text-slate-400">{opinion.date}</p>
                           </div>
                         </div>
-
-                        <div className="flex items-center text-amber-400 space-x-0.5">
+                        <div className="flex items-center space-x-0.5">
                           {[1, 2, 3, 4, 5].map((st) => (
-                            <Star key={st} className={`w-3.5 h-3.5 ${st <= opinion.stars ? 'fill-current' : 'text-slate-100'}`} />
+                            <Star key={st} className={`w-3.5 h-3.5 ${st <= opinion.stars ? 'fill-amber-400 text-amber-400' : 'text-slate-200'}`} />
                           ))}
                         </div>
                       </div>
-                      <p className="text-slate-600 text-xs sm:text-sm leading-relaxed font-sans pl-1">
-                        {opinion.msg}
-                      </p>
+                      <p className="text-slate-600 text-sm leading-relaxed">{opinion.msg}</p>
                     </div>
                   ))}
                 </div>

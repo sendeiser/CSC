@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { AlertCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
 import { Header } from './components/Header';
 import { LandingScreen } from './components/LandingScreen';
 import { CatalogScreen } from './components/CatalogScreen';
@@ -218,17 +218,32 @@ export default function App() {
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: -20, x: '-50%' }}
+            initial={{ opacity: 0, y: -60, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
-            exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur-md text-white rounded-2xl px-5 py-3 shadow-2xl border border-white/10 flex items-center space-x-3 max-w-sm sm:max-w-md w-11/12 text-center"
+            exit={{ opacity: 0, y: -60, x: '-50%' }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="fixed top-24 left-1/2 z-[100] flex items-center space-x-3 px-5 py-3.5 rounded-2xl shadow-2xl border max-w-sm w-11/12 sm:w-auto"
+            style={{
+              background: toast.type === 'success'
+                ? 'linear-gradient(135deg, #064e3b, #065f46)'
+                : toast.type === 'info'
+                  ? 'linear-gradient(135deg, #1e1b4b, #312e81)'
+                  : 'linear-gradient(135deg, #7f1d1d, #991b1b)',
+              borderColor: toast.type === 'success' ? '#10b98140' : toast.type === 'info' ? '#818cf840' : '#f8717140'
+            }}
           >
-            {toast.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 text-emerald-450 shrink-0" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-pink-450 shrink-0" />
-            )}
-            <span className="text-xs sm:text-sm font-semibold">{toast.message}</span>
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
+            >
+              {toast.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-indigo-300 shrink-0" />
+              )}
+            </motion.div>
+            <span className="text-xs sm:text-sm font-semibold text-white">{toast.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -315,27 +330,100 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="bg-slate-900 text-slate-400 py-10 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 rounded-full bg-pink-500 flex items-center justify-center text-white text-[10px] font-bold">C</div>
-            <span className="font-headline font-bold text-slate-100">Chamical Candy Shop</span>
+      <footer className="bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-slate-300 pt-14 pb-8 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 pb-10 border-b border-white/10">
+            {/* Brand */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-full candy-gradient-bg flex items-center justify-center shadow-md">
+                  <Sparkles className="w-4.5 h-4.5 text-white" />
+                </div>
+                <div>
+                  <span className="font-headline font-extrabold text-lg text-white tracking-tight">Chamical</span>
+                  <span className="text-purple-400 font-semibold text-lg"> Candy Shop</span>
+                </div>
+              </div>
+              <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
+                Gomitas, chocolates, caramelos y más — vendemos por granel para que compres justo lo que querés.
+              </p>
+              <div className="flex items-center space-x-2">
+                <span className="inline-flex items-center space-x-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Tienda física y online</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Links */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Navegación</h4>
+              <ul className="space-y-2.5">
+                {[
+                  { label: 'Inicio', screen: 'inicio' },
+                  { label: 'Catálogo', screen: 'catalogo' },
+                  { label: 'Nosotros', screen: 'nosotros' },
+                ].map(({ label, screen }) => (
+                  <li key={screen}>
+                    <button
+                      onClick={() => setActiveScreen(screen as any)}
+                      className="text-sm text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-flex transform duration-150"
+                    >
+                      {label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Contact */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Contacto</h4>
+              <ul className="space-y-3">
+                <li>
+                  <a
+                    href={`https://wa.me/5493827400000`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 text-sm text-slate-400 hover:text-emerald-400 transition-colors"
+                  >
+                    <MessageCircle className="w-4 h-4 text-emerald-500" />
+                    <span>WhatsApp</span>
+                  </a>
+                </li>
+                <li className="flex items-center space-x-2 text-sm text-slate-400">
+                  <span className="text-pink-400">📍</span>
+                  <span>Chamical, La Rioja, Argentina</span>
+                </li>
+              </ul>
+            </div>
           </div>
-          <p className="font-sans text-center sm:text-right">
-            &copy; {new Date().getFullYear()} Chamical Candy Shop. Todos los derechos reservados.
-          </p>
+
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            <p>&copy; {new Date().getFullYear()} Chamical Candy Shop. Todos los derechos reservados.</p>
+            <p className="text-slate-700">Hecho con 🍬 en Chamical, La Rioja</p>
+          </div>
         </div>
       </footer>
 
-      <a
-        href={waLink('Hola! Quiero hacer una consulta.')}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Escribinos por WhatsApp"
-        className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-2xl hover:bg-emerald-600 hover:scale-105 transition-all"
-      >
-        <MessageCircle className="w-7 h-7" />
-      </a>
+      {/* WhatsApp floating button */}
+      <div className="fixed bottom-6 right-5 z-50 group">
+        {/* Ping rings */}
+        <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping-slow opacity-60" />
+        <a
+          href={waLink('Hola! Quiero hacer una consulta.')}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Escribinos por WhatsApp"
+          className="relative w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-2xl shadow-emerald-400/40 hover:bg-emerald-600 hover:scale-110 transition-all duration-300"
+        >
+          <MessageCircle className="w-7 h-7" />
+        </a>
+        {/* Tooltip */}
+        <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg">
+          Escribinos 💬
+        </span>
+      </div>
     </div>
   );
 }
