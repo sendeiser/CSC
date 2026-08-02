@@ -507,20 +507,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     }
   }
 
-  const navItems: { id: AdminSection; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: 'analytics', label: 'Gráficos & Analytics', icon: <BarChart2 className="w-4 h-4" /> },
-    { id: 'products', label: 'Productos', icon: <Package className="w-4 h-4" /> },
-    { id: 'orders', label: 'Pedidos', icon: <ShoppingCart className="w-4 h-4" /> },
-    { id: 'users', label: 'Usuarios & CRM', icon: <Users className="w-4 h-4" /> },
-    { id: 'promos', label: 'Cupones', icon: <Ticket className="w-4 h-4" /> },
-    { id: 'homepage', label: 'Homepage', icon: <Layout className="w-4 h-4" /> },
-    { id: 'about-page', label: 'Sobre Nosotros', icon: <FileText className="w-4 h-4" /> },
-    { id: 'categories', label: 'Categorías', icon: <Layout className="w-4 h-4" /> },
+  const navItems: { id: AdminSection; label: string; icon: React.ReactNode; badge?: string }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
+    { id: 'analytics', label: 'Gráficos', icon: <BarChart2 className="w-4.5 h-4.5" /> },
+    { id: 'products', label: 'Productos', icon: <Package className="w-4.5 h-4.5" /> },
+    { id: 'orders', label: 'Pedidos', icon: <ShoppingCart className="w-4.5 h-4.5" /> },
+    { id: 'users', label: 'Usuarios', icon: <Users className="w-4.5 h-4.5" /> },
+    { id: 'promos', label: 'Cupones', icon: <Ticket className="w-4.5 h-4.5" /> },
+    { id: 'homepage', label: 'Homepage', icon: <Layout className="w-4.5 h-4.5" /> },
+    { id: 'about-page', label: 'Sobre Nosotros', icon: <FileText className="w-4.5 h-4.5" /> },
+    { id: 'categories', label: 'Categorías', icon: <Layout className="w-4.5 h-4.5" /> },
   ]
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-100 flex">
       {/* Mobile overlay */}
       <AnimatePresence>
         {mobileSidebarOpen && (
@@ -529,53 +529,103 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setMobileSidebarOpen(false)}
-            className="fixed inset-0 bg-black/40 z-40 md:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
           />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
-      <aside className={`fixed md:sticky top-0 left-0 z-50 h-screen bg-slate-900 text-white flex flex-col transition-all duration-300 ${
-        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } md:translate-x-0 md:w-20 lg:w-64`}>
-        <div className="flex-shrink-0 p-5 border-b border-slate-700 flex items-center justify-between">
-          <div className="flex items-center space-x-2 overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">C</div>
-            <span className="font-headline font-bold inline md:hidden lg:block">CSC Admin</span>
+      <aside className={`fixed md:sticky top-0 left-0 z-50 h-screen flex flex-col transition-all duration-300 ${
+        mobileSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full w-72'
+      } md:translate-x-0 md:w-20 lg:w-64 bg-gradient-to-b from-slate-950 via-slate-900 to-purple-950 border-r border-white/5`}>
+
+        {/* Logo */}
+        <div className="flex-shrink-0 p-5 flex items-center justify-between border-b border-white/10">
+          <div className="flex items-center space-x-3 overflow-hidden">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-sm font-black flex-shrink-0 shadow-lg shadow-purple-900/50">
+              C
+            </div>
+            <div className="inline md:hidden lg:block overflow-hidden">
+              <span className="font-headline font-black text-white text-sm block leading-none">CSC Admin</span>
+              <span className="text-[10px] text-purple-400 font-medium">Panel de Control</span>
+            </div>
           </div>
-          <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">
+          <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => { setSection(item.id); setMobileSidebarOpen(false) }}
-              className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                section === item.id ? 'bg-purple-600 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              <span className="flex-shrink-0">{item.icon}</span>
-              <span className="inline md:hidden lg:inline">{item.label}</span>
-            </button>
-          ))}
+
+        {/* Nav */}
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          {navItems.map(item => {
+            const isActive = section === item.id
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setSection(item.id); setMobileSidebarOpen(false) }}
+                className={`relative w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+                  isActive
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/50'
+                    : 'text-slate-400 hover:bg-white/8 hover:text-white'
+                }`}
+              >
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-pink-400 rounded-r-full" />
+                )}
+                <span className="flex-shrink-0 relative">
+                  {item.icon}
+                  {item.badge && (
+                    <span className="absolute -top-1 -right-1.5 w-3.5 h-3.5 bg-pink-500 rounded-full text-white text-[8px] font-bold flex items-center justify-center">{item.badge}</span>
+                  )}
+                </span>
+                <span className="inline md:hidden lg:inline truncate">{item.label}</span>
+              </button>
+            )
+          })}
         </nav>
-        <div className="flex-shrink-0 p-4 border-t border-slate-700">
-          <button onClick={handleLogout} className="w-full text-xs text-slate-400 hover:text-white transition-colors text-left truncate">Cerrar Sesión</button>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 p-4 border-t border-white/10 space-y-2">
+          <div className="hidden md:hidden lg:flex items-center space-x-3 bg-white/5 rounded-xl px-3 py-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+              A
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white truncate">Administrador</p>
+              <p className="text-[10px] text-slate-400 truncate">admin@csc.com</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full text-xs text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all px-3 py-2 rounded-xl text-left truncate font-medium"
+          >
+            → Cerrar Sesión
+          </button>
         </div>
       </aside>
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 max-h-screen">
-        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between md:px-6">
+        <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200/80 px-4 py-3.5 flex items-center justify-between md:px-6 sticky top-0 z-30 shadow-sm">
           <div className="flex items-center space-x-3">
-            <button onClick={() => setMobileSidebarOpen(true)} className="md:hidden text-slate-600 hover:text-slate-900">
+            <button onClick={() => setMobileSidebarOpen(true)} className="md:hidden text-slate-600 hover:text-slate-900 p-1.5 rounded-xl hover:bg-slate-100 transition-colors">
               <Menu className="w-5 h-5" />
             </button>
-            <h2 className="font-headline font-bold text-lg truncate">
-              {navItems.find(i => i.id === section)?.label || 'Admin'}
-            </h2>
+            <div>
+              <h2 className="font-headline font-bold text-base sm:text-lg text-slate-900 leading-none">
+                {navItems.find(i => i.id === section)?.label || 'Admin'}
+              </h2>
+              <p className="text-[11px] text-slate-400 mt-0.5 hidden sm:block">Chamical Candy Shop · Panel de Administración</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setActiveScreen('inicio')}
+              className="hidden sm:flex items-center space-x-1.5 text-xs font-semibold text-slate-500 hover:text-purple-700 bg-slate-100 hover:bg-purple-50 border border-slate-200 hover:border-purple-200 px-3 py-2 rounded-xl transition-all"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Ver Tienda</span>
+            </button>
           </div>
         </header>
 
@@ -592,49 +642,54 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                   </div>
 
                   {/* Main Metric Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
-                      { label: 'Productos Activos', value: stats.totalProducts, color: 'bg-blue-500', icon: <Package className="w-6 h-6" /> },
-                      { label: 'Clientes Registrados', value: stats.totalUsers, color: 'bg-emerald-500', icon: <Users className="w-6 h-6" /> },
-                      { label: 'Pedidos Totales', value: stats.totalOrders, color: 'bg-purple-500', icon: <ShoppingCart className="w-6 h-6" /> },
-                      { label: 'Ingresos Pagados', value: `$${stats.totalRevenue.toFixed(2)}`, color: 'bg-pink-500', icon: <Star className="w-6 h-6" />, note: 'Solo pedidos pagados' },
+                      { label: 'Productos Activos', value: stats.totalProducts, gradient: 'from-blue-500 to-cyan-500', shadow: 'shadow-blue-200', icon: <Package className="w-5 h-5" /> },
+                      { label: 'Clientes Registrados', value: stats.totalUsers, gradient: 'from-emerald-500 to-teal-500', shadow: 'shadow-emerald-200', icon: <Users className="w-5 h-5" /> },
+                      { label: 'Pedidos Totales', value: stats.totalOrders, gradient: 'from-purple-500 to-violet-500', shadow: 'shadow-purple-200', icon: <ShoppingCart className="w-5 h-5" /> },
+                      { label: 'Ingresos Pagados', value: `$${stats.totalRevenue.toFixed(2)}`, gradient: 'from-pink-500 to-rose-500', shadow: 'shadow-pink-200', icon: <TrendingUp className="w-5 h-5" />, note: 'Pedidos confirmados' },
                     ].map(stat => (
-                      <div key={stat.label} className="bg-white rounded-2xl border border-slate-200 p-5 flex items-center space-x-4 shadow-sm">
-                        <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center text-white shadow-sm flex-shrink-0`}>{stat.icon}</div>
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium">{stat.label}</p>
-                          <p className="text-2xl font-black text-slate-900 mt-0.5">{stat.value}</p>
+                      <div key={stat.label} className={`bg-white rounded-2xl border border-slate-100 p-5 flex items-center space-x-4 shadow-sm hover:shadow-md hover:shadow-${stat.shadow} transition-all duration-300 group cursor-default`}>
+                        <div className={`w-11 h-11 bg-gradient-to-br ${stat.gradient} rounded-xl flex items-center justify-center text-white shadow-lg flex-shrink-0 group-hover:scale-110 transition-transform`}>{stat.icon}</div>
+                        <div className="min-w-0">
+                          <p className="text-xs text-slate-500 font-medium truncate">{stat.label}</p>
+                          <p className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5 truncate">{stat.value}</p>
                           {stat.note && <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">{stat.note}</p>}
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Periodic Sales Cards (Daily, Weekly, Monthly) */}
-                  <div className="bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-2xl p-5 shadow-lg space-y-3">
-                    <div className="flex items-center justify-between border-b border-purple-800 pb-3">
+                  {/* Periodic Sales Cards */}
+                  <div className="relative bg-gradient-to-br from-slate-950 via-purple-950 to-indigo-950 text-white rounded-2xl p-6 shadow-xl overflow-hidden">
+                    {/* Decorative blur */}
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-pink-500/10 rounded-full blur-3xl" />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/15 rounded-full blur-2xl" />
+
+                    <div className="relative flex items-center justify-between border-b border-white/10 pb-4 mb-5">
                       <div>
-                        <h3 className="font-headline font-bold text-base text-purple-100">Ventas Periódicas Confirmadas</h3>
-                        <p className="text-xs text-purple-300">Ingresos contabilizados únicamente de pedidos pagados/entregados</p>
+                        <h3 className="font-headline font-bold text-base text-white">Ventas Periódicas</h3>
+                        <p className="text-xs text-purple-300 mt-0.5">Solo pedidos pagados y entregados</p>
                       </div>
-                      <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-bold uppercase tracking-wider">
-                        Pago Verificado
+                      <span className="px-3 py-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-[11px] font-bold uppercase tracking-wider">
+                        ✓ Verificado
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-                      <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">
-                        <span className="text-xs text-purple-200 font-semibold block">Ventas de Hoy</span>
-                        <span className="text-2xl font-black text-white mt-1 block">${(stats.todaySales || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">
-                        <span className="text-xs text-purple-200 font-semibold block">Ventas esta Semana (7 días)</span>
-                        <span className="text-2xl font-black text-white mt-1 block">${(stats.weeklySales || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">
-                        <span className="text-xs text-purple-200 font-semibold block">Ventas este Mes (30 días)</span>
-                        <span className="text-2xl font-black text-white mt-1 block">${(stats.monthlySales || 0).toFixed(2)}</span>
-                      </div>
+                    <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {[
+                        { label: 'Hoy', value: stats.todaySales || 0, icon: '📅' },
+                        { label: 'Esta Semana (7d)', value: stats.weeklySales || 0, icon: '📆' },
+                        { label: 'Este Mes (30d)', value: stats.monthlySales || 0, icon: '📊' },
+                      ].map(({ label, value, icon }) => (
+                        <div key={label} className="bg-white/8 backdrop-blur-sm rounded-2xl p-4 border border-white/10 hover:bg-white/12 transition-colors">
+                          <div className="flex items-center space-x-2 mb-2">
+                            <span>{icon}</span>
+                            <span className="text-xs text-purple-200 font-semibold">{label}</span>
+                          </div>
+                          <span className="text-2xl sm:text-3xl font-black text-white block">${value.toFixed(2)}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -909,31 +964,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                      <h1 className="text-2xl font-headline font-bold text-slate-900">Productos ({products.length})</h1>
+                      <h1 className="text-xl sm:text-2xl font-headline font-bold text-slate-900">Productos <span className="text-purple-600">({products.length})</span></h1>
                       <p className="text-xs text-slate-500 mt-0.5">Gestioná y buscá los productos de tu catálogo</p>
                     </div>
-                    <button onClick={() => { setEditingProduct({}); setShowProductForm(true) }} className="flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 w-full sm:w-auto shadow-sm">
+                    <button
+                      onClick={() => { setEditingProduct({}); setShowProductForm(true) }}
+                      className="flex items-center justify-center space-x-2 px-5 py-2.5 candy-gradient-bg text-white rounded-xl text-sm font-bold hover:opacity-95 w-full sm:w-auto shadow-lg shadow-purple-300/40 transition-all hover:-translate-y-0.5"
+                    >
                       <Plus className="w-4 h-4" /><span>Nuevo Producto</span>
                     </button>
                   </div>
 
                   {/* Products Search & Filters Bar */}
-                  <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-100 space-y-3 shadow-sm">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       {/* Search Bar */}
-                      <div className="relative">
+                      <div className="relative lg:col-span-2">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                           type="text"
                           placeholder="Buscar producto por nombre..."
                           value={productSearchTerm}
                           onChange={(e) => setProductSearchTerm(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-400 outline-none"
+                          className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-400 outline-none bg-slate-50 focus:bg-white transition-colors"
                         />
                       </div>
 
                       {/* Category Filter */}
-                      <div className="flex items-center space-x-2 border border-slate-200 rounded-xl px-3 py-1.5 bg-white">
+                      <div className="flex items-center space-x-2 border border-slate-200 rounded-xl px-3 py-2 bg-slate-50">
                         <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
                         <select
                           value={productCategoryFilter}
@@ -947,22 +1005,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                         </select>
                       </div>
 
-                      {/* Stock Filter */}
-                      <div className="flex items-center space-x-2 border border-slate-200 rounded-xl px-3 py-1.5 bg-white">
-                        <Package className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <select
-                          value={productStockFilter}
-                          onChange={(e) => setProductStockFilter(e.target.value)}
-                          className="w-full text-xs font-semibold text-slate-700 outline-none bg-transparent cursor-pointer"
-                        >
-                          <option value="all">Todos los Stocks</option>
-                          <option value="in_stock">Con Stock (&gt; 0)</option>
-                          <option value="out_of_stock">Sin Stock / Agotados</option>
-                        </select>
-                      </div>
-
                       {/* Sort Filter */}
-                      <div className="flex items-center space-x-2 border border-slate-200 rounded-xl px-3 py-1.5 bg-white">
+                      <div className="flex items-center space-x-2 border border-slate-200 rounded-xl px-3 py-2 bg-slate-50">
                         <ArrowUpDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
                         <select
                           value={productSortBy}
@@ -1004,12 +1048,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                     </div>
                   )}
 
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+                        <thead className="bg-slate-50/80 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
                           <tr>
-                            <th className="px-4 py-3 text-left w-10">
+                            <th className="px-4 py-3.5 text-left w-10">
                               <input
                                 type="checkbox"
                                 checked={products.length > 0 && selectedProductIds.length === products.length}
@@ -1017,15 +1061,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                 className="rounded text-purple-600 focus:ring-purple-400 w-4 h-4 cursor-pointer"
                               />
                             </th>
-                            <th className="text-left px-4 py-3">Producto</th>
-                            <th className="text-left px-4 py-3 hidden md:table-cell">Categoría</th>
-                            <th className="text-left px-4 py-3">Precio</th>
-                            <th className="text-left px-4 py-3">Stock</th>
-                            <th className="text-left px-4 py-3 hidden md:table-cell">Ventas</th>
-                            <th className="text-right px-4 py-3">Acciones</th>
+                            <th className="text-left px-4 py-3.5">Producto</th>
+                            <th className="text-left px-4 py-3.5 hidden md:table-cell">Categoría</th>
+                            <th className="text-left px-4 py-3.5">Precio</th>
+                            <th className="text-left px-4 py-3.5">Stock</th>
+                            <th className="text-left px-4 py-3.5 hidden md:table-cell">Ventas</th>
+                            <th className="text-right px-4 py-3.5">Acciones</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-50">
                           {products
                             .filter((p) => {
                               const matchesSearch =
@@ -1051,7 +1095,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                             .map((p) => {
                             const isSelected = selectedProductIds.includes(p.id);
                             return (
-                              <tr key={p.id} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}>
+                              <tr key={p.id} className={`hover:bg-slate-50/80 transition-colors group ${isSelected ? 'bg-purple-50/50' : ''}`}>
                                 <td className="px-4 py-3">
                                   <input
                                     type="checkbox"
@@ -1062,21 +1106,42 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center space-x-3">
-                                    <img src={p.image_url} alt={p.name} className="w-10 h-10 rounded-lg object-cover bg-slate-100 flex-shrink-0 hidden sm:block border border-slate-200" />
-                                    <span className="font-medium text-slate-900 truncate max-w-[120px] sm:max-w-none">{p.name}</span>
+                                    <img src={p.image_url} alt={p.name} className="w-11 h-11 rounded-xl object-cover bg-slate-100 flex-shrink-0 hidden sm:block border border-slate-100 shadow-sm" />
+                                    <div>
+                                      <span className="font-semibold text-slate-900 truncate max-w-[120px] sm:max-w-[200px] block">{p.name}</span>
+                                      <span className="text-[10px] text-slate-400 block md:hidden">{p.category}</span>
+                                    </div>
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{p.category}</td>
-                                <td className="px-4 py-3 font-medium whitespace-nowrap">${p.base_price.toFixed(2)}</td>
+                                <td className="px-4 py-3 hidden md:table-cell">
+                                  <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">{p.category}</span>
+                                </td>
+                                <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">${p.base_price.toFixed(2)}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">
-                                  <span className={`text-xs font-semibold px-2 py-0.5 rounded ${p.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                                    {p.stock}{p.unit_type === 'weight' ? 'g' : ' uds'}
+                                  <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    p.stock > 0
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                      : 'bg-red-50 text-red-700 border border-red-100'
+                                  }`}>
+                                    {p.stock > 0 ? '●' : '○'} {p.stock}{p.unit_type === 'weight' ? 'g' : ' uds'}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-slate-500 hidden md:table-cell">{p.reviews}</td>
                                 <td className="px-4 py-3 text-right whitespace-nowrap">
-                                  <button onClick={() => { setEditingProduct(p); setShowProductForm(true) }} className="p-1.5 text-slate-400 hover:text-purple-600"><Edit3 className="w-4 h-4" /></button>
-                                  <button onClick={() => deleteProduct(p.id)} className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                                  <div className="flex items-center justify-end space-x-1">
+                                    <button
+                                      onClick={() => { setEditingProduct(p); setShowProductForm(true) }}
+                                      className="p-2 text-slate-400 hover:text-purple-700 hover:bg-purple-50 rounded-xl transition-all"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => deleteProduct(p.id)}
+                                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -1125,33 +1190,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                   </div>
 
                   {/* CRM Search Bar */}
-                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="relative">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Buscar cliente por nombre o rol..."
+                        placeholder="Buscar cliente por nombre, email o rol..."
                         value={userSearchTerm}
                         onChange={(e) => setUserSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none"
+                        className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-slate-50 focus:bg-white transition-colors"
                       />
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+                        <thead className="bg-slate-50/80 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
                           <tr>
-                            <th className="text-left px-4 py-3">Cliente</th>
-                            <th className="text-left px-4 py-3">Rol</th>
-                            <th className="text-left px-4 py-3">Pedidos</th>
-                            <th className="text-left px-4 py-3">Total Gastado</th>
-                            <th className="text-left px-4 py-3 hidden md:table-cell">Registro</th>
-                            <th className="text-right px-4 py-3">Acciones</th>
+                            <th className="text-left px-4 py-3.5">Cliente</th>
+                            <th className="text-left px-4 py-3.5">Rol</th>
+                            <th className="text-left px-4 py-3.5">Pedidos</th>
+                            <th className="text-left px-4 py-3.5">Total Gastado</th>
+                            <th className="text-left px-4 py-3.5 hidden md:table-cell">Registro</th>
+                            <th className="text-right px-4 py-3.5">Acciones</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="divide-y divide-slate-50">
                           {users
                             .filter(u =>
                               (u.name || '').toLowerCase().includes(userSearchTerm.toLowerCase()) ||
@@ -1161,10 +1226,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                               const ordersCount = u.ordersCount || 0;
                               const totalSpent = u.totalSpent || 0;
                               return (
-                                <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                                  <td className="px-4 py-3">
+                                <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="px-4 py-3.5">
                                     <div className="flex items-center space-x-3">
-                                      <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-sm">
                                         {(u.name || 'U').slice(0, 2).toUpperCase()}
                                       </div>
                                       <div>
