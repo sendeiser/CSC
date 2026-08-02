@@ -65,14 +65,72 @@ function StoreContentEditor({ content, onChange }: { content: any; onChange: (c:
   const delHour = (i: number) => onChange({ ...content, hours: hours.filter((_, idx) => idx !== i) })
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div><label className="block text-xs font-medium text-slate-500 mb-1">Dirección</label><input type="text" value={content.address || ''} onChange={e => onChange({ ...content, address: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
-        <div><label className="block text-xs font-medium text-slate-500 mb-1">Teléfono</label><input type="text" value={content.phone || ''} onChange={e => onChange({ ...content, phone: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
-        <div className="col-span-2"><label className="block text-xs font-medium text-slate-500 mb-1">WhatsApp (solo números)</label><input type="text" value={content.whatsapp || ''} onChange={e => onChange({ ...content, whatsapp: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
-      </div>
+    <div className="space-y-5">
+      {/* Contacto & Dirección */}
       <div>
-        <label className="block text-xs font-medium text-slate-500 mb-1">Horarios</label>
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Contacto & Dirección</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="block text-xs font-medium text-slate-500 mb-1">Dirección</label><input type="text" value={content.address || ''} onChange={e => onChange({ ...content, address: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
+          <div><label className="block text-xs font-medium text-slate-500 mb-1">Teléfono</label><input type="text" value={content.phone || ''} onChange={e => onChange({ ...content, phone: e.target.value })} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
+          <div className="col-span-2"><label className="block text-xs font-medium text-slate-500 mb-1">WhatsApp (solo números, con código de país)</label><input type="text" value={content.whatsapp || ''} onChange={e => onChange({ ...content, whatsapp: e.target.value })} placeholder="Ej: 5493804123456" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" /></div>
+        </div>
+      </div>
+
+      {/* Redes Sociales */}
+      <div>
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Redes Sociales</p>
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-black">IG</span>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Instagram (URL completa)</label>
+              <input
+                type="url"
+                value={content.instagram || ''}
+                onChange={e => onChange({ ...content, instagram: e.target.value })}
+                placeholder="https://instagram.com/tucuenta"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-black">FB</span>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">Facebook (URL completa)</label>
+              <input
+                type="url"
+                value={content.facebook || ''}
+                onChange={e => onChange({ ...content, facebook: e.target.value })}
+                placeholder="https://facebook.com/tupagina"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-black">TK</span>
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">TikTok (URL completa)</label>
+              <input
+                type="url"
+                value={content.tiktok || ''}
+                onChange={e => onChange({ ...content, tiktok: e.target.value })}
+                placeholder="https://tiktok.com/@tucuenta"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Horarios */}
+      <div>
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Horarios de Atención</p>
         {hours.map((h, i) => (
           <div key={i} className="flex gap-2 mb-2">
             <input type="text" value={h.day} onChange={e => updHour(i, 'day', e.target.value)} placeholder="Ej: Lun - Vie" className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" />

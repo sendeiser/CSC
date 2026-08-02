@@ -215,15 +215,15 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-headline font-bold text-slate-900">Gestión de Pedidos</h1>
+          <h1 className="text-xl sm:text-2xl font-headline font-bold text-slate-900">Pedidos <span className="text-purple-600">({orders.length})</span></h1>
           <p className="text-xs text-slate-500 mt-0.5">{orders.length} pedidos registrados en total</p>
         </div>
         <button
           onClick={() => setShowManualSaleModal(true)}
-          className="flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors w-full sm:w-auto"
+          className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-200/60 transition-all hover:-translate-y-0.5 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" />
-          <span>Registrar Venta Presencial / Manual</span>
+          <span>Venta Presencial / Manual</span>
         </button>
       </div>
 
@@ -345,13 +345,79 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
         </div>
       )}
 
-      {/* Orders Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+      {/* Orders Mobile: Card List */}
+      <div className="sm:hidden space-y-2">
+        {filteredOrders.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-100 p-10 text-center text-slate-400 text-sm shadow-sm">
+            No se encontraron pedidos.
+          </div>
+        ) : (
+          filteredOrders.map((o) => {
+            const customerName = o.shipping_name || o.profiles?.name || 'Cliente sin nombre';
+            const isSelected = selectedOrderIds.includes(o.id);
+            return (
+              <div key={o.id} className={`bg-white rounded-2xl border p-4 shadow-sm ${
+                isSelected ? 'border-purple-200 bg-purple-50/30' : 'border-slate-100'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelectOrder(o.id)}
+                    className="rounded text-purple-600 w-4 h-4 mt-0.5 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="font-mono text-xs font-black text-purple-700">#{o.id.slice(0, 8).toUpperCase()}</span>
+                      {getStatusBadge(o.status)}
+                    </div>
+                    <p className="font-bold text-slate-900 text-sm truncate">{customerName}</p>
+                    <p className="text-[11px] text-slate-400 truncate">{o.shipping_address || 'Retiro en tienda'}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="font-black text-slate-900 text-base">${Number(o.total || 0).toFixed(2)}</span>
+                      <span className="text-[10px] text-slate-400">{new Date(o.created_at).toLocaleDateString('es-AR')}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-50">
+                  <button
+                    onClick={() => setSelectedOrder(o)}
+                    className="flex-1 inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-bold transition-colors border border-purple-200"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Ver Detalle</span>
+                  </button>
+                  <select
+                    value={o.status}
+                    onChange={(e) => onUpdateStatus(o.id, e.target.value)}
+                    className="flex-1 text-xs border border-slate-200 rounded-xl px-2 py-2 bg-white font-medium focus:ring-1 focus:ring-purple-400 outline-none"
+                  >
+                    <option value="pending">Pendiente</option>
+                    <option value="paid">Pagado</option>
+                    <option value="shipped">Enviado</option>
+                    <option value="delivered">Entregado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                  <button
+                    onClick={() => onDeleteOrder(o.id)}
+                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all flex-shrink-0"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Orders Desktop: Table */}
+      <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
+            <thead className="bg-slate-50/80 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
               <tr>
-                <th className="px-4 py-3 text-left w-10">
+                <th className="px-4 py-3.5 text-left w-10">
                   <input
                     type="checkbox"
                     checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
@@ -359,16 +425,16 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     className="rounded text-purple-600 focus:ring-purple-400 w-4 h-4 cursor-pointer"
                   />
                 </th>
-                <th className="text-left px-4 py-3">ID Pedido</th>
-                <th className="text-left px-4 py-3">Cliente</th>
-                <th className="text-left px-4 py-3 hidden md:table-cell">Productos</th>
-                <th className="text-left px-4 py-3">Total</th>
-                <th className="text-left px-4 py-3">Estado</th>
-                <th className="text-left px-4 py-3 hidden lg:table-cell">Fecha</th>
-                <th className="text-right px-4 py-3">Acciones</th>
+                <th className="text-left px-4 py-3.5">ID Pedido</th>
+                <th className="text-left px-4 py-3.5">Cliente</th>
+                <th className="text-left px-4 py-3.5 hidden md:table-cell">Productos</th>
+                <th className="text-left px-4 py-3.5">Total</th>
+                <th className="text-left px-4 py-3.5">Estado</th>
+                <th className="text-left px-4 py-3.5 hidden lg:table-cell">Fecha</th>
+                <th className="text-right px-4 py-3.5">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-50">
               {filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-10 text-slate-400">
@@ -381,7 +447,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                   const itemsCount = o.order_items?.length || 0;
                   const isSelected = selectedOrderIds.includes(o.id);
                   return (
-                    <tr key={o.id} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}>
+                    <tr key={o.id} className={`hover:bg-slate-50/80 transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}>
                       <td className="px-4 py-3">
                         <input
                           type="checkbox"
@@ -423,7 +489,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                         <div className="flex items-center justify-end space-x-1">
                           <button
                             onClick={() => setSelectedOrder(o)}
-                            className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-xl transition-colors"
                             title="Ver Detalle"
                           >
                             <Eye className="w-4 h-4" />
@@ -441,7 +507,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                           </select>
                           <button
                             onClick={() => onDeleteOrder(o.id)}
-                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                             title="Eliminar Pedido"
                           >
                             <Trash2 className="w-4 h-4" />

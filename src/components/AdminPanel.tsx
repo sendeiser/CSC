@@ -520,7 +520,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
   ]
 
   return (
-    <div className="min-h-screen bg-slate-100 flex">
+    <div className="min-h-screen bg-slate-100 flex font-admin">
       {/* Mobile overlay */}
       <AnimatePresence>
         {mobileSidebarOpen && (
@@ -556,7 +556,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto scrollbar-dark">
           {navItems.map(item => {
             const isActive = section === item.id
             return (
@@ -1048,7 +1048,67 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                     </div>
                   )}
 
-                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                  {/* Mobile: Card List */}
+                  <div className="sm:hidden space-y-2">
+                    {products
+                      .filter((p) => {
+                        const matchesSearch =
+                          (p.name || '').toLowerCase().includes(productSearchTerm.toLowerCase()) ||
+                          (p.category || '').toLowerCase().includes(productSearchTerm.toLowerCase());
+                        const matchesCategory = productCategoryFilter === 'all' || p.category === productCategoryFilter;
+                        const matchesStock = productStockFilter === 'all' ? true : productStockFilter === 'in_stock' ? p.stock > 0 : p.stock <= 0;
+                        return matchesSearch && matchesCategory && matchesStock;
+                      })
+                      .sort((a, b) => {
+                        if (productSortBy === 'price_asc') return a.base_price - b.base_price;
+                        if (productSortBy === 'price_desc') return b.base_price - a.base_price;
+                        if (productSortBy === 'stock_desc') return b.stock - a.stock;
+                        if (productSortBy === 'name_asc') return a.name.localeCompare(b.name);
+                        return 0;
+                      })
+                      .map((p) => (
+                        <div key={p.id} className={`bg-white rounded-2xl border p-3.5 flex items-center gap-3 shadow-sm ${
+                          selectedProductIds.includes(p.id) ? 'border-purple-200 bg-purple-50/30' : 'border-slate-100'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={selectedProductIds.includes(p.id)}
+                            onChange={() => toggleSelectProduct(p.id)}
+                            className="rounded text-purple-600 w-4 h-4 flex-shrink-0"
+                          />
+                          <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded-xl object-cover bg-slate-100 flex-shrink-0 border border-slate-100" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-slate-900 text-sm truncate">{p.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-slate-400">{p.category}</span>
+                              <span className="font-black text-purple-700 text-xs">${p.base_price.toFixed(2)}</span>
+                            </div>
+                            <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${
+                              p.stock > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+                            }`}>
+                              {p.stock > 0 ? '● ' : '○ '}{p.stock}{p.unit_type === 'weight' ? 'g' : ' uds'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => { setEditingProduct(p); setShowProductForm(true) }}
+                              className="p-2 text-slate-400 hover:text-purple-700 hover:bg-purple-50 rounded-xl transition-all"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteProduct(p.id)}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Desktop: Table */}
+                  <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-slate-50/80 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
@@ -1106,9 +1166,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center space-x-3">
-                                    <img src={p.image_url} alt={p.name} className="w-11 h-11 rounded-xl object-cover bg-slate-100 flex-shrink-0 hidden sm:block border border-slate-100 shadow-sm" />
+                                    <img src={p.image_url} alt={p.name} className="w-11 h-11 rounded-xl object-cover bg-slate-100 flex-shrink-0 border border-slate-100 shadow-sm" />
                                     <div>
-                                      <span className="font-semibold text-slate-900 truncate max-w-[120px] sm:max-w-[200px] block">{p.name}</span>
+                                      <span className="font-semibold text-slate-900 truncate max-w-[200px] block">{p.name}</span>
                                       <span className="text-[10px] text-slate-400 block md:hidden">{p.category}</span>
                                     </div>
                                   </div>
@@ -1181,10 +1241,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                      <h1 className="text-2xl font-headline font-bold text-slate-900">CRM & Gestión de Clientes</h1>
-                      <p className="text-xs text-slate-500 mt-0.5">{users.length} usuarios y clientes registrados</p>
+                      <h1 className="text-xl sm:text-2xl font-headline font-bold text-slate-900">CRM <span className="text-purple-600">&amp; Clientes</span></h1>
+                      <p className="text-xs text-slate-500 mt-0.5">{users.length} usuarios registrados</p>
                     </div>
-                    <button onClick={() => { setNewUser({ email: '', password: '', name: '', role: 'admin' }); setShowCreateUser(true) }} className="flex items-center justify-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 w-full sm:w-auto shadow-sm">
+                    <button
+                      onClick={() => { setNewUser({ email: '', password: '', name: '', role: 'admin' }); setShowCreateUser(true) }}
+                      className="flex items-center justify-center space-x-2 px-5 py-2.5 candy-gradient-bg text-white rounded-xl text-sm font-bold hover:opacity-95 w-full sm:w-auto shadow-lg shadow-purple-300/40 transition-all hover:-translate-y-0.5"
+                    >
                       <Plus className="w-4 h-4" /><span>Crear Admin</span>
                     </button>
                   </div>
@@ -1203,7 +1266,64 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+                  {/* Mobile: User Cards */}
+                  <div className="sm:hidden space-y-2">
+                    {users
+                      .filter(u =>
+                        (u.name || '').toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                        (u.role || '').toLowerCase().includes(userSearchTerm.toLowerCase())
+                      )
+                      .map((u: any) => {
+                        const ordersCount = u.ordersCount || 0;
+                        const totalSpent = u.totalSpent || 0;
+                        return (
+                          <div key={u.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-sm">
+                                {(u.name || 'U').slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-slate-900 truncate text-sm">{u.name || 'Cliente sin nombre'}</p>
+                                <p className="text-[10px] font-mono text-slate-400">ID: {u.id.slice(0, 8)}</p>
+                              </div>
+                              <span className={`px-2 py-1 rounded-full text-xs font-bold flex-shrink-0 ${
+                                u.role === 'admin' ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-slate-100 text-slate-600'
+                              }`}>{u.role}</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                              <div className="bg-slate-50 rounded-xl p-2 text-center">
+                                <p className="text-[10px] text-slate-400 font-medium">Pedidos</p>
+                                <p className="font-black text-slate-900 text-sm">{ordersCount}</p>
+                              </div>
+                              <div className="bg-purple-50 rounded-xl p-2 text-center">
+                                <p className="text-[10px] text-purple-600 font-medium">Total gastado</p>
+                                <p className="font-black text-purple-800 text-sm">${totalSpent.toFixed(2)}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setSelectedCustomer(u)}
+                                className="flex-1 inline-flex items-center justify-center space-x-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-bold transition-colors border border-purple-200"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Ver Ficha CRM</span>
+                              </button>
+                              <select
+                                value={u.role}
+                                onChange={(e) => updateUserRole(u.id, e.target.value)}
+                                className="text-xs border border-slate-200 rounded-xl px-2 py-2 bg-white font-medium outline-none focus:ring-1 focus:ring-purple-400"
+                              >
+                                <option value="customer">customer</option>
+                                <option value="admin">admin</option>
+                              </select>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+                  {/* Desktop: Table */}
+                  <div className="hidden sm:block bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead className="bg-slate-50/80 text-slate-400 text-[11px] uppercase tracking-wider border-b border-slate-100">
