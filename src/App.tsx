@@ -307,15 +307,17 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <Header
-        activeScreen={activeScreen}
-        setActiveScreen={setActiveScreen}
-        cart={cart}
-        session={session}
-        setSession={setSession}
-      />
+      {activeScreen !== 'admin' && (
+        <Header
+          activeScreen={activeScreen}
+          setActiveScreen={setActiveScreen}
+          cart={cart}
+          session={session}
+          setSession={setSession}
+        />
+      )}
 
-      <main className="flex-1">
+      <main className={activeScreen === 'admin' ? 'min-h-screen bg-slate-100' : 'flex-1'}>
         <AnimatePresence mode="wait">
           {activeScreen === 'inicio' && (
             <motion.div key="inicio" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
@@ -389,100 +391,104 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-slate-300 pt-14 pb-8 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 pb-10 border-b border-white/10">
-            {/* Brand */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-full candy-gradient-bg flex items-center justify-center shadow-md">
-                  <Sparkles className="w-4.5 h-4.5 text-white" />
+      {activeScreen !== 'admin' && (
+        <>
+          <footer className="bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 text-slate-300 pt-14 pb-8 border-t border-white/5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-10 pb-10 border-b border-white/10">
+                {/* Brand */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-9 h-9 rounded-full candy-gradient-bg flex items-center justify-center shadow-md">
+                      <Sparkles className="w-4.5 h-4.5 text-white" />
+                    </div>
+                    <div>
+                      <span className="font-headline font-extrabold text-lg text-white tracking-tight">Chamical</span>
+                      <span className="text-purple-400 font-semibold text-lg"> Candy Shop</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
+                    Gomitas, chocolates, caramelos y más — vendemos por granel para que compres justo lo que querés.
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <span className="inline-flex items-center space-x-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-500/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Tienda física y online</span>
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-headline font-extrabold text-lg text-white tracking-tight">Chamical</span>
-                  <span className="text-purple-400 font-semibold text-lg"> Candy Shop</span>
+
+                {/* Links */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Navegación</h4>
+                  <ul className="space-y-2.5">
+                    {[
+                      { label: 'Inicio', screen: 'inicio' },
+                      { label: 'Catálogo', screen: 'catalogo' },
+                      { label: 'Nosotros', screen: 'nosotros' },
+                    ].map(({ label, screen }) => (
+                      <li key={screen}>
+                        <button
+                          onClick={() => setActiveScreen(screen as any)}
+                          className="text-sm text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-flex transform duration-150"
+                        >
+                          {label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Contact */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Contacto</h4>
+                  <ul className="space-y-3">
+                    <li>
+                      <a
+                        href={`https://wa.me/5493827400000`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center space-x-2 text-sm text-slate-400 hover:text-emerald-400 transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4 text-emerald-500" />
+                        <span>WhatsApp</span>
+                      </a>
+                    </li>
+                    <li className="flex items-center space-x-2 text-sm text-slate-400">
+                      <span className="text-pink-400">📍</span>
+                      <span>Chamical, La Rioja, Argentina</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
-              <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
-                Gomitas, chocolates, caramelos y más — vendemos por granel para que compres justo lo que querés.
-              </p>
-              <div className="flex items-center space-x-2">
-                <span className="inline-flex items-center space-x-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Tienda física y online</span>
-                </span>
+
+              <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+                <p>&copy; {new Date().getFullYear()} Chamical Candy Shop. Todos los derechos reservados.</p>
+                <p className="text-slate-700">Hecho con 🍬 en Chamical, La Rioja</p>
               </div>
             </div>
+          </footer>
 
-            {/* Links */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Navegación</h4>
-              <ul className="space-y-2.5">
-                {[
-                  { label: 'Inicio', screen: 'inicio' },
-                  { label: 'Catálogo', screen: 'catalogo' },
-                  { label: 'Nosotros', screen: 'nosotros' },
-                ].map(({ label, screen }) => (
-                  <li key={screen}>
-                    <button
-                      onClick={() => setActiveScreen(screen as any)}
-                      className="text-sm text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-flex transform duration-150"
-                    >
-                      {label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div className="space-y-4">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500">Contacto</h4>
-              <ul className="space-y-3">
-                <li>
-                  <a
-                    href={`https://wa.me/5493827400000`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-2 text-sm text-slate-400 hover:text-emerald-400 transition-colors"
-                  >
-                    <MessageCircle className="w-4 h-4 text-emerald-500" />
-                    <span>WhatsApp</span>
-                  </a>
-                </li>
-                <li className="flex items-center space-x-2 text-sm text-slate-400">
-                  <span className="text-pink-400">📍</span>
-                  <span>Chamical, La Rioja, Argentina</span>
-                </li>
-              </ul>
-            </div>
+          {/* WhatsApp floating button */}
+          <div className="fixed bottom-6 right-5 z-50 group">
+            {/* Ping rings */}
+            <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping-slow opacity-60" />
+            <a
+              href={waLink('Hola! Quiero hacer una consulta.')}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Escribinos por WhatsApp"
+              className="relative w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-2xl shadow-emerald-400/40 hover:bg-emerald-600 hover:scale-110 transition-all duration-300"
+            >
+              <MessageCircle className="w-7 h-7" />
+            </a>
+            {/* Tooltip */}
+            <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg">
+              Escribinos 💬
+            </span>
           </div>
-
-          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
-            <p>&copy; {new Date().getFullYear()} Chamical Candy Shop. Todos los derechos reservados.</p>
-            <p className="text-slate-700">Hecho con 🍬 en Chamical, La Rioja</p>
-          </div>
-        </div>
-      </footer>
-
-      {/* WhatsApp floating button */}
-      <div className="fixed bottom-6 right-5 z-50 group">
-        {/* Ping rings */}
-        <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping-slow opacity-60" />
-        <a
-          href={waLink('Hola! Quiero hacer una consulta.')}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Escribinos por WhatsApp"
-          className="relative w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-2xl shadow-emerald-400/40 hover:bg-emerald-600 hover:scale-110 transition-all duration-300"
-        >
-          <MessageCircle className="w-7 h-7" />
-        </a>
-        {/* Tooltip */}
-        <span className="absolute right-16 top-1/2 -translate-y-1/2 bg-slate-900 text-white text-xs font-semibold px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none shadow-lg">
-          Escribinos 💬
-        </span>
-      </div>
+        </>
+      )}
     </div>
   );
 }

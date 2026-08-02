@@ -125,14 +125,14 @@ export const Header: React.FC<HeaderProps> = ({
               {session.isLoggedIn && session.role === 'admin' && (
                 <button
                   onClick={() => setActiveScreen('admin')}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${
                     activeScreen === 'admin'
                       ? 'bg-purple-600 text-white shadow-md'
-                      : 'text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200'
+                      : 'text-purple-700 bg-purple-100/80 hover:bg-purple-200/80 border border-purple-300'
                   }`}
                 >
                   <Settings className="w-3.5 h-3.5" />
-                  <span>Admin</span>
+                  <span>Panel Admin</span>
                 </button>
               )}
 
@@ -141,8 +141,13 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="w-7 h-7 rounded-full candy-gradient-bg flex items-center justify-center text-white text-[10px] font-bold shadow-sm">
                     {getInitials(session.name)}
                   </div>
-                  <span className="text-xs text-purple-700 font-semibold pr-1">
-                    {session.name?.split(' ')[0]}
+                  <span className="text-xs text-purple-700 font-semibold pr-1 flex items-center gap-1">
+                    <span>{session.name?.split(' ')[0]}</span>
+                    {session.role === 'admin' && (
+                      <span className="text-[9px] bg-purple-600 text-white px-1.5 py-0.5 rounded-full font-black uppercase tracking-wider">
+                        Admin
+                      </span>
+                    )}
                   </span>
                   <button
                     onClick={handleLogout}

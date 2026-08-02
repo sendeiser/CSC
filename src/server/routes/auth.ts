@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express'
 import { supabase, serviceClient } from '../lib/supabase'
-import { requireAuth, AuthenticatedRequest } from '../lib/auth'
+import { requireAuth, AuthenticatedRequest, isEmailAdmin } from '../lib/auth'
 
 const router = Router()
 
@@ -54,12 +54,24 @@ router.post('/login', async (req: Request, res: Response) => {
     .eq('id', data.user.id)
     .maybeSingle()
 
+  const userEmail = data.user.email || ''
+  const isAdmin = isEmailAdmin(userEmail) || profile?.role === 'admin'
+  const resolvedRole = isAdmin ? 'admin' : (profile?.role || 'customer')
+
+  if (isAdmin && profile?.role !== 'admin') {
+    await db.from('profiles').upsert({
+      id: data.user.id,
+      name: profile?.name || userEmail.split('@')[0],
+      role: 'admin'
+    })
+  }
+
   res.json({
     user: {
       id: data.user.id,
       email: data.user.email,
       name: profile?.name || data.user.email?.split('@')[0],
-      role: profile?.role || 'customer'
+      role: resolvedRole
     },
     session: data.session
   })
@@ -81,11 +93,15 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) 
     .eq('id', req.user!.id)
     .maybeSingle()
 
-  if (!profile) {
-    await db.from('profiles').insert({
+  const userEmail = req.user!.email || ''
+  const isAdmin = isEmailAdmin(userEmail) || profile?.role === 'admin' || req.user?.role === 'admin'
+  const resolvedRole = isAdmin ? 'admin' : (profile?.role || req.user?.role || 'customer')
+
+  if (!profile || (isAdmin && profile.role !== 'admin')) {
+    await db.from('profiles').upsert({
       id: req.user!.id,
-      name: req.user!.email?.split('@')[0] || 'Usuario',
-      role: req.user!.role || 'customer'
+      name: profile?.name || userEmail.split('@')[0] || 'Usuario',
+      role: resolvedRole
     })
   }
 
@@ -93,7 +109,7 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) 
     id: req.user!.id,
     email: req.user!.email,
     name: profile?.name || req.user!.email?.split('@')[0],
-    role: profile?.role || req.user!.role || 'customer',
+    role: resolvedRole,
     created_at: profile?.created_at
   })
 })

@@ -9,6 +9,18 @@ export interface AuthenticatedRequest extends Request {
   }
 }
 
+export function isEmailAdmin(email?: string): boolean {
+  if (!email) return false
+  const adminEmails = [
+    process.env.TEST_ADMIN_EMAIL,
+    process.env.ADMIN_EMAIL,
+    process.env.ADMIN_EMAILS,
+    'martingt010@gmail.com'
+  ].filter(Boolean).map(e => e!.toLowerCase().trim())
+
+  return adminEmails.includes(email.toLowerCase().trim())
+}
+
 export async function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const token = req.headers.authorization?.replace('Bearer ', '')
   if (!token) {
@@ -29,10 +41,14 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     .eq('id', data.user.id)
     .maybeSingle()
 
+  const userEmail = data.user.email || ''
+  const isAdmin = isEmailAdmin(userEmail) || profile?.role === 'admin'
+  const resolvedRole = isAdmin ? 'admin' : (profile?.role || 'customer')
+
   req.user = {
     id: data.user.id,
-    email: data.user.email || '',
-    role: profile?.role || 'customer'
+    email: userEmail,
+    role: resolvedRole
   }
 
   next()
@@ -58,10 +74,14 @@ export async function requireAdmin(req: AuthenticatedRequest, res: Response, nex
     .eq('id', data.user.id)
     .maybeSingle()
 
+  const userEmail = data.user.email || ''
+  const isAdmin = isEmailAdmin(userEmail) || profile?.role === 'admin'
+  const resolvedRole = isAdmin ? 'admin' : (profile?.role || 'customer')
+
   req.user = {
     id: data.user.id,
-    email: data.user.email || '',
-    role: profile?.role || 'customer'
+    email: userEmail,
+    role: resolvedRole
   }
 
   if (req.user.role !== 'admin') {
