@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { supabase } from './supabase'
+import { supabase, serviceClient } from './supabase'
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -22,7 +22,8 @@ export async function requireAuth(req: AuthenticatedRequest, res: Response, next
     return
   }
 
-  const { data: profile } = await supabase
+  const db = serviceClient || supabase
+  const { data: profile } = await db
     .from('profiles')
     .select('role')
     .eq('id', data.user.id)
@@ -50,7 +51,8 @@ export async function requireAdmin(req: AuthenticatedRequest, res: Response, nex
     return
   }
 
-  const { data: profile } = await supabase
+  const db = serviceClient || supabase
+  const { data: profile } = await db
     .from('profiles')
     .select('role')
     .eq('id', data.user.id)

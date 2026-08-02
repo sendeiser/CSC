@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express'
-import { supabase } from '../lib/supabase'
+import { supabase, serviceClient } from '../lib/supabase'
 import { requireAuth, AuthenticatedRequest } from '../lib/auth'
 
 const router = Router()
@@ -47,7 +47,8 @@ router.post('/login', async (req: Request, res: Response) => {
     return
   }
 
-  const { data: profile } = await supabase
+  const db = serviceClient || supabase
+  const { data: profile } = await db
     .from('profiles')
     .select('*')
     .eq('id', data.user.id)
@@ -73,25 +74,26 @@ router.post('/logout', async (req: Request, res: Response) => {
 })
 
 router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { data: profile } = await supabase
+  const db = serviceClient || supabase
+  const { data: profile } = await db
     .from('profiles')
     .select('*')
     .eq('id', req.user!.id)
     .maybeSingle()
 
   if (!profile) {
-    await supabase.from('profiles').insert({
+    await db.from('profiles').insert({
       id: req.user!.id,
-      name: req.user!.email.split('@')[0],
-      role: 'customer'
+      name: req.user!.email?.split('@')[0] || 'Usuario',
+      role: req.user!.role || 'customer'
     })
   }
 
   res.json({
     id: req.user!.id,
     email: req.user!.email,
-    name: profile?.name || req.user!.email.split('@')[0],
-    role: profile?.role || 'customer',
+    name: profile?.name || req.user!.email?.split('@')[0],
+    role: profile?.role || req.user!.role || 'customer',
     created_at: profile?.created_at
   })
 })
