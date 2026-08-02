@@ -1,32 +1,198 @@
 import React, { useState } from 'react';
-import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2 } from 'lucide-react';
+import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign } from 'lucide-react';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
+import { admin as adminApi } from '../lib/api';
+import { useModal } from '../context/ModalContext';
 
 interface AdminOrdersSectionProps {
   orders: any[];
+  products?: any[];
   onUpdateStatus: (id: string, status: string) => Promise<void>;
   onDeleteOrder: (id: string) => Promise<void>;
+  onRefreshOrders?: () => Promise<void>;
 }
 
 export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
   orders,
+  products = [],
   onUpdateStatus,
   onDeleteOrder,
+  onRefreshOrders,
 }) => {
+  const { showConfirm, showAlert } = useModal();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('newest');
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
-  const filteredOrders = orders.filter((o) => {
-    const matchesSearch =
-      o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (o.shipping_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (o.profiles?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (o.shipping_address || '').toLowerCase().includes(searchTerm.toLowerCase());
+  // Manual Sale Modal State
+  const [showManualSaleModal, setShowManualSaleModal] = useState(false);
+  const [manualCustomerName, setManualCustomerName] = useState('Venta Presencial');
+  const [manualAddress, setManualAddress] = useState('Venta en Mostrador (Efectivo / Posnet)');
+  const [manualStatus, setManualStatus] = useState('paid');
+  const [manualPaymentMethod, setManualPaymentMethod] = useState('Efectivo');
+  const [manualItems, setManualItems] = useState<any[]>([]);
 
-    const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Current item builder
+  const [selectedProdId, setSelectedProdId] = useState('');
+  const [builderQty, setBuilderQty] = useState(1);
+  const [builderWeightGrams, setBuilderWeightGrams] = useState(250);
+  const [builderUnitPrice, setBuilderUnitPrice] = useState(0);
+  const [submittingManualOrder, setSubmittingManualOrder] = useState(false);
+
+  const handleSelectProduct = (prodId: string) => {
+    setSelectedProdId(prodId);
+    const prod = products.find(p => p.id === prodId);
+    if (prod) {
+      setBuilderUnitPrice(prod.base_price || 0);
+      if (prod.unit_type === 'weight') {
+        setBuilderWeightGrams(prod.min_weight || 250);
+      } else {
+        setBuilderQty(1);
+      }
+    }
+  };
+
+  const handleAddItemToManualSale = () => {
+    if (!selectedProdId) {
+      showAlert({ title: 'Atención', message: 'Selecciona un producto del catálogo.', type: 'warning' });
+      return;
+    }
+    const prod = products.find(p => p.id === selectedProdId);
+    if (!prod) return;
+
+    const isWeight = prod.unit_type === 'weight';
+    const quantity = isWeight ? 1 : Math.max(1, Number(builderQty));
+    const weightGrams = isWeight ? Math.max(50, Number(builderWeightGrams)) : undefined;
+
+    // Calculate effective item price
+    let itemPrice = Number(builderUnitPrice);
+    if (isWeight) {
+      itemPrice = (Number(prod.base_price) * weightGrams!) / 1000;
+    }
+
+    setManualItems(prev => [
+      ...prev,
+      {
+        product_id: prod.id,
+        name: prod.name,
+        image_url: prod.image_url,
+        quantity,
+        weight_grams: weightGrams,
+        unit_price: itemPrice,
+        unit_type: prod.unit_type,
+      }
+    ]);
+
+    // Reset selector
+    setSelectedProdId('');
+    setBuilderUnitPrice(0);
+  };
+
+  const handleRemoveManualItem = (index: number) => {
+    setManualItems(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleSaveManualOrder = async () => {
+    if (!manualItems.length) {
+      showAlert({ title: 'Error', message: 'Agrega al menos un producto a la venta manual.', type: 'warning' });
+      return;
+    }
+    setSubmittingManualOrder(true);
+    try {
+      await adminApi.createManualOrder({
+        shipping_name: manualCustomerName || 'Venta Presencial',
+        shipping_address: manualAddress || 'Mostrador',
+        status: manualStatus,
+        payment_method: manualPaymentMethod,
+        items: manualItems,
+      });
+      showAlert({ title: '¡Venta Registrada!', message: 'La venta manual fue registrada con éxito y el stock fue actualizado.', type: 'info' });
+      setShowManualSaleModal(false);
+      setManualItems([]);
+      if (onRefreshOrders) await onRefreshOrders();
+    } catch (err: any) {
+      showAlert({ title: 'Error', message: err.message || 'Error al guardar la venta manual', type: 'error' });
+    } finally {
+      setSubmittingManualOrder(false);
+    }
+  };
+
+  const now = new Date().getTime();
+  const todayStart = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
+  const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+
+  const filteredOrders = orders
+    .filter((o) => {
+      const matchesSearch =
+        o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (o.shipping_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (o.profiles?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (o.shipping_address || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
+
+      const orderTime = new Date(o.created_at).getTime();
+      let matchesDate = true;
+      if (dateFilter === 'today') matchesDate = orderTime >= todayStart;
+      else if (dateFilter === '7days') matchesDate = orderTime >= sevenDaysAgo;
+      else if (dateFilter === '30days') matchesDate = orderTime >= thirtyDaysAgo;
+
+      return matchesSearch && matchesStatus && matchesDate;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      if (sortBy === 'amount_desc') return Number(b.total || 0) - Number(a.total || 0);
+      if (sortBy === 'amount_asc') return Number(a.total || 0) - Number(b.total || 0);
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+  const handleSelectAllOrders = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedOrderIds(filteredOrders.map((o) => o.id));
+    } else {
+      setSelectedOrderIds([]);
+    }
+  };
+
+  const toggleSelectOrder = (id: string) => {
+    setSelectedOrderIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDeleteOrders = async () => {
+    if (!selectedOrderIds.length) return;
+    const confirmed = await showConfirm({
+      title: '¿Eliminar pedidos seleccionados?',
+      message: `Se eliminarán ${selectedOrderIds.length} pedidos seleccionados permanentemente.`,
+      confirmText: `Eliminar (${selectedOrderIds.length})`,
+      type: 'danger',
+    });
+    if (!confirmed) return;
+
+    try {
+      await adminApi.bulkDeleteOrders(selectedOrderIds);
+      setSelectedOrderIds([]);
+      if (onRefreshOrders) await onRefreshOrders();
+    } catch (e: any) {
+      showAlert({ title: 'Error', message: e.message || 'Error al eliminar pedidos', type: 'error' });
+    }
+  };
+
+  const handleBulkStatusChange = async (newStatus: string) => {
+    if (!selectedOrderIds.length || !newStatus) return;
+    try {
+      await adminApi.bulkUpdateOrderStatus(selectedOrderIds, newStatus);
+      setSelectedOrderIds([]);
+      if (onRefreshOrders) await onRefreshOrders();
+    } catch (e: any) {
+      showAlert({ title: 'Error', message: e.message || 'Error al actualizar estados', type: 'error' });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -50,27 +216,64 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
           <h1 className="text-2xl font-headline font-bold text-slate-900">Gestión de Pedidos</h1>
           <p className="text-xs text-slate-500 mt-0.5">{orders.length} pedidos registrados en total</p>
         </div>
+        <button
+          onClick={() => setShowManualSaleModal(true)}
+          className="flex items-center justify-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition-colors w-full sm:w-auto"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Registrar Venta Presencial / Manual</span>
+        </button>
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="relative col-span-1 sm:col-span-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Buscar por ID, cliente o dirección..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-400 outline-none"
             />
+          </div>
+
+          {/* Date Filter Dropdown */}
+          <div className="flex items-center space-x-2 border border-slate-200 rounded-xl px-3 py-1.5 bg-white">
+            <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-full text-xs font-semibold text-slate-700 outline-none bg-transparent cursor-pointer"
+            >
+              <option value="all">Todas las fechas</option>
+              <option value="today">Creados Hoy</option>
+              <option value="7days">Últimos 7 Días</option>
+              <option value="30days">Este Mes (30 días)</option>
+            </select>
+          </div>
+
+          {/* Sort Filter Dropdown */}
+          <div className="flex items-center space-x-2 border border-slate-200 rounded-xl px-3 py-1.5 bg-white">
+            <ArrowUpDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full text-xs font-semibold text-slate-700 outline-none bg-transparent cursor-pointer"
+            >
+              <option value="newest">Más recientes primero</option>
+              <option value="oldest">Más antiguos primero</option>
+              <option value="amount_desc">Monto: Mayor a Menor</option>
+              <option value="amount_asc">Monto: Menor a Mayor</option>
+            </select>
           </div>
         </div>
 
-        {/* Status Filters */}
-        <div className="flex flex-wrap gap-2 pt-1">
+        {/* Status Filters Pills */}
+        <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
           {[
-            { id: 'all', label: 'Todos' },
+            { id: 'all', label: 'Todos los Estados' },
             { id: 'pending', label: 'Pendientes' },
             { id: 'paid', label: 'Pagados' },
             { id: 'shipped', label: 'Enviados' },
@@ -92,12 +295,68 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
         </div>
       </div>
 
+      {/* Bulk Action Bar for Orders */}
+      {selectedOrderIds.length > 0 && (
+        <div className="bg-purple-900 text-white p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-lg animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center space-x-2 px-2">
+            <span className="w-6 h-6 rounded-full bg-purple-700 flex items-center justify-center text-xs font-bold">
+              {selectedOrderIds.length}
+            </span>
+            <span className="text-xs font-semibold">pedidos seleccionados</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-1.5 bg-purple-800 rounded-xl px-3 py-1.5 border border-purple-700">
+              <span className="text-xs text-purple-200 font-medium">Cambiar estado:</span>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) handleBulkStatusChange(e.target.value);
+                  e.target.value = '';
+                }}
+                defaultValue=""
+                className="bg-white text-purple-950 text-xs font-bold rounded-lg px-2 py-1 outline-none cursor-pointer"
+              >
+                <option value="" disabled>Seleccionar estado</option>
+                <option value="pending">Pendiente</option>
+                <option value="paid">Pagado</option>
+                <option value="shipped">Enviado</option>
+                <option value="delivered">Entregado</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
+            </div>
+
+            <button
+              onClick={handleBulkDeleteOrders}
+              className="flex items-center space-x-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-xl shadow transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Eliminar</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedOrderIds([])}
+              className="px-3 py-2 bg-purple-800 hover:bg-purple-700 text-white text-xs font-semibold rounded-xl transition-colors"
+            >
+              Desmarcar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Orders Table */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase border-b border-slate-200">
               <tr>
+                <th className="px-4 py-3 text-left w-10">
+                  <input
+                    type="checkbox"
+                    checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
+                    onChange={handleSelectAllOrders}
+                    className="rounded text-purple-600 focus:ring-purple-400 w-4 h-4 cursor-pointer"
+                  />
+                </th>
                 <th className="text-left px-4 py-3">ID Pedido</th>
                 <th className="text-left px-4 py-3">Cliente</th>
                 <th className="text-left px-4 py-3 hidden md:table-cell">Productos</th>
@@ -110,7 +369,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-400">
+                  <td colSpan={8} className="text-center py-10 text-slate-400">
                     No se encontraron pedidos.
                   </td>
                 </tr>
@@ -118,8 +377,17 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                 filteredOrders.map((o) => {
                   const customerName = o.shipping_name || o.profiles?.name || 'Cliente sin nombre';
                   const itemsCount = o.order_items?.length || 0;
+                  const isSelected = selectedOrderIds.includes(o.id);
                   return (
-                    <tr key={o.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={o.id} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}>
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectOrder(o.id)}
+                          className="rounded text-purple-600 focus:ring-purple-400 w-4 h-4 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-4 py-3 font-mono text-xs font-bold text-purple-700">
                         #{o.id.slice(0, 8).toUpperCase()}
                       </td>
@@ -303,6 +571,254 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
           </div>
         </div>
       )}
+
+      {/* Manual Sale Creation Modal */}
+      {showManualSaleModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto p-6 space-y-6 shadow-2xl">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <span className="p-1.5 bg-emerald-100 text-emerald-800 rounded-lg">
+                    <DollarSign className="w-5 h-5" />
+                  </span>
+                  <h3 className="font-headline font-bold text-xl text-slate-900">
+                    Registrar Venta Presencial / Manual
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Registra compras en mostrador, eventos o ventas directas actualizando el inventario automáticamente.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowManualSaleModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Sale Details */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+              <h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider">
+                1. Información de la Venta
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Nombre / Cliente:</label>
+                  <input
+                    type="text"
+                    value={manualCustomerName}
+                    onChange={(e) => setManualCustomerName(e.target.value)}
+                    placeholder="Ej: Venta Mostrador / Juan"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-medium outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Notas / Referencia de Pago:</label>
+                  <input
+                    type="text"
+                    value={manualAddress}
+                    onChange={(e) => setManualAddress(e.target.value)}
+                    placeholder="Ej: Efectivo caja mostrador"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl font-medium outline-none focus:ring-1 focus:ring-purple-400 bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Método de Pago:</label>
+                  <select
+                    value={manualPaymentMethod}
+                    onChange={(e) => setManualPaymentMethod(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-semibold outline-none bg-white"
+                  >
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Posnet / Tarjeta">Posnet / Tarjeta</option>
+                    <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                    <option value="Mercado Pago QR">Mercado Pago QR</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700 block mb-1">Estado Inicial del Pedido:</label>
+                  <select
+                    value={manualStatus}
+                    onChange={(e) => setManualStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg font-semibold outline-none bg-white text-emerald-800"
+                  >
+                    <option value="paid">Pagado (Ingreso Confirmado)</option>
+                    <option value="delivered">Entregado</option>
+                    <option value="pending">Pendiente de Pago</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Selector */}
+            <div className="bg-purple-50/60 border border-purple-100 rounded-xl p-4 space-y-3">
+              <h4 className="font-bold text-xs uppercase text-purple-900 tracking-wider">
+                2. Seleccionar Producto del Catálogo
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-3">
+                  <select
+                    value={selectedProdId}
+                    onChange={(e) => handleSelectProduct(e.target.value)}
+                    className="w-full px-3 py-2 border border-purple-200 rounded-xl text-xs font-semibold bg-white outline-none focus:ring-2 focus:ring-purple-400"
+                  >
+                    <option value="">-- Selecciona un producto para agregar --</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} - Stock: {p.stock}{p.unit_type === 'weight' ? 'g' : ' uds'} (${p.base_price})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedProdId && (
+                  <>
+                    {products.find(p => p.id === selectedProdId)?.unit_type === 'weight' ? (
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Gramos (g):</label>
+                        <input
+                          type="number"
+                          step={50}
+                          value={builderWeightGrams}
+                          onChange={(e) => {
+                            const weight = Number(e.target.value);
+                            setBuilderWeightGrams(weight);
+                            const prod = products.find(p => p.id === selectedProdId);
+                            if (prod) {
+                              setBuilderUnitPrice((prod.base_price * weight) / 1000);
+                            }
+                          }}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Cantidad (Unidades):</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={builderQty}
+                          onChange={(e) => {
+                            const qty = Math.max(1, Number(e.target.value));
+                            setBuilderQty(qty);
+                            const prod = products.find(p => p.id === selectedProdId);
+                            if (prod) {
+                              setBuilderUnitPrice(prod.base_price * qty);
+                            }
+                          }}
+                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Precio Calculado ($):</label>
+                      <input
+                        type="number"
+                        step={0.01}
+                        value={builderUnitPrice}
+                        onChange={(e) => setBuilderUnitPrice(Number(e.target.value))}
+                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        onClick={handleAddItemToManualSale}
+                        className="w-full px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center space-x-1"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Agregar Ítem</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Added Items Table */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider">
+                3. Productos Agregados a la Venta ({manualItems.length})
+              </h4>
+              {manualItems.length === 0 ? (
+                <div className="p-6 border border-dashed border-slate-200 rounded-xl text-center text-xs text-slate-400">
+                  Aún no agregaste productos a esta venta.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {manualItems.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs">
+                      <div className="flex items-center space-x-3">
+                        {item.image_url && (
+                          <img src={item.image_url} alt={item.name} className="w-9 h-9 rounded-lg object-cover bg-white border border-slate-200" />
+                        )}
+                        <div>
+                          <p className="font-bold text-slate-900">{item.name}</p>
+                          <span className="text-slate-500 text-[11px]">
+                            {item.weight_grams ? `${item.weight_grams}g` : `${item.quantity} uds`}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <span className="font-black text-slate-900">${item.unit_price.toFixed(2)}</span>
+                        <button
+                          onClick={() => handleRemoveManualItem(idx)}
+                          className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Total and Submit */}
+            {(() => {
+              const totalAmount = manualItems.reduce((sum, item) => sum + Number(item.unit_price || 0), 0);
+              return (
+                <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs text-slate-500">Monto Total de la Venta</span>
+                    <p className="text-3xl font-black text-emerald-700">${totalAmount.toFixed(2)}</p>
+                  </div>
+
+                  <div className="flex items-center space-x-3 w-full sm:w-auto">
+                    <button
+                      onClick={() => setShowManualSaleModal(false)}
+                      className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      disabled={submittingManualOrder || manualItems.length === 0}
+                      onClick={handleSaveManualOrder}
+                      className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-lg transition-colors disabled:opacity-50"
+                    >
+                      {submittingManualOrder ? (
+                        <span>Guardando Venta...</span>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Finalizar y Registrar Venta</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Eye, EyeOff, Trash2, Plus, X, Save, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react'
 import { admin as adminApi } from '../lib/api'
+import { useModal } from '../context/ModalContext'
 
 type SectionType = 'about' | 'categories' | 'store' | 'gallery' | 'contact'
 
@@ -142,6 +143,7 @@ function SectionCard({
   onMoveDown: () => void
   onMoveToPosition: (pos: number) => void
 }) {
+  const { showConfirm } = useModal()
   const [title, setTitle] = useState(section.title || '')
   const [subtitle, setSubtitle] = useState(section.subtitle || '')
   const [content, setContent] = useState(section.content || {})
@@ -181,7 +183,13 @@ function SectionCard({
   }
 
   const remove = async () => {
-    if (!confirm('¿Eliminar esta sección?')) return
+    const confirmed = await showConfirm({
+      title: '¿Eliminar sección?',
+      message: 'Se eliminará esta sección de la homepage.',
+      confirmText: 'Eliminar',
+      type: 'danger',
+    })
+    if (!confirmed) return
     setDeleting(true)
     try {
       await adminApi.deleteHomepageSection(section.id)

@@ -81,6 +81,8 @@ export const products = {
 
   delete: (id: string) =>
     request<any>('/products/' + id, { method: 'DELETE' }),
+  bulkDelete: (ids: string[]) =>
+    request<{ message: string }>('/products/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) }),
 }
 
 // Cart
@@ -144,6 +146,12 @@ export const admin = {
     request<any>(`/admin/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   deleteOrder: (id: string) =>
     request<{ message: string }>(`/admin/orders/${id}`, { method: 'DELETE' }),
+  bulkDeleteOrders: (ids: string[]) =>
+    request<{ message: string }>('/admin/orders/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) }),
+  bulkUpdateOrderStatus: (ids: string[], status: string) =>
+    request<{ message: string }>('/admin/orders/bulk-status', { method: 'PUT', body: JSON.stringify({ ids, status }) }),
+  createManualOrder: (data: { shipping_name?: string; shipping_address?: string; status?: string; payment_method?: string; items: any[] }) =>
+    request<any>('/admin/orders/manual', { method: 'POST', body: JSON.stringify(data) }),
   getStats: () => request<{ totalProducts: number; totalUsers: number; totalOrders: number; totalRevenue: number }>('/admin/stats'),
   getPromoCodes: () => request<any[]>('/admin/promo-codes'),
   createPromoCode: (data: any) =>

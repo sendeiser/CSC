@@ -33,7 +33,7 @@ export interface CartItem {
 
 export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros';
 
-export type AdminSection = 'dashboard' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'about-page' | 'categories';
+export type AdminSection = 'dashboard' | 'analytics' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'about-page' | 'categories';
 
 export interface HomepageSection {
   id: string;

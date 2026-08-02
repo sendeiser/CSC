@@ -92,6 +92,30 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
   res.json(data)
 })
 
+router.post('/bulk-delete', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { ids } = req.body
+  if (!Array.isArray(ids) || !ids.length) {
+    res.status(400).json({ error: 'Array de IDs requerido' })
+    return
+  }
+
+  try {
+    await db.from('cart_items').delete().in('product_id', ids)
+    await db.from('product_reviews').delete().in('product_id', ids)
+
+    const { error } = await db.from('products').delete().in('id', ids)
+
+    if (error) {
+      res.status(400).json({ error: error.message })
+      return
+    }
+
+    res.json({ message: `${ids.length} productos eliminados correctamente` })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error al eliminar productos' })
+  }
+})
+
 router.delete('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const productId = req.params.id
 
