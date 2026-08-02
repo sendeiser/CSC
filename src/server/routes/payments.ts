@@ -38,8 +38,8 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
       }
     }
 
-    const shippingCost = subTotal > 150 || subTotal === 0 ? 0 : 35
-    const total = subTotal - discountAmount + shippingCost
+    const shippingCost = 0
+    const total = subTotal - discountAmount
 
     const discountRatio = subTotal > 0 ? (subTotal - discountAmount) / subTotal : 1
 
@@ -49,15 +49,6 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
       quantity: item.weight_grams ? 1 : item.quantity,
       unit_price: Math.max(0.01, Number((item.item_price * discountRatio).toFixed(2))),
     }))
-
-    if (shippingCost > 0) {
-      mpItems.push({
-        id: 'shipping',
-        title: 'Costo de envío',
-        quantity: 1,
-        unit_price: shippingCost,
-      })
-    }
 
     const backUrls = {
       success: `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/?payment_success=1`,

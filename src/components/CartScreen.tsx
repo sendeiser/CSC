@@ -13,7 +13,7 @@ interface CartScreenProps {
   isLoggedIn: boolean;
 }
 
-type CheckoutStep = 'basket' | 'shipping' | 'success';
+type CheckoutStep = 'basket' | 'checkout' | 'success';
 
 export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActiveScreen, isLoggedIn }) => {
   const [step, setStep] = React.useState<CheckoutStep>('basket');
@@ -30,11 +30,11 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [orderId, setOrderId] = React.useState('');
   const [paymentMethod, setPaymentMethod] = React.useState<'mercadopago' | 'transferencia'>('mercadopago');
   const [lastOrderItems, setLastOrderItems] = React.useState<CartItem[]>([]);
+  const [lastOrderTotal, setLastOrderTotal] = React.useState<number>(0);
 
   const subTotal = cart.reduce((acc, item) => acc + (item.itemPrice * item.quantity), 0);
   const discountAmount = activeDiscount ? subTotal * (activeDiscount.percent / 100) : 0;
-  const shippingCost = subTotal > 150 || subTotal === 0 ? 0 : 35.00;
-  const grandTotal = subTotal - discountAmount + shippingCost;
+  const grandTotal = subTotal - discountAmount;
 
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,8 +86,8 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   };
 
   const handleCheckout = async () => {
-    if (!fullName.trim() || !addressLine.trim() || !cityField.trim()) {
-      setShippingError('Todos los campos de envío son obligatorios.');
+    if (!fullName.trim()) {
+      setShippingError('Ingresa tu nombre completo para continuar.');
       return;
     }
     setShippingError('');
@@ -106,7 +106,9 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           shipping_city: cityField,
           promo_code: activeDiscount?.code,
         })
+        const finalTotal = Number(result.total) || grandTotal
         setLastOrderItems(cart)
+        setLastOrderTotal(finalTotal)
         setOrderId(result.id)
         setCart([])
         setStep('success')
@@ -136,6 +138,8 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
       const confirmOrder = async () => {
         try {
           const result = await ordersApi.confirm(paymentId, preferenceId)
+          const finalTotal = Number(result.total) || 0
+          setLastOrderTotal(finalTotal)
           setOrderId(result.id)
           setCart([])
           setStep('success')
@@ -145,7 +149,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           ).join('\n')
 
           const msg = encodeURIComponent(
-            `✅ *Compra confirmada!*\n\n*Pedido:* #${result.id.slice(0, 8).toUpperCase()}\n*Pago:* ${result.payment_id || paymentId}\n\n*Productos:*\n${itemsList}\n\n*Total:* $${Number(result.total).toFixed(2)}\n\nGracias por tu compra! 🚀`
+            `✅ *Compra confirmada!*\n\n*Pedido:* #${result.id.slice(0, 8).toUpperCase()}\n*Pago:* ${result.payment_id || paymentId}\n\n*Productos:*\n${itemsList}\n\n*Total:* $${finalTotal.toFixed(2)}\n\nGracias por tu compra! 🚀`
           )
 
           setTimeout(() => {
@@ -153,13 +157,13 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           }, 1500)
         } catch (err: any) {
           setShippingError(err.message || 'Error al confirmar el pedido')
-          setStep('shipping')
+          setStep('checkout')
         }
       }
       confirmOrder()
     } else if (status === 'failure' || status === 'rejected') {
       setShippingError('El pago no fue procesado o fue rechazado. Intenta de nuevo.')
-      setStep('shipping')
+      setStep('checkout')
     }
   }, [])
 
@@ -174,13 +178,13 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           </div>
           {step !== 'success' && (
             <div className="hidden sm:flex items-center space-x-2 text-sm">
-              {(['basket', 'shipping', 'success'] as const).map((s, i) => (
+              {(['basket', 'checkout', 'success'] as const).map((s, i) => (
                 <React.Fragment key={s}>
                   {i > 0 && <div className="w-6 h-px bg-pink-200" />}
                   <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${
                     step === s ? 'bg-purple-100 text-purple-700' : 'text-gray-400'
                   }`}>
-                    {i + 1}. {s === 'basket' ? 'Bolsa' : s === 'shipping' ? 'Envío' : 'Completado'}
+                    {i + 1}. {s === 'basket' ? 'Bolsa' : s === 'checkout' ? 'Datos y Pago' : 'Completado'}
                   </div>
                 </React.Fragment>
               ))}
@@ -199,8 +203,8 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
             </div>
             <div>
               <h2 className="text-2xl font-headline font-bold text-gray-900">¡Pedido Confirmado!</h2>
-              <p className="text-gray-500 mt-2">Tu pedido #<span className="font-mono font-bold text-purple-700">{orderId.slice(0, 8).toUpperCase()}</span> está siendo procesado.</p>
-              <p className="text-sm text-gray-400 mt-1">{paymentMethod === 'transferencia' ? 'Te esperamos para confirmarlo con el comprobante.' : 'Te contactaremos si hay novedades.'}</p>
+              <p className="text-gray-500 mt-2">Tu pedido #<span className="font-mono font-bold text-purple-700">{orderId.slice(0, 8).toUpperCase()}</span> está listo.</p>
+              <p className="text-sm text-gray-400 mt-1">{paymentMethod === 'transferencia' ? 'Te esperamos para confirmarlo con el comprobante.' : 'Te contactaremos por WhatsApp si hay novedades.'}</p>
             </div>
 
             {paymentMethod === 'transferencia' && (
@@ -220,7 +224,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                 </div>
                 <div className="flex justify-between bg-white rounded-xl px-4 py-2.5 border border-pink-100 text-sm">
                   <span className="text-gray-500">Total a transferir</span>
-                  <span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span>
+                  <span className="font-bold text-purple-700">${lastOrderTotal.toFixed(2)}</span>
                 </div>
                 <a
                   href={waLink(buildMensajePedido({
@@ -230,10 +234,9 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                     addressLine,
                     cityField,
                     phoneField,
-                    subTotal,
-                    discountAmount,
-                    shippingCost,
-                    grandTotal,
+                    subTotal: lastOrderTotal,
+                    discountAmount: 0,
+                    grandTotal: lastOrderTotal,
                     formaPago: 'transferencia',
                   }))}
                   target="_blank"
@@ -246,7 +249,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
               </div>
             )}
             <a
-              href={`https://wa.me/54${phoneField ? phoneField.replace(/\D/g, '') : ''}?text=${encodeURIComponent(`Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`)}`}
+              href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(`Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-colors shadow-md"
@@ -290,7 +293,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                     layout
                     className="flex items-start space-x-4 bg-pink-50/30 border border-pink-100 rounded-2xl p-4"
                   >
-                    <img src={item.product.image_url} alt={item.product.name} className="w-20 h-20 rounded-xl object-cover bg-pink-100 shrink-0" />
+                    <img src={item.product.image_url} alt={item.product.name} decoding="async" loading="lazy" className="w-20 h-20 rounded-xl object-cover bg-pink-100 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h3 className="font-headline font-bold text-sm text-gray-900 truncate">{item.product.name}</h3>
                       <p className="text-[11px] text-gray-500 mt-0.5">{item.weight_grams ? `${item.weight_grams}g` : `Tamaño: ${item.selectedSize}`}</p>
@@ -348,12 +351,11 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="font-semibold">${subTotal.toFixed(2)}</span></div>
                     {discountAmount > 0 && <div className="flex justify-between text-emerald-600"><span>Descuento</span><span>-${discountAmount.toFixed(2)}</span></div>}
-                    <div className="flex justify-between"><span className="text-gray-500">Envío</span><span className="font-semibold">{shippingCost === 0 ? 'GRATIS' : `$${shippingCost.toFixed(2)}`}</span></div>
                     <div className="border-t border-pink-200 pt-2 flex justify-between text-base"><span className="font-bold">Total</span><span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span></div>
                   </div>
 
                   <button
-                    onClick={() => setStep('shipping')}
+                    onClick={() => setStep('checkout')}
                     className="w-full py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2"
                   >
                     <span>Proceder al Pago</span>
@@ -365,31 +367,27 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           </div>
         )}
 
-        {/* Shipping step */}
-        {step === 'shipping' && (
+        {/* Checkout step */}
+        {step === 'checkout' && (
           <div className="max-w-lg mx-auto space-y-6">
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-100 rounded-2xl p-6 sm:p-8 space-y-5">
               <div className="flex items-center space-x-3">
                 <MapPin className="w-6 h-6 text-purple-600" />
-                <h3 className="font-headline font-bold text-gray-900">Dirección de Envío</h3>
+                <h3 className="font-headline font-bold text-gray-900">Datos del Cliente</h3>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Nombre Completo</label>
-                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre" className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Dirección</label>
-                <input type="text" value={addressLine} onChange={(e) => setAddressLine(e.target.value)} placeholder="Calle, número, colonia" className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Nombre Completo *</label>
+                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre y apellido" className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Ciudad</label>
-                  <input type="text" value={cityField} onChange={(e) => setCityField(e.target.value)} placeholder="Ciudad" className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Teléfono (WhatsApp)</label>
+                  <input type="tel" value={phoneField} onChange={(e) => setPhoneField(e.target.value)} placeholder="+54 9 ..." className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Teléfono</label>
-                  <input type="tel" value={phoneField} onChange={(e) => setPhoneField(e.target.value)} placeholder="+52" className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Notas / Referencia</label>
+                  <input type="text" value={addressLine} onChange={(e) => setAddressLine(e.target.value)} placeholder="Opcional" className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
                 </div>
               </div>
 
@@ -403,7 +401,6 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
               <div className="bg-purple-100/50 rounded-xl p-4 space-y-1.5 text-sm">
                 <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span className="font-semibold">${subTotal.toFixed(2)}</span></div>
                 {discountAmount > 0 && <div className="flex justify-between text-emerald-600"><span>Descuento</span><span>-${discountAmount.toFixed(2)}</span></div>}
-                <div className="flex justify-between"><span className="text-gray-600">Envío</span><span className="font-semibold">{shippingCost === 0 ? 'GRATIS' : `$${shippingCost.toFixed(2)}`}</span></div>
                 <div className="border-t border-pink-300 pt-2 flex justify-between text-base"><span className="font-bold">Total</span><span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span></div>
               </div>
 
@@ -420,7 +417,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                       <input type="radio" name="payment-method" checked={paymentMethod === 'mercadopago'} onChange={() => setPaymentMethod('mercadopago')} className="accent-purple-600" />
                       <span>
                         <span className="block font-semibold text-gray-800">MercadoPago</span>
-                        <span className="block text-[11px] text-gray-500">Tarjeta, débito, efectivo en agencia</span>
+                        <span className="block text-[11px] text-gray-500">Tarjeta, débito, dinero en cuenta</span>
                       </span>
                     </span>
                     <span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span>
@@ -432,7 +429,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                       <input type="radio" name="payment-method" checked={paymentMethod === 'transferencia'} onChange={() => setPaymentMethod('transferencia')} className="accent-purple-600" />
                       <span>
                         <span className="block font-semibold text-gray-800">Transferencia</span>
-                        <span className="block text-[11px] text-gray-500">Alias {DATOS_BANCO.alias} — enviás comprobante por WhatsApp</span>
+                        <span className="block text-[11px] text-gray-500">Alias {DATOS_BANCO.alias} — enviás comprobante</span>
                       </span>
                     </span>
                     <span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span>

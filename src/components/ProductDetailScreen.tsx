@@ -150,6 +150,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                 src={activeImage}
                 alt={product.name}
                 referrerPolicy="no-referrer"
+                decoding="async"
                 className="w-full h-full object-cover"
               />
               <button

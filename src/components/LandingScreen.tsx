@@ -126,6 +126,8 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                           src={heroProduct.image_url}
                           alt={heroProduct.name}
                           referrerPolicy="no-referrer"
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-auto drop-shadow-2xl rounded-3xl object-cover hover:scale-[1.02] transition-transform duration-500"
                         />
                         <div className="absolute -bottom-6 -left-6 bg-white/95 rounded-2xl p-4 shadow-xl border border-pink-100 flex items-center space-x-3 max-w-[200px]">

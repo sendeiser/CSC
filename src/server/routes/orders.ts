@@ -163,8 +163,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     }
   }
 
-  const shippingCost = subTotal > 150 || subTotal === 0 ? 0 : 35
-  const total = subTotal - discountAmount + shippingCost
+  const shippingCost = 0
+  const total = subTotal - discountAmount
 
   const { data: order, error: orderError } = await serviceClient
     .from('orders')

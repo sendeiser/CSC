@@ -13,12 +13,12 @@ export interface PedidoWhatsApp {
   orderId: string;
   items: CartItem[];
   fullName: string;
-  addressLine: string;
-  cityField: string;
+  addressLine?: string;
+  cityField?: string;
   phoneField: string;
   subTotal: number;
   discountAmount: number;
-  shippingCost: number;
+  shippingCost?: number;
   grandTotal: number;
   formaPago: 'transferencia' | 'mercadopago';
 }
@@ -29,7 +29,7 @@ export function buildMensajePedido(pedido: PedidoWhatsApp): string {
   const lineas = [
     'Hola! Quiero confirmar mi pedido.',
     '',
-    `*N de pedido:* #${pedido.orderId.slice(0, 8).toUpperCase()}`,
+    `*N° de pedido:* #${pedido.orderId.slice(0, 8).toUpperCase()}`,
     '*Detalle:*',
     ...pedido.items.map(
       (i) =>
@@ -41,9 +41,6 @@ export function buildMensajePedido(pedido: PedidoWhatsApp): string {
   if (pedido.discountAmount > 0) {
     lineas.push(`*Descuento:* -${fmt(pedido.discountAmount)}`);
   }
-  lineas.push(
-    `*Envío:* ${pedido.shippingCost === 0 ? 'GRATIS' : fmt(pedido.shippingCost)}`
-  );
   lineas.push(`*TOTAL:* ${fmt(pedido.grandTotal)}`);
 
   if (pedido.formaPago === 'transferencia') {
@@ -62,9 +59,8 @@ export function buildMensajePedido(pedido: PedidoWhatsApp): string {
 
   lineas.push('', '*Mis datos:*');
   lineas.push(`Nombre: ${pedido.fullName}`);
-  lineas.push(`Dirección: ${pedido.addressLine}`);
-  lineas.push(`Ciudad: ${pedido.cityField}`);
   if (pedido.phoneField) lineas.push(`Teléfono: ${pedido.phoneField}`);
+  if (pedido.addressLine) lineas.push(`Notas / Dirección: ${pedido.addressLine}`);
   lineas.push('', 'Gracias!');
   return lineas.join('\n');
 }
