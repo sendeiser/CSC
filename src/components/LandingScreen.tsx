@@ -4,6 +4,7 @@ import { ArrowRight, Star, MapPin, Clock, Phone, Instagram, Store, Heart, Chevro
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { ActiveScreen, Product } from '../types';
 import { PRODUCTS } from '../data';
+import { WHATSAPP_NUMERO } from '../lib/whatsapp';
 
 interface LandingScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
@@ -102,7 +103,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                           <ArrowRight className="ml-2 w-5 h-5" />
                         </button>
                         <a
-                          href={`https://wa.me/${getSection('store')?.content?.whatsapp || '5493854000000'}`}
+                          href={`https://wa.me/${WHATSAPP_NUMERO}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 border border-pink-200 text-base font-semibold rounded-xl text-purple-700 bg-white hover:bg-pink-50/50 transition-colors"
@@ -381,7 +382,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
           case 'contact': {
             const contact = getSection('contact')
             const cContent = contact?.content || {}
-            const whatsappNumber = cContent.whatsapp_number || '5493854000000'
+            const whatsappNumber = WHATSAPP_NUMERO
             return (
               <section key={section.id} className="relative py-16 bg-gradient-to-br from-purple-800 to-pink-700 text-white overflow-hidden text-center">
                 <div className="absolute inset-0 bg-grid-white opacity-10" />

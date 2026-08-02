@@ -13,6 +13,8 @@ import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken } from './lib/api';
 import { supabase } from './lib/supabase';
 import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
+import { waLink } from './lib/whatsapp';
+import { MessageCircle } from 'lucide-react';
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState<ActiveScreen>('inicio');
@@ -324,6 +326,16 @@ export default function App() {
           </p>
         </div>
       </footer>
+
+      <a
+        href={waLink('Hola! Quiero hacer una consulta.')}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Escribinos por WhatsApp"
+        className="fixed bottom-5 right-5 z-50 w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-2xl hover:bg-emerald-600 hover:scale-105 transition-all"
+      >
+        <MessageCircle className="w-7 h-7" />
+      </a>
     </div>
   );
 }

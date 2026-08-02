@@ -247,8 +247,8 @@ export const STORE_INFO = {
   name: 'Chamical Candy Shop',
   shortName: 'CSC',
   address: 'Av. Principal 123, Chamical, La Rioja',
-  phone: '+54 9 3854 00-0000',
-  whatsapp: '5493854000000',
+  phone: '+54 9 3826 43-2180',
+  whatsapp: '543826432180',
   email: 'info@chamicalcandy.shop',
   instagram: '@chamicalcandy',
   hours: [

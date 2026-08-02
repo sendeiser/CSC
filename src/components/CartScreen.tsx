@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle } from 'lucide-react';
 import { ActiveScreen, CartItem } from '../types';
-import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
+import { cart as cartApi, orders as ordersApi, payments as paymentsApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
+import { buildMensajePedido, waLink, DATOS_BANCO, WHATSAPP_NUMERO } from '../lib/whatsapp';
 
 interface CartScreenProps {
   cart: CartItem[];
@@ -27,6 +28,8 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [phoneField, setPhoneField] = React.useState('');
   const [shippingError, setShippingError] = React.useState('');
   const [orderId, setOrderId] = React.useState('');
+  const [paymentMethod, setPaymentMethod] = React.useState<'mercadopago' | 'transferencia'>('mercadopago');
+  const [lastOrderItems, setLastOrderItems] = React.useState<CartItem[]>([]);
 
   const subTotal = cart.reduce((acc, item) => acc + (item.itemPrice * item.quantity), 0);
   const discountAmount = activeDiscount ? subTotal * (activeDiscount.percent / 100) : 0;
@@ -96,13 +99,26 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
     }
 
     try {
-      const result = await paymentsApi.createPreference({
-        shipping_name: fullName,
-        shipping_address: addressLine,
-        shipping_city: cityField,
-        promo_code: activeDiscount?.code,
-      })
-      window.location.href = result.init_point
+      if (paymentMethod === 'transferencia') {
+        const result = await ordersApi.create({
+          shipping_name: fullName,
+          shipping_address: addressLine,
+          shipping_city: cityField,
+          promo_code: activeDiscount?.code,
+        })
+        setLastOrderItems(cart)
+        setOrderId(result.id)
+        setCart([])
+        setStep('success')
+      } else {
+        const result = await paymentsApi.createPreference({
+          shipping_name: fullName,
+          shipping_address: addressLine,
+          shipping_city: cityField,
+          promo_code: activeDiscount?.code,
+        })
+        window.location.href = result.init_point
+      }
     } catch (err: any) {
       setShippingError(err.message || 'Error al procesar el pago.')
     }
@@ -123,10 +139,6 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           setOrderId(result.id)
           setCart([])
 
-          const sections = await homepageApi.get()
-          const storeSection = sections?.find((s: any) => s.section_type === 'store')
-          const whatsapp = storeSection?.content?.whatsapp_number || storeSection?.content?.whatsapp || '5493854000000'
-
           const itemsList = (result.order_items || []).map((i: any) =>
             `• ${i.quantity}x ${i.selected_size} - $${Number(i.unit_price).toFixed(2)}`
           ).join('\n')
@@ -136,7 +148,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           )
 
           setTimeout(() => {
-            window.location.href = `https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${msg}`
+            window.location.href = `https://wa.me/${WHATSAPP_NUMERO}?text=${msg}`
           }, 2000)
         } catch (err: any) {
           setShippingError(err.message || 'Error al confirmar el pedido')
@@ -186,8 +198,51 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
             <div>
               <h2 className="text-2xl font-headline font-bold text-gray-900">¡Pedido Confirmado!</h2>
               <p className="text-gray-500 mt-2">Tu pedido #<span className="font-mono font-bold text-purple-700">{orderId.slice(0, 8).toUpperCase()}</span> está siendo procesado.</p>
-              <p className="text-sm text-gray-400 mt-1">Te contactaremos si hay novedades.</p>
+              <p className="text-sm text-gray-400 mt-1">{paymentMethod === 'transferencia' ? 'Te esperamos para confirmarlo con el comprobante.' : 'Te contactaremos si hay novedades.'}</p>
             </div>
+
+            {paymentMethod === 'transferencia' && (
+              <div className="max-w-md mx-auto text-left bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-200 rounded-2xl p-6 space-y-3 shadow-sm">
+                <h3 className="font-headline font-bold text-gray-900 flex items-center space-x-2">
+                  <Landmark className="w-5 h-5 text-purple-600" />
+                  <span>Pagá por transferencia</span>
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Hacé la transferencia al alias y envianos el comprobante por WhatsApp para confirmar tu compra.
+                </p>
+                <div className="bg-white rounded-xl p-4 space-y-1.5 text-sm border border-pink-100">
+                  <div className="flex justify-between"><span className="text-gray-500">Banco</span><span className="font-semibold">{DATOS_BANCO.banco}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Alias</span><span className="font-mono font-bold text-purple-700">{DATOS_BANCO.alias}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Titular</span><span className="font-semibold">{DATOS_BANCO.titular}</span></div>
+                  {DATOS_BANCO.cbu && <div className="flex justify-between"><span className="text-gray-500">CBU</span><span className="font-mono">{DATOS_BANCO.cbu}</span></div>}
+                </div>
+                <div className="flex justify-between bg-white rounded-xl px-4 py-2.5 border border-pink-100 text-sm">
+                  <span className="text-gray-500">Total a transferir</span>
+                  <span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span>
+                </div>
+                <a
+                  href={waLink(buildMensajePedido({
+                    orderId,
+                    items: lastOrderItems.length > 0 ? lastOrderItems : cart,
+                    fullName,
+                    addressLine,
+                    cityField,
+                    phoneField,
+                    subTotal,
+                    discountAmount,
+                    shippingCost,
+                    grandTotal,
+                    formaPago: 'transferencia',
+                  }))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-colors shadow-md"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>Enviar pedido por WhatsApp</span>
+                </a>
+              </div>
+            )}
             <a
               href={`https://wa.me/54${phoneField ? phoneField.replace(/\D/g, '') : ''}?text=${encodeURIComponent(`Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`)}`}
               target="_blank"
@@ -350,11 +405,44 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                 <div className="border-t border-pink-300 pt-2 flex justify-between text-base"><span className="font-bold">Total</span><span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span></div>
               </div>
 
+              <div>
+                <div className="flex items-center space-x-3 mb-3">
+                  <CreditCard className="w-5 h-5 text-purple-600" />
+                  <h3 className="font-headline font-bold text-gray-900">Forma de pago</h3>
+                </div>
+                <div className="space-y-2">
+                  <label
+                    className={`flex items-center justify-between border rounded-xl px-4 py-3 cursor-pointer transition-all text-sm ${paymentMethod === 'mercadopago' ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200' : 'border-pink-200 bg-white hover:bg-pink-50/50'}`}
+                  >
+                    <span className="flex items-center space-x-3">
+                      <input type="radio" name="payment-method" checked={paymentMethod === 'mercadopago'} onChange={() => setPaymentMethod('mercadopago')} className="accent-purple-600" />
+                      <span>
+                        <span className="block font-semibold text-gray-800">MercadoPago</span>
+                        <span className="block text-[11px] text-gray-500">Tarjeta, débito, efectivo en agencia</span>
+                      </span>
+                    </span>
+                    <span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span>
+                  </label>
+                  <label
+                    className={`flex items-center justify-between border rounded-xl px-4 py-3 cursor-pointer transition-all text-sm ${paymentMethod === 'transferencia' ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200' : 'border-pink-200 bg-white hover:bg-pink-50/50'}`}
+                  >
+                    <span className="flex items-center space-x-3">
+                      <input type="radio" name="payment-method" checked={paymentMethod === 'transferencia'} onChange={() => setPaymentMethod('transferencia')} className="accent-purple-600" />
+                      <span>
+                        <span className="block font-semibold text-gray-800">Transferencia</span>
+                        <span className="block text-[11px] text-gray-500">Alias {DATOS_BANCO.alias} — enviás comprobante por WhatsApp</span>
+                      </span>
+                    </span>
+                    <span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span>
+                  </label>
+                </div>
+              </div>
+
               <div className="flex space-x-3">
                 <button onClick={() => setStep('basket')} className="flex-1 py-3 border border-pink-200 text-gray-600 font-semibold rounded-xl hover:bg-pink-50 transition-all text-sm">Volver</button>
                 <button onClick={handleCheckout} className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all text-sm flex items-center justify-center space-x-2">
-                  <CreditCard className="w-4 h-4" />
-                  <span>Pagar con Mercado Pago</span>
+                  {paymentMethod === 'transferencia' ? <Landmark className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
+                  <span>{paymentMethod === 'transferencia' ? 'Confirmar pedido' : 'Pagar con Mercado Pago'}</span>
                 </button>
               </div>
             </div>
