@@ -142,6 +142,8 @@ export const admin = {
     request<any[]>(`/admin/orders${status ? '?status=' + status : ''}`),
   updateOrderStatus: (id: string, status: string) =>
     request<any>(`/admin/orders/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  deleteOrder: (id: string) =>
+    request<{ message: string }>(`/admin/orders/${id}`, { method: 'DELETE' }),
   getStats: () => request<{ totalProducts: number; totalUsers: number; totalOrders: number; totalRevenue: number }>('/admin/stats'),
   getPromoCodes: () => request<any[]>('/admin/promo-codes'),
   createPromoCode: (data: any) =>

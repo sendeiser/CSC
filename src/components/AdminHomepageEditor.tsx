@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Eye, EyeOff, Trash2, Plus, X, Save, AlertCircle, GripVertical } from 'lucide-react'
+import { Eye, EyeOff, Trash2, Plus, X, Save, AlertCircle, ArrowUp, ArrowDown } from 'lucide-react'
 import { admin as adminApi } from '../lib/api'
 
 type SectionType = 'about' | 'categories' | 'store' | 'gallery' | 'contact'
@@ -122,9 +122,26 @@ const SECTION_LABELS: Record<string, string> = {
   contact: 'Contacto',
 }
 
-// ── per-section card with local state ──────────────────────
+// ── per-section card ────────────────────────────────────────
 
-function SectionCard({ section, onRefresh, onDragStart, isDragging }: { section: any; onRefresh: () => void; onDragStart: (e: React.DragEvent) => void; isDragging: boolean }) {
+function SectionCard({
+  section,
+  index,
+  totalSections,
+  onRefresh,
+  onMoveUp,
+  onMoveDown,
+  onMoveToPosition,
+}: {
+  key?: any
+  section: any
+  index: number
+  totalSections: number
+  onRefresh: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  onMoveToPosition: (pos: number) => void
+}) {
   const [title, setTitle] = useState(section.title || '')
   const [subtitle, setSubtitle] = useState(section.subtitle || '')
   const [content, setContent] = useState(section.content || {})
@@ -177,40 +194,105 @@ function SectionCard({ section, onRefresh, onDragStart, isDragging }: { section:
   }
 
   return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
-      className={`bg-white rounded-xl border border-slate-200 overflow-hidden ${isDragging ? 'opacity-50 ring-2 ring-purple-400' : ''}`}
-    >
-        <div className="flex items-center gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
-          <div className="cursor-grab active:cursor-grabbing" title="Arrastrar para reordenar">
-            <GripVertical className="w-4 h-4 text-slate-400" />
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          {/* Position Selector Dropdown */}
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs">
+            <span className="text-slate-400 font-semibold">Pos:</span>
+            <select
+              value={index}
+              onChange={(e) => onMoveToPosition(Number(e.target.value))}
+              className="font-bold text-purple-700 bg-transparent outline-none cursor-pointer"
+            >
+              {Array.from({ length: totalSections }).map((_, i) => (
+                <option key={i} value={i}>
+                  #{i + 1}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="flex-1 min-w-0">
-            <span className="text-xs font-mono text-purple-600 uppercase">{SECTION_LABELS[section.section_type] || section.section_type}</span>
-            <h3 className="text-sm font-semibold text-slate-800 truncate">
-              {title || 'Sin título'}
-              {!section.visible && <span className="ml-2 text-xs text-slate-400 font-normal">(oculta)</span>}
-            </h3>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={toggleVisibility} disabled={toggling} className="p-1.5 hover:bg-slate-200 rounded-lg disabled:opacity-50" title={section.visible ? 'Ocultar' : 'Mostrar'}>
-              {toggling ? <span className="w-4 h-4 block border-2 border-slate-400 border-t-transparent rounded-full animate-spin" /> : section.visible ? <Eye className="w-4 h-4 text-emerald-600" /> : <EyeOff className="w-4 h-4 text-slate-400" />}
+
+          {/* Up & Down Arrow Buttons */}
+          <div className="flex items-center gap-1 border border-slate-200 rounded-lg bg-white p-0.5">
+            <button
+              onClick={onMoveUp}
+              disabled={index === 0}
+              className="p-1 hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+              title="Subir posición"
+            >
+              <ArrowUp className="w-3.5 h-3.5" />
             </button>
-            <button onClick={remove} disabled={deleting} className="p-1.5 hover:bg-red-100 rounded-lg text-red-500 disabled:opacity-50" title="Eliminar">{deleting ? <span className="w-4 h-4 block border-2 border-red-400 border-t-transparent rounded-full animate-spin" /> : <Trash2 className="w-4 h-4" />}</button>
+            <button
+              onClick={onMoveDown}
+              disabled={index === totalSections - 1}
+              className="p-1 hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+              title="Bajar posición"
+            >
+              <ArrowDown className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
+        <div className="flex-1 min-w-0">
+          <span className="text-[10px] font-mono font-bold text-purple-600 uppercase">
+            {SECTION_LABELS[section.section_type] || section.section_type}
+          </span>
+          <h3 className="text-sm font-bold text-slate-800 truncate">
+            {title || 'Sin título'}
+            {!section.visible && <span className="ml-2 text-xs text-slate-400 font-normal">(oculta)</span>}
+          </h3>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleVisibility}
+            disabled={toggling}
+            className="p-1.5 hover:bg-slate-200 rounded-lg disabled:opacity-50"
+            title={section.visible ? 'Ocultar' : 'Mostrar'}
+          >
+            {toggling ? (
+              <span className="w-4 h-4 block border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            ) : section.visible ? (
+              <Eye className="w-4 h-4 text-emerald-600" />
+            ) : (
+              <EyeOff className="w-4 h-4 text-slate-400" />
+            )}
+          </button>
+          <button
+            onClick={remove}
+            disabled={deleting}
+            className="p-1.5 hover:bg-red-100 rounded-lg text-red-500 disabled:opacity-50"
+            title="Eliminar"
+          >
+            {deleting ? (
+              <span className="w-4 h-4 block border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+      </div>
+
       <div className="p-4 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Título</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-purple-400 outline-none"
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Subtítulo</label>
-            <input type="text" value={subtitle} onChange={e => setSubtitle(e.target.value)} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            <input
+              type="text"
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-purple-400 outline-none"
+            />
           </div>
         </div>
 
@@ -219,13 +301,27 @@ function SectionCard({ section, onRefresh, onDragStart, isDragging }: { section:
         ) : (
           <div>
             <label className="block text-xs font-medium text-slate-500 mb-1">Contenido (JSON)</label>
-            <textarea value={JSON.stringify(content, null, 2)} onChange={e => { try { setContent(JSON.parse(e.target.value)) } catch {} }} rows={6} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono" />
+            <textarea
+              value={JSON.stringify(content, null, 2)}
+              onChange={(e) => {
+                try {
+                  setContent(JSON.parse(e.target.value))
+                } catch {}
+              }}
+              rows={6}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono"
+            />
           </div>
         )}
 
         <div className="flex justify-end pt-2 border-t border-slate-100">
-          <button onClick={save} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50">
-            <Save className="w-4 h-4" />{saving ? 'Guardando...' : 'Guardar'}
+          <button
+            onClick={save}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 shadow-sm"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
         </div>
       </div>
@@ -239,7 +335,6 @@ export default function AdminHomepageEditor() {
   const [sections, setSections] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -254,51 +349,93 @@ export default function AdminHomepageEditor() {
     }
   }
 
-  useEffect(() => { load() }, [])
-
-  const handleDrop = async (targetIndex: number) => {
-    if (dragIndex === null || dragIndex === targetIndex) return
-    const reordered = [...sections]
-    const [removed] = reordered.splice(dragIndex, 1)
-    reordered.splice(targetIndex, 0, removed)
-    setDragIndex(null)
-    try {
-      await adminApi.reorderHomepageSections(reordered.map((s, idx) => ({ id: s.id, order_index: idx + 1, visible: s.visible })))
-    } catch {}
+  useEffect(() => {
     load()
+  }, [])
+
+  const reorderAndSave = async (newList: any[]) => {
+    setSections(newList)
+    try {
+      await adminApi.reorderHomepageSections(
+        newList.map((s, idx) => ({ id: s.id, order_index: idx + 1, visible: s.visible }))
+      )
+    } catch (e: any) {
+      console.error('Error reordering:', e)
+    }
   }
 
-  if (loading) return <div className="animate-pulse space-y-3">{Array.from({length: 4}).map((_, i) => <div key={i} className="h-24 bg-slate-100 rounded-xl" />)}</div>
+  const moveUp = (index: number) => {
+    if (index <= 0) return
+    const updated = [...sections]
+    const temp = updated[index - 1]
+    updated[index - 1] = updated[index]
+    updated[index] = temp
+    reorderAndSave(updated)
+  }
+
+  const moveDown = (index: number) => {
+    if (index >= sections.length - 1) return
+    const updated = [...sections]
+    const temp = updated[index + 1]
+    updated[index + 1] = updated[index]
+    updated[index] = temp
+    reorderAndSave(updated)
+  }
+
+  const moveToPosition = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || toIndex < 0 || toIndex >= sections.length) return
+    const updated = [...sections]
+    const [movedItem] = updated.splice(fromIndex, 1)
+    updated.splice(toIndex, 0, movedItem)
+    reorderAndSave(updated)
+  }
+
+  if (loading)
+    return (
+      <div className="animate-pulse space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-24 bg-slate-100 rounded-xl" />
+        ))}
+      </div>
+    )
 
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-center justify-between">
-        <h2 className="font-headline font-bold text-xl text-slate-800">Editor de Homepage</h2>
-        <span className="text-xs text-slate-400">{sections.length} secciones</span>
+        <div>
+          <h2 className="font-headline font-bold text-xl text-slate-800">Editor de Homepage</h2>
+          <p className="text-xs text-slate-400">Usá los botones ⬆️ / ⬇️ o el selector de posición para reordenar secciones</p>
+        </div>
+        <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+          {sections.length} secciones
+        </span>
       </div>
 
       {error && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
-          <button onClick={load} className="ml-auto text-xs font-medium underline hover:no-underline">Reintentar</button>
+          <button onClick={load} className="ml-auto text-xs font-medium underline hover:no-underline">
+            Reintentar
+          </button>
         </div>
       )}
 
-      {sections.map((section, i) => (
-        <div
-          key={section.id}
-          onDragOver={e => { if (dragIndex !== null && dragIndex !== i) { e.preventDefault(); e.dataTransfer.dropEffect = 'move' } }}
-          onDrop={e => { e.preventDefault(); handleDrop(i) }}
-        >
+      <div className="space-y-4">
+        {sections.map((section, i) => (
           <SectionCard
+            key={section.id}
             section={section}
+            index={i}
+            totalSections={sections.length}
             onRefresh={load}
-            isDragging={dragIndex === i}
-            onDragStart={() => setDragIndex(i)}
+            onMoveUp={() => moveUp(i)}
+            onMoveDown={() => moveDown(i)}
+            onMoveToPosition={(pos) => moveToPosition(i, pos)}
           />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
+

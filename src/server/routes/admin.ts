@@ -84,9 +84,9 @@ router.post('/create-user', requireAdmin, async (req: AuthenticatedRequest, res:
 
 router.get('/orders', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { status } = req.query
-  let query = supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false })
+  let query = supabase.from('orders').select('*, order_items(*, products(*)), profiles(*)').order('created_at', { ascending: false })
 
-  if (status) {
+  if (status && status !== 'all') {
     query = query.eq('status', status as string)
   }
 
@@ -113,7 +113,7 @@ router.put('/orders/:id/status', requireAdmin, async (req: AuthenticatedRequest,
     .from('orders')
     .update({ status })
     .eq('id', req.params.id)
-    .select()
+    .select('*, order_items(*, products(*)), profiles(*)')
     .single()
 
   if (error) {
@@ -122,6 +122,17 @@ router.put('/orders/:id/status', requireAdmin, async (req: AuthenticatedRequest,
   }
 
   res.json(data)
+})
+
+router.delete('/orders/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { error } = await supabase.from('orders').delete().eq('id', req.params.id)
+
+  if (error) {
+    res.status(400).json({ error: error.message })
+    return
+  }
+
+  res.json({ message: 'Pedido eliminado correctamente' })
 })
 
 router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {

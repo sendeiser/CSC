@@ -192,7 +192,8 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     product_id: item.product_id,
     quantity: item.quantity,
     selected_size: item.selected_size,
-    unit_price: item.item_price
+    unit_price: item.item_price,
+    weight_grams: item.weight_grams,
   }))
 
   const { error: itemsError } = await serviceClient.from('order_items').insert(orderItems)

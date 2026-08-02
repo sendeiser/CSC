@@ -5,6 +5,7 @@ import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
 import AdminAboutPageEditor from './AdminAboutPageEditor';
+import { AdminOrdersSection } from './AdminOrdersSection';
 import { getCategoryIcon } from '../lib/categoryIcons';
 
 interface AdminPanelProps {
@@ -275,9 +276,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     if (!confirm('¿Eliminar este producto?')) return
     try {
       await productsApi.delete(id)
-      loadSection('products')
-    } catch (err) {
-      console.error(err)
+      await loadSection('products')
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar el producto')
     }
   }
 
@@ -471,50 +472,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               )}
 
               {section === 'orders' && (
-                <div className="space-y-4">
-                  <h1 className="text-2xl font-headline font-bold text-slate-900">Pedidos ({orders.length})</h1>
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                          <tr><th className="text-left px-4 py-3">ID</th><th className="text-left px-4 py-3 hidden md:table-cell">Cliente</th><th className="text-left px-4 py-3">Total</th><th className="text-left px-4 py-3">Estado</th><th className="text-left px-4 py-3 hidden md:table-cell">Fecha</th><th className="text-right px-4 py-3">Acción</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {orders.map((o: any) => (
-                            <tr key={o.id} className="hover:bg-slate-50">
-                              <td className="px-4 py-3 font-mono text-xs text-slate-500">#{o.id.slice(0, 8)}</td>
-                              <td className="px-4 py-3 font-medium text-slate-900 hidden md:table-cell">{o.profiles?.name || '—'}</td>
-                              <td className="px-4 py-3 font-medium whitespace-nowrap">${Number(o.total).toFixed(2)}</td>
-                              <td className="px-4 py-3 whitespace-nowrap">
-                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                  o.status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-                                  o.status === 'shipped' ? 'bg-blue-100 text-blue-700' :
-                                  o.status === 'delivered' ? 'bg-purple-100 text-purple-700' :
-                                  o.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                  'bg-slate-100 text-slate-600'
-                                }`}>{o.status}</span>
-                              </td>
-                              <td className="px-4 py-3 text-slate-500 text-xs hidden md:table-cell">{new Date(o.created_at).toLocaleDateString()}</td>
-                              <td className="px-4 py-3 text-right">
-                                <select
-                                  value={o.status}
-                                  onChange={(e) => updateOrderStatus(o.id, e.target.value)}
-                                  className="text-xs border border-slate-200 rounded-lg px-2 py-1 bg-white"
-                                >
-                                  <option value="pending">Pending</option>
-                                  <option value="paid">Paid</option>
-                                  <option value="shipped">Shipped</option>
-                                  <option value="delivered">Delivered</option>
-                                  <option value="cancelled">Cancelled</option>
-                                </select>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
+                <AdminOrdersSection
+                  orders={orders}
+                  onUpdateStatus={updateOrderStatus}
+                  onDeleteOrder={async (id: string) => {
+                    if (!confirm('¿Eliminar este pedido permanentemente?')) return
+                    try {
+                      await adminApi.deleteOrder(id)
+                      loadSection('orders')
+                    } catch (e: any) {
+                      alert(e.message || 'Error al eliminar pedido')
+                    }
+                  }}
+                />
               )}
 
               {section === 'users' && (

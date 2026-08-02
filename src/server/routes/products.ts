@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express'
-import { supabase } from '../lib/supabase'
+import { supabase, serviceClient } from '../lib/supabase'
 import { requireAdmin, AuthenticatedRequest } from '../lib/auth'
+
+const db = serviceClient || supabase
 
 const router = Router()
 
@@ -60,7 +62,7 @@ router.get('/:slug', async (req: Request, res: Response) => {
 })
 
 router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('products')
     .insert(req.body)
     .select()
@@ -75,7 +77,7 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
 })
 
 router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('products')
     .update(req.body)
     .eq('id', req.params.id)
@@ -91,17 +93,27 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
 })
 
 router.delete('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { error } = await supabase
-    .from('products')
-    .delete()
-    .eq('id', req.params.id)
+  const productId = req.params.id
 
-  if (error) {
-    res.status(400).json({ error: error.message })
-    return
+  try {
+    // Clean up referencing rows first
+    await db.from('cart_items').delete().eq('product_id', productId)
+    await db.from('product_reviews').delete().eq('product_id', productId)
+
+    const { error } = await db
+      .from('products')
+      .delete()
+      .eq('id', productId)
+
+    if (error) {
+      res.status(400).json({ error: error.message })
+      return
+    }
+
+    res.json({ message: 'Producto eliminado correctamente' })
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error al eliminar producto' })
   }
-
-  res.json({ message: 'Producto eliminado correctamente' })
 })
 
 export default router
