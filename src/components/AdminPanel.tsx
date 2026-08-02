@@ -385,7 +385,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
           setProducts(await productsApi.list())
           break
         case 'orders':
-          setOrders(await adminApi.getOrders())
+          const [ordersData, prodsData] = await Promise.all([
+            adminApi.getOrders(),
+            productsApi.list().catch(() => [])
+          ])
+          setOrders(ordersData)
+          setProducts(prodsData)
           break
         case 'users':
           setUsers(await adminApi.getUsers())

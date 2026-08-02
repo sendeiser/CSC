@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus } from 'lucide-react';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
-import { admin as adminApi } from '../lib/api';
+import { admin as adminApi, products as productsApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 
 interface AdminOrdersSectionProps {
@@ -27,8 +27,25 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
+  // Local products fallback if prop is empty
+  const [availableProducts, setAvailableProducts] = useState<any[]>(products);
+
+  useEffect(() => {
+    if (products && products.length > 0) {
+      setAvailableProducts(products);
+    } else {
+      productsApi.list().then(setAvailableProducts).catch(console.error);
+    }
+  }, [products]);
+
   // Manual Sale Modal State
   const [showManualSaleModal, setShowManualSaleModal] = useState(false);
+
+  useEffect(() => {
+    if (showManualSaleModal && availableProducts.length === 0) {
+      productsApi.list().then(setAvailableProducts).catch(console.error);
+    }
+  }, [showManualSaleModal, availableProducts]);
   const [manualCustomerName, setManualCustomerName] = useState('Venta Presencial');
   const [manualAddress, setManualAddress] = useState('Venta en Mostrador (Efectivo / Posnet)');
   const [manualStatus, setManualStatus] = useState('paid');
@@ -46,7 +63,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
 
   const handleSelectProduct = (prodId: string) => {
     setSelectedProdId(prodId);
-    const prod = products.find(p => p.id === prodId);
+    const prod = availableProducts.find(p => p.id === prodId);
     if (prod) {
       setBuilderUnitPrice(prod.base_price || 0);
       if (prod.unit_type === 'weight') {
@@ -62,7 +79,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
       showAlert({ title: 'Atención', message: 'Selecciona un producto del catálogo.', type: 'warning' });
       return;
     }
-    const prod = products.find(p => p.id === selectedProdId);
+    const prod = availableProducts.find(p => p.id === selectedProdId);
     if (!prod) return;
 
     const isWeight = prod.unit_type === 'weight';
@@ -773,7 +790,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                   >
                     Todas las categorías
                   </button>
-                  {[...new Set(products.map((p) => p.category).filter(Boolean))].map((cat) => (
+                  {[...new Set(availableProducts.map((p) => p.category).filter(Boolean))].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setManualCategoryFilter(cat)}
@@ -791,7 +808,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
 
               {/* Visual Products Cards Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1">
-                {products
+                {availableProducts
                   .filter((p) => {
                     const matchesSearch =
                       (p.name || '').toLowerCase().includes(manualProdSearchTerm.toLowerCase()) ||
