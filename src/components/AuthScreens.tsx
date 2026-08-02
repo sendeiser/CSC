@@ -104,10 +104,8 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ type, setActiveScreen,
 
   return (
     <div className="min-h-[80vh] relative flex items-center justify-center px-4 py-12 overflow-hidden">
-      {/* Decorative background blobs */}
-      <div className="absolute top-0 left-0 w-80 h-80 bg-pink-300/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-blob" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-300/20 rounded-full blur-3xl translate-x-1/3 translate-y-1/3 animate-blob" style={{ animationDelay: '3s' }} />
-      <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-indigo-200/15 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 animate-blob" style={{ animationDelay: '6s' }} />
+      {/* Decorative background glow */}
+      <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,_rgba(244,114,182,0.15),transparent_50%),radial-gradient(circle_at_80%_80%,_rgba(192,132,252,0.15),transparent_50%)]" />
 
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.97 }}

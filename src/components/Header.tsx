@@ -30,7 +30,17 @@ export const Header: React.FC<HeaderProps> = ({
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   React.useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 12);
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const isScrolled = window.scrollY > 12;
+          setScrolled((prev) => (prev !== isScrolled ? isScrolled : prev));
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -54,10 +64,10 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <header
-        className={`sticky top-0 z-50 transition-all duration-300 ${
+        className={`sticky top-0 z-50 transition-all duration-200 ${
           scrolled
-            ? 'bg-white/90 backdrop-blur-xl shadow-lg shadow-purple-100/40 border-b border-pink-100/60'
-            : 'bg-white/80 backdrop-blur-md border-b border-pink-100/40'
+            ? 'bg-white/98 sm:bg-white/90 sm:backdrop-blur-md shadow-md shadow-purple-100/40 border-b border-pink-100/60'
+            : 'bg-white/95 sm:bg-white/80 sm:backdrop-blur-sm border-b border-pink-100/40'
         }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

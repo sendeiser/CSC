@@ -40,8 +40,7 @@ export const AboutUsScreen: React.FC<AboutUsScreenProps> = ({ setActiveScreen })
 
       {/* Hero */}
       <section className="relative bg-gradient-to-b from-pink-50 via-purple-50/40 to-white pt-8 pb-16 overflow-hidden">
-        <div className="absolute top-0 left-0 w-72 h-72 bg-pink-200/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,_rgba(236,72,153,0.1),transparent_50%)]" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative text-center">
           <motion.span
             initial={{ opacity: 0, y: 10 }}

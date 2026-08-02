@@ -52,10 +52,8 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
           case 'hero':
             return (
               <section key={section.id} className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
-                {/* Animated background blobs */}
-                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-pink-500/20 rounded-full blur-3xl animate-blob" />
-                <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-blob" style={{ animationDelay: '3s' }} />
-                <div className="absolute top-3/4 left-1/2 w-64 h-64 bg-indigo-500/15 rounded-full blur-3xl animate-blob" style={{ animationDelay: '6s' }} />
+                {/* Lightweight radial gradient ambient background */}
+                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_30%_30%,_rgba(236,72,153,0.18),transparent_50%),radial-gradient(circle_at_70%_70%,_rgba(168,85,247,0.18),transparent_50%)]" />
 
                 {/* Grid pattern overlay */}
                 <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
@@ -148,7 +146,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                         className="relative max-w-sm sm:max-w-md w-full"
                       >
                         {/* Glow */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/30 to-purple-500/30 rounded-3xl blur-3xl scale-110" />
+                        <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-105 pointer-events-none hidden sm:block" />
 
                         <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
                           <img
@@ -156,6 +154,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                             alt={heroProduct.name}
                             referrerPolicy="no-referrer"
                             loading="eager"
+                            decoding="async"
                             className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700"
                           />
                           {/* Gradient overlay at bottom */}
