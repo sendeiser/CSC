@@ -10,7 +10,7 @@ import { AuthScreens } from './components/AuthScreens';
 import { AdminPanel } from './components/AdminPanel';
 import { AboutUsScreen } from './components/AboutUsScreen';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
-import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken } from './lib/api';
+import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken, setOnAuthExpired } from './lib/api';
 import { supabase } from './lib/supabase';
 import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
 import { waLink } from './lib/whatsapp';
@@ -33,6 +33,21 @@ export default function App() {
     productsApi.list().then(setAllProducts).catch(console.error)
   }, [])
 
+  // Función para forzar logout limpio (usada desde API 401 y Supabase listener)
+  const forceLogout = () => {
+    setAuthToken(null)
+    setSession({ isLoggedIn: false, email: null, name: null })
+    setFavorites({})
+    setActiveScreen('inicio')
+  }
+
+  useEffect(() => {
+    // Registrar callback para logout automático en 401 del backend
+    setOnAuthExpired(forceLogout)
+    return () => setOnAuthExpired(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     const initSession = async () => {
       const existingToken = getAuthToken()
@@ -46,27 +61,58 @@ export default function App() {
           setFavorites(favMap)
           return
         } catch {
+          // Token inválido — limpiar y continuar
           setAuthToken(null)
         }
       }
 
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.access_token) {
-        setAuthToken(session.access_token)
-        window.location.hash = ''
-        try {
-          const user = await authApi.me()
-          setSession({ isLoggedIn: true, email: user.email, name: user.name, role: user.role })
-          const favs = await favoritesApi.list()
-          const favMap: Record<string, boolean> = {}
-          favs.forEach((f: any) => { favMap[f.product_id] = true })
-          setFavorites(favMap)
-        } catch {
+      // Intentar recuperar sesión de Supabase (ej: OAuth callback)
+      try {
+        const { data: { session: supaSession }, error } = await supabase.auth.getSession()
+        if (error) {
+          // Refresh token inválido u otro error — limpiar silenciosamente
+          await supabase.auth.signOut()
           setAuthToken(null)
+          return
         }
+        if (supaSession?.access_token) {
+          setAuthToken(supaSession.access_token)
+          window.location.hash = ''
+          try {
+            const user = await authApi.me()
+            setSession({ isLoggedIn: true, email: user.email, name: user.name, role: user.role })
+            const favs = await favoritesApi.list()
+            const favMap: Record<string, boolean> = {}
+            favs.forEach((f: any) => { favMap[f.product_id] = true })
+            setFavorites(favMap)
+          } catch {
+            setAuthToken(null)
+          }
+        }
+      } catch {
+        // Error de red al obtener sesión — ignorar silenciosamente
+        setAuthToken(null)
       }
     }
     initSession()
+
+    // Escuchar cambios de auth en Supabase (token refresh, logout externo, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, supaSession) => {
+      if (event === 'TOKEN_REFRESHED' && supaSession?.access_token) {
+        // Actualizar token cuando Supabase lo refresca automáticamente
+        setAuthToken(supaSession.access_token)
+      } else if (
+        event === 'SIGNED_OUT' ||
+        // @ts-ignore — el tipo 'TOKEN_REFRESH_FAILED' existe en runtime pero no en tipos viejos
+        event === 'TOKEN_REFRESH_FAILED'
+      ) {
+        // Sesión perdida o token inválido — logout limpio
+        forceLogout()
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

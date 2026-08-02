@@ -2,6 +2,12 @@ const API_BASE = '/api'
 
 let authToken: string | null = null
 
+// Callback opcional para forzar logout desde afuera (ej: App.tsx)
+let onAuthExpired: (() => void) | null = null
+export function setOnAuthExpired(cb: (() => void) | null) {
+  onAuthExpired = cb
+}
+
 export function setAuthToken(token: string | null) {
   authToken = token
   if (token) {
@@ -38,6 +44,15 @@ async function request<T>(
   })
 
   if (!res.ok) {
+    // Si el token venció/es inválido, limpiar sesión automáticamente
+    if (res.status === 401 || res.status === 403) {
+      setAuthToken(null)
+      onAuthExpired?.()
+      throw new Error('Tu sesión expiró. Por favor ingresá de nuevo.')
+    }
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      throw new Error('El servidor no está disponible en este momento. Intentá de nuevo en unos instantes.')
+    }
     const err = await res.json().catch(() => ({ error: 'Error de conexión' }))
     throw new Error(err.error || `Error ${res.status}`)
   }
