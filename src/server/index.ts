@@ -10,6 +10,7 @@ import adminRoutes from './routes/admin'
 import homepageRoutes from './routes/homepage'
 import categoriesRouter from './routes/categories'
 import paymentRoutes from './routes/payments'
+import path from 'path'
 import uploadRoutes from './routes/upload'
 
 dotenv.config()
@@ -23,8 +24,8 @@ app.use(cors({
 }))
 app.use(express.json())
 
-// En entornos serverless (Netlify), las imágenes se sirven desde Supabase Storage.
-// express.static no funciona en filesystem de solo lectura.
+// Servir imágenes subidas localmente si aplica
+app.use('/uploads', express.static(path.join(process.cwd(), 'public', 'uploads')))
 
 app.use('/api/auth', authRoutes)
 app.use('/api/products', productRoutes)
