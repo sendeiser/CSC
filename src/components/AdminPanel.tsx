@@ -447,7 +447,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
         <div className="flex-shrink-0 p-5 border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center space-x-2 overflow-hidden">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">C</div>
-            <span className="font-headline font-bold hidden lg:block">CSC Admin</span>
+            <span className="font-headline font-bold inline md:hidden lg:block">CSC Admin</span>
           </div>
           <button onClick={() => setMobileSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">
             <X className="w-5 h-5" />
@@ -463,7 +463,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               }`}
             >
               <span className="flex-shrink-0">{item.icon}</span>
-              <span className="hidden lg:inline">{item.label}</span>
+              <span className="inline md:hidden lg:inline">{item.label}</span>
             </button>
           ))}
         </nav>

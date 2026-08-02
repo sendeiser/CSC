@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign } from 'lucide-react';
+import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus } from 'lucide-react';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
 import { admin as adminApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
@@ -35,7 +35,9 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
   const [manualPaymentMethod, setManualPaymentMethod] = useState('Efectivo');
   const [manualItems, setManualItems] = useState<any[]>([]);
 
-  // Current item builder
+  // Current item builder & Search
+  const [manualProdSearchTerm, setManualProdSearchTerm] = useState('');
+  const [manualCategoryFilter, setManualCategoryFilter] = useState('all');
   const [selectedProdId, setSelectedProdId] = useState('');
   const [builderQty, setBuilderQty] = useState(1);
   const [builderWeightGrams, setBuilderWeightGrams] = useState(250);
@@ -655,90 +657,249 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
               </div>
             </div>
 
-            {/* Product Selector */}
-            <div className="bg-purple-50/60 border border-purple-100 rounded-xl p-4 space-y-3">
-              <h4 className="font-bold text-xs uppercase text-purple-900 tracking-wider">
-                2. Seleccionar Producto del Catálogo
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-3">
-                  <select
-                    value={selectedProdId}
-                    onChange={(e) => handleSelectProduct(e.target.value)}
-                    className="w-full px-3 py-2 border border-purple-200 rounded-xl text-xs font-semibold bg-white outline-none focus:ring-2 focus:ring-purple-400"
-                  >
-                    <option value="">-- Selecciona un producto para agregar --</option>
-                    {products.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} - Stock: {p.stock}{p.unit_type === 'weight' ? 'g' : ' uds'} (${p.base_price})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
+            {/* Product Selector with Visual Card Grid & Quick Presets */}
+            <div className="bg-purple-50/70 border border-purple-100 rounded-2xl p-4 space-y-4 shadow-sm">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h4 className="font-bold text-xs uppercase text-purple-950 tracking-wider flex items-center space-x-1.5">
+                  <ShoppingBag className="w-4 h-4 text-purple-600" />
+                  <span>2. Catálogo & Selección de Productos</span>
+                </h4>
                 {selectedProdId && (
-                  <>
-                    {products.find(p => p.id === selectedProdId)?.unit_type === 'weight' ? (
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Gramos (g):</label>
-                        <input
-                          type="number"
-                          step={50}
-                          value={builderWeightGrams}
-                          onChange={(e) => {
-                            const weight = Number(e.target.value);
-                            setBuilderWeightGrams(weight);
-                            const prod = products.find(p => p.id === selectedProdId);
-                            if (prod) {
-                              setBuilderUnitPrice((prod.base_price * weight) / 1000);
-                            }
-                          }}
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="text-[11px] font-bold text-slate-700 block mb-1">Cantidad (Unidades):</label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={builderQty}
-                          onChange={(e) => {
-                            const qty = Math.max(1, Number(e.target.value));
-                            setBuilderQty(qty);
-                            const prod = products.find(p => p.id === selectedProdId);
-                            if (prod) {
-                              setBuilderUnitPrice(prod.base_price * qty);
-                            }
-                          }}
-                          className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-700 block mb-1">Precio Calculado ($):</label>
-                      <input
-                        type="number"
-                        step={0.01}
-                        value={builderUnitPrice}
-                        onChange={(e) => setBuilderUnitPrice(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
-                      />
-                    </div>
-
-                    <div className="flex items-end">
-                      <button
-                        onClick={handleAddItemToManualSale}
-                        className="w-full px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center space-x-1"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Agregar Ítem</span>
-                      </button>
-                    </div>
-                  </>
+                  <button
+                    onClick={() => setSelectedProdId('')}
+                    className="text-xs text-purple-600 hover:text-purple-800 font-semibold underline"
+                  >
+                    Deseleccionar producto
+                  </button>
                 )}
               </div>
+
+              {/* Search & Category Filter Bar */}
+              <div className="space-y-2.5">
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-500" />
+                  <input
+                    type="text"
+                    placeholder="Buscar producto por nombre o categoría..."
+                    value={manualProdSearchTerm}
+                    onChange={(e) => setManualProdSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 border border-purple-200 rounded-xl text-xs bg-white font-medium outline-none focus:ring-2 focus:ring-purple-400 shadow-sm"
+                  />
+                  {manualProdSearchTerm && (
+                    <button
+                      onClick={() => setManualProdSearchTerm('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Pills */}
+                <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+                  <button
+                    onClick={() => setManualCategoryFilter('all')}
+                    className={`px-3 py-1 rounded-lg font-semibold whitespace-nowrap transition-all ${
+                      manualCategoryFilter === 'all'
+                        ? 'bg-purple-700 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-purple-200 hover:bg-purple-100'
+                    }`}
+                  >
+                    Todas las categorías
+                  </button>
+                  {[...new Set(products.map((p) => p.category).filter(Boolean))].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setManualCategoryFilter(cat)}
+                      className={`px-3 py-1 rounded-lg font-semibold whitespace-nowrap transition-all ${
+                        manualCategoryFilter === cat
+                          ? 'bg-purple-700 text-white shadow-sm'
+                          : 'bg-white text-slate-600 border border-purple-200 hover:bg-purple-100'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Visual Products Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1">
+                {products
+                  .filter((p) => {
+                    const matchesSearch =
+                      (p.name || '').toLowerCase().includes(manualProdSearchTerm.toLowerCase()) ||
+                      (p.category || '').toLowerCase().includes(manualProdSearchTerm.toLowerCase());
+                    const matchesCat = manualCategoryFilter === 'all' || p.category === manualCategoryFilter;
+                    return matchesSearch && matchesCat;
+                  })
+                  .map((p) => {
+                    const isSelected = selectedProdId === p.id;
+                    const isWeight = p.unit_type === 'weight';
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => handleSelectProduct(p.id)}
+                        className={`cursor-pointer rounded-xl p-2.5 border transition-all flex items-center space-x-3 ${
+                          isSelected
+                            ? 'bg-white border-purple-600 ring-2 ring-purple-600/30 shadow-md'
+                            : 'bg-white border-purple-100 hover:border-purple-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <img
+                          src={p.image_url}
+                          alt={p.name}
+                          className="w-12 h-12 rounded-lg object-cover bg-slate-100 border border-slate-200 flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase text-purple-700 truncate">
+                              {p.category || 'Golosinas'}
+                            </span>
+                            <span
+                              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                p.stock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                              }`}
+                            >
+                              {p.stock}{isWeight ? 'g' : ' uds'}
+                            </span>
+                          </div>
+                          <p className="font-bold text-xs text-slate-900 truncate">{p.name}</p>
+                          <p className="font-black text-xs text-purple-900">
+                            ${p.base_price.toFixed(2)}{isWeight ? ' / 1k' : ''}
+                          </p>
+                        </div>
+                        {isSelected && (
+                          <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center flex-shrink-0">
+                            <Check className="w-3.5 h-3.5" />
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              {/* Selected Product Builder & Presets */}
+              {selectedProdId &&
+                (() => {
+                  const selectedProd = products.find((p) => p.id === selectedProdId);
+                  if (!selectedProd) return null;
+                  const isWeight = selectedProd.unit_type === 'weight';
+
+                  return (
+                    <div className="bg-white border border-purple-200 rounded-xl p-3.5 space-y-3 shadow-md animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-bold text-xs text-purple-900">{selectedProd.name}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-semibold">
+                            {isWeight ? 'Venta por Peso (g)' : 'Venta por Unidad'}
+                          </span>
+                        </div>
+                        <span className="text-xs font-black text-slate-900">${selectedProd.base_price}</span>
+                      </div>
+
+                      {/* Presets Row */}
+                      <div>
+                        <span className="text-[11px] font-bold text-slate-600 block mb-1.5">
+                          {isWeight ? 'Seleccionar Peso Rápido:' : 'Seleccionar Cantidad Rápida:'}
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {isWeight ? (
+                            [100, 250, 500, 1000].map((grams) => (
+                              <button
+                                key={grams}
+                                onClick={() => {
+                                  setBuilderWeightGrams(grams);
+                                  setBuilderUnitPrice((selectedProd.base_price * grams) / 1000);
+                                }}
+                                className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
+                                  builderWeightGrams === grams
+                                    ? 'bg-purple-700 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-purple-100'
+                                }`}
+                              >
+                                {grams >= 1000 ? `${grams / 1000}kg` : `${grams}g`}
+                              </button>
+                            ))
+                          ) : (
+                            [1, 2, 5, 10].map((qty) => (
+                              <button
+                                key={qty}
+                                onClick={() => {
+                                  setBuilderQty(qty);
+                                  setBuilderUnitPrice(selectedProd.base_price * qty);
+                                }}
+                                className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
+                                  builderQty === qty
+                                    ? 'bg-purple-700 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-700 hover:bg-purple-100'
+                                }`}
+                              >
+                                {qty} {qty === 1 ? 'unidad' : 'unidades'}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Custom Input & Price Adjust */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                        {isWeight ? (
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">Gramos exactos (g):</label>
+                            <input
+                              type="number"
+                              step={50}
+                              value={builderWeightGrams}
+                              onChange={(e) => {
+                                const weight = Number(e.target.value);
+                                setBuilderWeightGrams(weight);
+                                setBuilderUnitPrice((selectedProd.base_price * weight) / 1000);
+                              }}
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
+                            />
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-700 block mb-1">Cantidad exactas:</label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={builderQty}
+                              onChange={(e) => {
+                                const qty = Math.max(1, Number(e.target.value));
+                                setBuilderQty(qty);
+                                setBuilderUnitPrice(selectedProd.base_price * qty);
+                              }}
+                              className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white"
+                            />
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1">Subtotal de Ítem ($):</label>
+                          <input
+                            type="number"
+                            step={0.01}
+                            value={builderUnitPrice}
+                            onChange={(e) => setBuilderUnitPrice(Number(e.target.value))}
+                            className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold bg-white text-purple-700"
+                          />
+                        </div>
+
+                        <div className="flex items-end">
+                          <button
+                            onClick={handleAddItemToManualSale}
+                            className="w-full px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Agregar (${builderUnitPrice.toFixed(2)})</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
             </div>
 
             {/* Added Items Table */}
