@@ -272,14 +272,13 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
             </button>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-16">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 pb-16">
             {products.map((product, idx) => (
               <motion.div
                 key={product.id}
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: Math.min(idx * 0.04, 0.4) }}
-                layout
+                transition={{ duration: 0.25, delay: Math.min(idx * 0.03, 0.2) }}
                 className="group bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all duration-300 flex flex-col"
               >
                 {/* Image */}
@@ -293,6 +292,7 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
                       loading="lazy"
+                      decoding="async"
                     />
                     {/* Overlay on hover */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-3">

@@ -18,6 +18,7 @@
   html {
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
+    touch-action: manipulation;
   }
 
   body {
@@ -25,6 +26,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background: #fafafa;
+    overflow-x: hidden;
+  }
+
+  button, a, input, select {
+    touch-action: manipulation;
   }
 
   img {
@@ -56,14 +62,14 @@
 
 /* ─── Keyframe Animations ───────────────────────────────────── */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-10px); }
+  0%, 100% { transform: translateY(0px) translateZ(0); }
+  50%       { transform: translateY(-10px) translateZ(0); }
 }
 
 @keyframes float-delayed {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  33%       { transform: translateY(-8px) rotate(2deg); }
-  66%       { transform: translateY(-4px) rotate(-1deg); }
+  0%, 100% { transform: translateY(0px) rotate(0deg) translateZ(0); }
+  33%       { transform: translateY(-8px) rotate(2deg) translateZ(0); }
+  66%       { transform: translateY(-4px) rotate(-1deg) translateZ(0); }
 }
 
 @keyframes shimmer {
@@ -72,24 +78,24 @@
 }
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(20px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 @keyframes ping-slow {
-  75%, 100% { transform: scale(1.8); opacity: 0; }
+  75%, 100% { transform: scale(1.8) translateZ(0); opacity: 0; }
 }
 
 @keyframes bounce-in {
-  0%   { transform: scale(0.3); opacity: 0; }
-  50%  { transform: scale(1.05); }
-  70%  { transform: scale(0.9); }
-  100% { transform: scale(1); opacity: 1; }
+  0%   { transform: scale(0.3) translateZ(0); opacity: 0; }
+  50%  { transform: scale(1.05) translateZ(0); }
+  70%  { transform: scale(0.9) translateZ(0); }
+  100% { transform: scale(1) translateZ(0); opacity: 1; }
 }
 
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(16px) translateZ(0); }
+  to   { opacity: 1; transform: translateY(0) translateZ(0); }
 }
 
 @keyframes blob {
@@ -101,12 +107,15 @@
 @layer utilities {
   .animate-float {
     animation: float 4s ease-in-out infinite;
+    will-change: transform;
   }
   .animate-float-delayed {
     animation: float-delayed 6s ease-in-out infinite;
+    will-change: transform;
   }
   .animate-blob {
     animation: blob 8s ease-in-out infinite;
+    will-change: border-radius;
   }
   .animate-shimmer {
     background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
@@ -128,16 +137,40 @@
 
   /* Glassmorphism */
   .glass {
-    background: rgba(255, 255, 255, 0.75);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.5);
   }
   .glass-dark {
-    background: rgba(15, 10, 30, 0.7);
+    background: rgba(15, 10, 30, 0.85);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Mobile hardware & GPU rendering optimizations */
+  @media (max-width: 640px) {
+    /* Desactivar o suavizar blurs pesados en móvil para 60fps constantes */
+    .glass {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .glass-dark {
+      background: rgba(15, 10, 30, 0.95);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+    .animate-blob {
+      animation: none !important; /* Evita recalcular border-radius cada frame en móvil */
+    }
+    .animate-float, .animate-float-delayed {
+      animation-duration: 8s !important;
+    }
+    .blur-3xl, .blur-2xl {
+      filter: blur(24px) !important; /* Reducir radio de desenfoque GPU en móvil */
+    }
   }
 
   /* Gradient text */
@@ -189,7 +222,11 @@
 
   /* Hide scrollbar but keep scroll */
   .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
 
   /* Admin panel font */
   .font-admin {
