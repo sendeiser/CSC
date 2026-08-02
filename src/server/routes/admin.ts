@@ -77,6 +77,36 @@ router.put('/users/:id/role', requireAdmin, async (req: AuthenticatedRequest, re
   res.json(data[0])
 })
 
+router.delete('/users/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const targetId = req.params.id
+
+  if (req.user?.id === targetId) {
+    res.status(400).json({ error: 'No podés eliminar tu propia cuenta de administrador.' })
+    return
+  }
+
+  const db = serviceClient || supabase
+
+  if (serviceClient) {
+    const { error: authErr } = await serviceClient.auth.admin.deleteUser(targetId)
+    if (authErr) {
+      console.warn('[Admin Delete User Auth Warning]:', authErr.message)
+    }
+  }
+
+  const { error: profileErr } = await db
+    .from('profiles')
+    .delete()
+    .eq('id', targetId)
+
+  if (profileErr) {
+    res.status(400).json({ error: profileErr.message })
+    return
+  }
+
+  res.json({ message: 'Usuario eliminado exitosamente' })
+})
+
 router.post('/create-user', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { email, password, name, role } = req.body
 

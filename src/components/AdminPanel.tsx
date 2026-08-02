@@ -490,8 +490,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     try {
       await adminApi.updateUserRole(id, role)
       loadSection('users')
-    } catch (err) {
-      console.error(err)
+    } catch (err: any) {
+      showAlert({ title: 'Error', message: err.message || 'Error al actualizar rol', type: 'error' })
+    }
+  }
+
+  const handleDeleteUser = async (user: any) => {
+    const confirmed = await showConfirm({
+      title: '¿Eliminar usuario?',
+      message: `¿Estás seguro de eliminar al usuario "${user.name || user.email || user.id.slice(0,8)}"? Esta acción eliminará su cuenta permanentemente.`,
+      confirmText: 'Eliminar',
+      type: 'danger'
+    })
+    if (!confirmed) return
+
+    try {
+      await adminApi.deleteUser(user.id)
+      if (selectedCustomer?.id === user.id) setSelectedCustomer(null)
+      loadSection('users')
+      showAlert({ title: 'Éxito', message: 'Usuario eliminado correctamente', type: 'success' })
+    } catch (err: any) {
+      showAlert({ title: 'Error', message: err.message || 'Error al eliminar usuario', type: 'error' })
     }
   }
 
@@ -1316,6 +1335,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                 <option value="customer">customer</option>
                                 <option value="admin">admin</option>
                               </select>
+                              <button
+                                onClick={() => handleDeleteUser(u)}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all flex-shrink-0"
+                                title="Eliminar Usuario"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
                         );
@@ -1373,7 +1399,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                     {new Date(u.created_at).toLocaleDateString()}
                                   </td>
                                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                                    <div className="flex items-center justify-end space-x-2">
+                                    <div className="flex items-center justify-end space-x-1.5">
                                       <button
                                         onClick={() => setSelectedCustomer(u)}
                                         className="inline-flex items-center space-x-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold transition-colors border border-purple-200"
@@ -1389,6 +1415,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                         <option value="customer">customer</option>
                                         <option value="admin">admin</option>
                                       </select>
+                                      <button
+                                        onClick={() => handleDeleteUser(u)}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Eliminar Usuario"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
                                     </div>
                                   </td>
                                 </tr>
@@ -1415,9 +1448,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                           <p className="text-xs text-slate-400">Registrado el {new Date(selectedCustomer.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
-                      <button onClick={() => setSelectedCustomer(null)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
-                        <X className="w-5 h-5" />
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleDeleteUser(selectedCustomer)}
+                          className="inline-flex items-center space-x-1 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition-colors border border-red-200"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Eliminar Usuario</span>
+                        </button>
+                        <button onClick={() => setSelectedCustomer(null)} className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Customer CRM Metrics */}

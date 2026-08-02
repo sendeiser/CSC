@@ -153,6 +153,8 @@ export const admin = {
   getUsers: () => request<any[]>('/admin/users'),
   updateUserRole: (id: string, role: string) =>
     request<any>(`/admin/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
+  deleteUser: (id: string) =>
+    request<{ message: string }>(`/admin/users/${id}`, { method: 'DELETE' }),
   createUser: (data: { email: string; password: string; name?: string; role?: string }) =>
     request<any>('/admin/create-user', { method: 'POST', body: JSON.stringify(data) }),
   getOrders: (status?: string) =>

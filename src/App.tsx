@@ -96,11 +96,24 @@ export default function App() {
     }
     initSession()
 
-    // Escuchar cambios de auth en Supabase (token refresh, logout externo, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, supaSession) => {
-      if (event === 'TOKEN_REFRESHED' && supaSession?.access_token) {
-        // Actualizar token cuando Supabase lo refresca automáticamente
+    // Escuchar cambios de auth en Supabase (Google OAuth login, token refresh, logout, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, supaSession) => {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && supaSession?.access_token) {
         setAuthToken(supaSession.access_token)
+        if (window.location.hash || window.location.search.includes('code=')) {
+          window.history.replaceState(null, '', window.location.pathname)
+        }
+        try {
+          const user = await authApi.me()
+          setSession({ isLoggedIn: true, email: user.email, name: user.name, role: user.role })
+          const favs = await favoritesApi.list()
+          const favMap: Record<string, boolean> = {}
+          favs.forEach((f: any) => { favMap[f.product_id] = true })
+          setFavorites(favMap)
+        } catch {
+          // Si falla authApi.me, limpiar token
+          setAuthToken(null)
+        }
       } else if (
         event === 'SIGNED_OUT' ||
         // @ts-ignore — el tipo 'TOKEN_REFRESH_FAILED' existe en runtime pero no en tipos viejos
