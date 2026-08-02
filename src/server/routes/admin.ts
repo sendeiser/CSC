@@ -57,22 +57,15 @@ router.put('/users/:id/role', requireAdmin, async (req: AuthenticatedRequest, re
     return
   }
 
-  const db = serviceClient || supabase
-
-  const { data, error } = await db
+  const { data, error } = await supabase
     .from('profiles')
     .update({ role })
     .eq('id', req.params.id)
     .select()
-    .maybeSingle()
+    .single()
 
   if (error) {
     res.status(400).json({ error: error.message })
-    return
-  }
-
-  if (!data) {
-    res.status(404).json({ error: 'Usuario no encontrado' })
     return
   }
 
