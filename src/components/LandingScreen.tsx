@@ -5,6 +5,7 @@ import { getCategoryIcon } from '../lib/categoryIcons';
 import { ActiveScreen, Product } from '../types';
 import { PRODUCTS } from '../data';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
+import { PromoVideoSection } from './PromoVideoSection';
 
 interface LandingScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
@@ -51,158 +52,178 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
         switch (section.section_type) {
           case 'hero':
             return (
-              <section key={section.id} className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
-                {/* Lightweight radial gradient ambient background */}
-                <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_30%_30%,_rgba(236,72,153,0.18),transparent_50%),radial-gradient(circle_at_70%_70%,_rgba(168,85,247,0.18),transparent_50%)]" />
+              <React.Fragment key={section.id}>
+                <section className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
+                  {/* Lightweight radial gradient ambient background */}
+                  <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_30%_30%,_rgba(236,72,153,0.18),transparent_50%),radial-gradient(circle_at_70%_70%,_rgba(168,85,247,0.18),transparent_50%)]" />
 
-                {/* Grid pattern overlay */}
-                <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
+                  {/* Grid pattern overlay */}
+                  <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
 
-                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
-                  <div className="lg:grid lg:grid-cols-12 lg:gap-12 items-center">
-                    {/* Text */}
-                    <div className="lg:col-span-6 space-y-8">
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
-                        className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 text-pink-300 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest"
-                      >
-                        <Store className="w-3.5 h-3.5" />
-                        <span>Tienda física y online</span>
-                      </motion.div>
-
-                      <motion.h1
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.15 }}
-                        className="font-headline font-extrabold text-5xl sm:text-6xl lg:text-7xl tracking-tight text-white leading-[1.05]"
-                      >
-                        <span className="candy-gradient-text">Chamical</span>
-                        <br />
-                        <span className="text-white/90">Candy Shop</span>
-                      </motion.h1>
-
-                      <motion.p
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.3 }}
-                        className="text-base sm:text-lg text-white/60 leading-relaxed max-w-lg"
-                      >
-                        Gomitas, chocolates, caramelos y mucho más — todo por granel y al mejor precio.
-                        Visitanos o pedí por WhatsApp.
-                      </motion.p>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.45 }}
-                        className="flex flex-col sm:flex-row gap-4"
-                      >
-                        <button
-                          onClick={() => setActiveScreen('catalogo')}
-                          className="group inline-flex items-center justify-center px-8 py-4 rounded-2xl font-bold text-white candy-gradient-bg shadow-xl shadow-purple-500/30 hover:shadow-purple-500/50 hover:opacity-95 transition-all duration-300 transform hover:-translate-y-0.5"
-                        >
-                          Ver Catálogo
-                          <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                        <a
-                          href={`https://wa.me/${WHATSAPP_NUMERO}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-white border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all"
-                        >
-                          <Phone className="mr-2 w-4 h-4" />
-                          Consultar por WhatsApp
-                        </a>
-                      </motion.div>
-
-                      {/* Stats pills */}
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.6 }}
-                        className="flex flex-wrap gap-3"
-                      >
-                        {[
-                          { emoji: '🍬', text: 'Gran variedad' },
-                          { emoji: '⚖️', text: 'Venta por granel' },
-                          { emoji: '✨', text: 'Calidad premium' },
-                        ].map(({ emoji, text }) => (
-                          <span key={text} className="inline-flex items-center space-x-2 bg-white/10 border border-white/10 text-white/80 text-xs font-semibold px-3 py-1.5 rounded-full">
-                            <span>{emoji}</span>
-                            <span>{text}</span>
-                          </span>
-                        ))}
-                      </motion.div>
-                    </div>
-
-                    {/* Hero image */}
-                    <div className="mt-14 lg:mt-0 lg:col-span-6 flex justify-center items-center">
-                      <motion.div
-                        initial={{ scale: 0.85, opacity: 0, rotate: -3 }}
-                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                        transition={{ duration: 0.9, type: 'spring', delay: 0.2 }}
-                        className="relative max-w-sm sm:max-w-md w-full"
-                      >
-                        {/* Glow */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-105 pointer-events-none hidden sm:block" />
-
-                        <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-                          <img
-                            src={heroProduct.image_url}
-                            alt={heroProduct.name}
-                            referrerPolicy="no-referrer"
-                            loading="eager"
-                            decoding="async"
-                            className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700"
-                          />
-                          {/* Gradient overlay at bottom */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-                          <div className="absolute bottom-4 left-4 right-4">
-                            <p className="text-white text-xs font-semibold uppercase tracking-widest opacity-70">{heroProduct.category}</p>
-                            <p className="text-white font-headline font-bold text-lg">{heroProduct.name}</p>
-                          </div>
-                        </div>
-
-                        {/* Floating badges */}
+                  <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 w-full">
+                    <div className="lg:grid lg:grid-cols-12 lg:gap-12 items-center">
+                      {/* Text */}
+                      <div className="lg:col-span-6 space-y-8">
                         <motion.div
-                          animate={{ y: [0, -8, 0] }}
-                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                          className="absolute -bottom-4 -left-4 bg-white rounded-2xl p-3 shadow-xl border border-pink-100 flex items-center space-x-2"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6 }}
+                          className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 text-pink-300 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest"
                         >
-                          <div className="w-8 h-8 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs">
-                            {heroProduct.category.slice(0, 3)}
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold text-gray-900">Por Granel</p>
-                            <p className="text-[9px] text-gray-400">Elegí tu cantidad</p>
-                          </div>
+                          <Store className="w-3.5 h-3.5" />
+                          <span>Tienda física y online</span>
                         </motion.div>
 
-                        <motion.div
-                          animate={{ y: [0, 8, 0] }}
-                          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                          className="absolute -top-4 -right-4 bg-white rounded-2xl p-3 shadow-xl border border-purple-100 flex items-center space-x-2"
+                        <motion.h1
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: 0.15 }}
+                          className="font-headline font-extrabold text-5xl sm:text-6xl lg:text-7xl tracking-tight text-white leading-[1.05]"
                         >
-                          <div className="flex space-x-0.5">
-                            {[1,2,3,4,5].map((s) => <Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
-                          </div>
-                          <span className="text-xs font-bold text-gray-800">5.0</span>
+                          <span className="candy-gradient-text">Chamical</span>
+                          <br />
+                          <span className="text-white/90">Candy Shop</span>
+                        </motion.h1>
+
+                        <motion.p
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: 0.3 }}
+                          className="text-base sm:text-lg text-white/60 leading-relaxed max-w-lg"
+                        >
+                          Gomitas, chocolates, caramelos y mucho más — todo por granel y al mejor precio.
+                          Visitanos o pedí por WhatsApp.
+                        </motion.p>
+
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.6, delay: 0.45 }}
+                          className="flex flex-col sm:flex-row gap-4"
+                        >
+                          <button
+                            onClick={() => setActiveScreen('catalogo')}
+                            className="group inline-flex items-center justify-center px-8 py-4 rounded-2xl font-bold text-white candy-gradient-bg shadow-xl shadow-purple-500/30 hover:shadow-purple-500/50 hover:opacity-95 transition-all duration-300 transform hover:-translate-y-0.5"
+                          >
+                            Ver Catálogo
+                            <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                          </button>
+                          <a
+                            href={`https://wa.me/${WHATSAPP_NUMERO}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-white border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all"
+                          >
+                            <Phone className="mr-2 w-4 h-4" />
+                            Consultar por WhatsApp
+                          </a>
                         </motion.div>
-                      </motion.div>
+
+                        {/* Stats pills */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.6 }}
+                          className="flex flex-wrap gap-3"
+                        >
+                          {[
+                            { emoji: '🍬', text: 'Gran variedad' },
+                            { emoji: '⚖️', text: 'Venta por granel' },
+                            { emoji: '✨', text: 'Calidad premium' },
+                          ].map(({ emoji, text }) => (
+                            <span key={text} className="inline-flex items-center space-x-2 bg-white/10 border border-white/10 text-white/80 text-xs font-semibold px-3 py-1.5 rounded-full">
+                              <span>{emoji}</span>
+                              <span>{text}</span>
+                            </span>
+                          ))}
+                        </motion.div>
+                      </div>
+
+                      {/* Hero image */}
+                      <div className="mt-14 lg:mt-0 lg:col-span-6 flex justify-center items-center">
+                        <motion.div
+                          initial={{ scale: 0.85, opacity: 0, rotate: -3 }}
+                          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                          transition={{ duration: 0.9, type: 'spring', delay: 0.2 }}
+                          className="relative max-w-sm sm:max-w-md w-full"
+                        >
+                          {/* Glow */}
+                          <div className="absolute inset-0 bg-gradient-to-tr from-pink-500/20 to-purple-500/20 rounded-3xl blur-xl scale-105 pointer-events-none hidden sm:block" />
+
+                          <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+                            <img
+                              src={heroProduct.image_url}
+                              alt={heroProduct.name}
+                              referrerPolicy="no-referrer"
+                              loading="eager"
+                              decoding="async"
+                              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700"
+                            />
+                            {/* Gradient overlay at bottom */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                            <div className="absolute bottom-4 left-4 right-4">
+                              <p className="text-white text-xs font-semibold uppercase tracking-widest opacity-70">{heroProduct.category}</p>
+                              <p className="text-white font-headline font-bold text-lg">{heroProduct.name}</p>
+                            </div>
+                          </div>
+
+                          {/* Floating badges */}
+                          <motion.div
+                            animate={{ y: [0, -8, 0] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                            className="absolute -bottom-4 -left-4 bg-white rounded-2xl p-3 shadow-xl border border-pink-100 flex items-center space-x-2"
+                          >
+                            <div className="w-8 h-8 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs">
+                              {heroProduct.category.slice(0, 3)}
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-900">Por Granel</p>
+                              <p className="text-[9px] text-gray-400">Elegí tu cantidad</p>
+                            </div>
+                          </motion.div>
+
+                          <motion.div
+                            animate={{ y: [0, 8, 0] }}
+                            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                            className="absolute -top-4 -right-4 bg-white rounded-2xl p-3 shadow-xl border border-purple-100 flex items-center space-x-2"
+                          >
+                            <div className="flex space-x-0.5">
+                              {[1,2,3,4,5].map((s) => <Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
+                            </div>
+                            <span className="text-xs font-bold text-gray-800">5.0</span>
+                          </motion.div>
+                        </motion.div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Wave bottom */}
-                <div className="absolute bottom-0 left-0 right-0">
-                  <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-16">
-                    <path d="M0 80L1440 80L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 80Z" fill="white"/>
-                  </svg>
-                </div>
-              </section>
+                  {/* Wave bottom */}
+                  <div className="absolute bottom-0 left-0 right-0">
+                    <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-16">
+                      <path d="M0 80L1440 80L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 80Z" fill="white"/>
+                    </svg>
+                  </div>
+                </section>
+                {!sections.some(s => s.section_type === 'video') && (
+                  <PromoVideoSection setActiveScreen={setActiveScreen} />
+                )}
+              </React.Fragment>
             )
+
+          case 'video': {
+            const vSection = getSection('video')
+            const vContent = vSection?.content || {}
+            return (
+              <PromoVideoSection
+                key={section.id}
+                setActiveScreen={setActiveScreen}
+                videoUrl={vContent.video_url}
+                title={vSection?.title}
+                subtitle={vSection?.subtitle}
+                description={vContent.description}
+              />
+            )
+          }
 
           case 'about': {
             const about = getSection('about')
