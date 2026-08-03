@@ -13,6 +13,7 @@ import { WHATSAPP_NUMERO } from '../lib/whatsapp';
 interface AdminPanelProps {
   setActiveScreen: (screen: any) => void;
   setSession: React.Dispatch<React.SetStateAction<any>>;
+  onProductsUpdated?: () => void;
 }
 
 function AdminCategoriesScreen() {
@@ -206,7 +207,7 @@ function AdminCategoriesScreen() {
   )
 }
 
-export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSession }) => {
+export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSession, onProductsUpdated }) => {
   const { showConfirm, showAlert } = useModal();
   const [section, setSection] = useState<AdminSection>('dashboard');
   const [stats, setStats] = useState<{
@@ -383,6 +384,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
           break
         case 'products':
           setProducts(await productsApi.list())
+          onProductsUpdated?.()
           break
         case 'orders':
           const [ordersData, prodsData] = await Promise.all([
@@ -443,15 +445,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
         productImages = [editingProduct.image_url]
       }
 
-      // Upload local pending files if selected
-      if (imgUploadFiles && imgUploadFiles.length > 0) {
-        const { urls } = await uploadApi.multiple(imgUploadFiles)
-        if (urls && Array.isArray(urls)) {
-          productImages = [...productImages, ...urls]
-        }
-      }
-
-      // Ensure duplicates are removed while keeping order
+      // Filter empty values and remove duplicates while maintaining order
       productImages = Array.from(new Set(productImages.filter(Boolean)))
       const mainImageUrl = productImages[0] || editingProduct.image_url || ''
 
@@ -1743,28 +1737,66 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
 
                   {/* Multiple file upload button */}
                   <div className="grid grid-cols-2 gap-2">
-                    <label
-                      htmlFor="product-img-upload-multi"
-                      className="h-20 rounded-xl border-2 border-dashed border-purple-200 bg-purple-50/40 flex flex-col items-center justify-center text-purple-600 space-y-1 cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-colors"
+                    <button
+                      type="button"
+                      disabled={imgUploading}
+                      onClick={() => {
+                        document.getElementById('product-img-upload-multi-input')?.click();
+                      }}
+                      className={`h-20 rounded-xl border-2 border-dashed flex flex-col items-center justify-center space-y-1 cursor-pointer transition-colors ${
+                        imgUploading
+                          ? 'border-purple-400 bg-purple-100 text-purple-700 animate-pulse cursor-wait'
+                          : 'border-purple-200 bg-purple-50/40 text-purple-600 hover:border-purple-400 hover:bg-purple-50'
+                      }`}
                     >
-                      <Plus className="w-5 h-5" />
-                      <span className="text-xs font-bold">Subir imágenes</span>
-                      <span className="text-[9px] text-purple-400">Podés seleccionar varios archivos</span>
-                      <input
-                        id="product-img-upload-multi"
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []) as File[];
-                          if (!files.length) return;
-                          setImgUploadFiles(prev => [...prev, ...files]);
-                          const newPreviews = files.map(f => URL.createObjectURL(f));
-                          setImgUploadPreviews(prev => [...prev, ...newPreviews]);
-                        }}
-                      />
-                    </label>
+                      {imgUploading ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span className="text-xs font-bold">Subiendo imágenes...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-5 h-5" />
+                          <span className="text-xs font-bold">Subir imágenes</span>
+                          <span className="text-[9px] text-purple-400">Podés seleccionar varios archivos</span>
+                        </>
+                      )}
+                    </button>
+
+                    <input
+                      id="product-img-upload-multi-input"
+                      type="file"
+                      multiple
+                      disabled={imgUploading}
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const files = Array.from(e.target.files || []) as File[];
+                        if (!files.length) return;
+                        try {
+                          setImgUploading(true);
+                          const { urls } = await uploadApi.multiple(files);
+                          if (urls && urls.length > 0) {
+                            setEditingProduct((p) => {
+                              const curImgs = (p?.images && Array.isArray(p.images) && p.images.length > 0)
+                                ? p.images
+                                : (p?.image_url ? [p.image_url] : []);
+                              const updated = Array.from(new Set([...curImgs, ...urls]));
+                              return {
+                                ...p,
+                                image_url: p?.image_url || updated[0] || '',
+                                images: updated
+                              };
+                            });
+                          }
+                        } catch (err: any) {
+                          showAlert({ title: 'Error al subir', message: err.message || 'No se pudieron subir las imágenes', type: 'error' });
+                        } finally {
+                          setImgUploading(false);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
 
                     <div
                       className="h-20 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 space-y-1 cursor-pointer hover:border-purple-300 hover:bg-purple-50/30 transition-colors"

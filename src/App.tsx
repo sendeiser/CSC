@@ -30,8 +30,12 @@ export default function App() {
   });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
-  useEffect(() => {
+  const refreshProducts = () => {
     productsApi.list().then(setAllProducts).catch(console.error)
+  }
+
+  useEffect(() => {
+    refreshProducts()
   }, [])
 
   // Función para forzar logout limpio (usada desde API 401 y Supabase listener)
@@ -381,7 +385,7 @@ export default function App() {
           )}
 
           {activeScreen === 'admin' && session.role === 'admin' && (
-            <AdminPanel setActiveScreen={setActiveScreen} setSession={setSession} />
+            <AdminPanel setActiveScreen={setActiveScreen} setSession={setSession} onProductsUpdated={refreshProducts} />
           )}
 
           {activeScreen === 'nosotros' && (

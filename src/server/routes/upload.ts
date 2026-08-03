@@ -38,7 +38,7 @@ async function ensureBucketExists(client: any) {
 async function saveFileBuffer(buffer: Buffer, originalname: string, mimetype: string): Promise<string> {
   const ext = path.extname(originalname).toLowerCase() || '.jpg'
   const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
-  const filePath = `products/${filename}`
+  const filePath = filename
 
   const client = serviceClient || supabase
   await ensureBucketExists(client)

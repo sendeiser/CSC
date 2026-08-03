@@ -4,6 +4,58 @@ import { requireAdmin, AuthenticatedRequest } from '../lib/auth'
 
 const db = serviceClient || supabase
 
+function formatProductFromDb(p: any) {
+  if (!p) return p
+  let rawSizes = p.sizes || {}
+  let galleryImages: string[] = []
+
+  if (Array.isArray(p.images) && p.images.length > 0) {
+    galleryImages = p.images
+  } else if (rawSizes && Array.isArray(rawSizes.__gallery_images__) && rawSizes.__gallery_images__.length > 0) {
+    galleryImages = rawSizes.__gallery_images__
+  } else if (p.image_url) {
+    galleryImages = [p.image_url]
+  }
+
+  // Clean internal key from sizes
+  let cleanSizes = { ...rawSizes }
+  delete cleanSizes.__gallery_images__
+
+  return {
+    ...p,
+    sizes: cleanSizes,
+    images: galleryImages
+  }
+}
+
+function prepareProductForDb(reqBody: any) {
+  const payload = { ...reqBody }
+  delete payload.id
+  delete payload.created_at
+
+  const images: string[] = Array.isArray(payload.images) && payload.images.length > 0
+    ? payload.images
+    : (payload.image_url ? [payload.image_url] : [])
+
+  const mainImageUrl = images[0] || payload.image_url || ''
+  payload.image_url = mainImageUrl
+
+  // Guardar imágenes en la columna sizes (JSONB) para garantía total de persistencia en PostgreSQL
+  const existingSizes = payload.sizes && typeof payload.sizes === 'object' ? payload.sizes : {}
+  payload.sizes = {
+    ...existingSizes,
+    __gallery_images__: images
+  }
+
+  // Asegurar valores por defecto para campos obligatorios en DB
+  payload.description = (payload.description && payload.description.trim()) ? payload.description : (payload.name || 'Sin descripción')
+  payload.category = (payload.category && payload.category.trim()) ? payload.category : 'Caramelos'
+  payload.base_price = typeof payload.base_price === 'number' ? payload.base_price : (parseFloat(payload.base_price) || 0)
+  payload.stock = typeof payload.stock === 'number' ? payload.stock : (parseInt(payload.stock, 10) || 0)
+
+  return { payload, images }
+}
+
 const router = Router()
 
 router.get('/', async (req: Request, res: Response) => {
@@ -37,12 +89,7 @@ router.get('/', async (req: Request, res: Response) => {
     return
   }
 
-  const formattedData = (data || []).map((p: any) => ({
-    ...p,
-    images: (p.images && Array.isArray(p.images) && p.images.length > 0)
-      ? p.images
-      : (p.image_url ? [p.image_url] : [])
-  }))
+  const formattedData = (data || []).map(formatProductFromDb)
 
   res.json(formattedData)
 })
@@ -66,10 +113,7 @@ router.get('/:slug', async (req: Request, res: Response) => {
     .order('created_at', { ascending: false })
 
   const formatted = {
-    ...data,
-    images: (data.images && Array.isArray(data.images) && data.images.length > 0)
-      ? data.images
-      : (data.image_url ? [data.image_url] : []),
+    ...formatProductFromDb(data),
     reviews: reviews || []
   }
 
@@ -78,15 +122,7 @@ router.get('/:slug', async (req: Request, res: Response) => {
 
 router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const payload = { ...req.body }
-    if (!payload.id) delete payload.id
-    delete payload.created_at
-
-    // Asegurar valores por defecto para campos obligatorios en DB
-    payload.description = (payload.description && payload.description.trim()) ? payload.description : (payload.name || 'Sin descripción')
-    payload.category = (payload.category && payload.category.trim()) ? payload.category : 'Caramelos'
-    payload.base_price = typeof payload.base_price === 'number' ? payload.base_price : (parseFloat(payload.base_price) || 0)
-    payload.stock = typeof payload.stock === 'number' ? payload.stock : (parseInt(payload.stock, 10) || 0)
+    const { payload, images } = prepareProductForDb(req.body)
 
     // Generar slug si no viene presente
     if (!payload.slug && payload.name) {
@@ -106,7 +142,7 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
 
     // Si Supabase falla porque la columna 'images' no existe aún en el esquema de PostgreSQL, reintentar filtrando 'images'
     if (error && (error.message?.includes("'images' column") || error.message?.includes('schema cache') || error.message?.includes('column "images"'))) {
-      const { images, ...payloadWithoutImages } = payload
+      const { images: _ignored, ...payloadWithoutImages } = payload
       const retry = await db
         .from('products')
         .insert(payloadWithoutImages)
@@ -115,9 +151,6 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
 
       data = retry.data
       error = retry.error
-      if (data) {
-        data.images = Array.isArray(images) && images.length > 0 ? images : (data.image_url ? [data.image_url] : [])
-      }
     }
 
     if (error) {
@@ -125,7 +158,7 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
       return
     }
 
-    res.status(201).json(data)
+    res.status(201).json(formatProductFromDb(data))
   } catch (err: any) {
     console.error('Error al crear producto:', err)
     res.status(500).json({ error: err?.message || 'Error interno al crear el producto' })
@@ -134,13 +167,7 @@ router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) 
 
 router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const payload = { ...req.body }
-    delete payload.id
-    delete payload.created_at
-
-    if (payload.description !== undefined && !payload.description) {
-      payload.description = payload.name || 'Sin descripción'
-    }
+    const { payload } = prepareProductForDb(req.body)
 
     let { data, error } = await db
       .from('products')
@@ -151,7 +178,7 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
 
     // Si Supabase falla porque la columna 'images' no existe aún en el esquema de PostgreSQL, reintentar filtrando 'images'
     if (error && (error.message?.includes("'images' column") || error.message?.includes('schema cache') || error.message?.includes('column "images"'))) {
-      const { images, ...payloadWithoutImages } = payload
+      const { images: _ignored, ...payloadWithoutImages } = payload
       const retry = await db
         .from('products')
         .update(payloadWithoutImages)
@@ -161,9 +188,6 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
 
       data = retry.data
       error = retry.error
-      if (data) {
-        data.images = Array.isArray(images) && images.length > 0 ? images : (data.image_url ? [data.image_url] : [])
-      }
     }
 
     if (error) {
@@ -171,7 +195,7 @@ router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response
       return
     }
 
-    res.json(data)
+    res.json(formatProductFromDb(data))
   } catch (err: any) {
     console.error('Error al actualizar producto:', err)
     res.status(500).json({ error: err?.message || 'Error interno al actualizar el producto' })
