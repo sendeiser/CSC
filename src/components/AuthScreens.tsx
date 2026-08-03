@@ -134,9 +134,9 @@ export const AuthScreens: React.FC<AuthScreensProps> = ({ type, setActiveScreen,
               initial={{ scale: 0, rotate: -20 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
-              className="w-16 h-16 mx-auto rounded-2xl candy-gradient-bg flex items-center justify-center shadow-lg shadow-purple-300/40"
+              className="w-16 h-16 mx-auto rounded-2xl p-0.5 candy-gradient-bg flex items-center justify-center shadow-lg shadow-purple-300/40 overflow-hidden"
             >
-              <Sparkles className="w-8 h-8 text-white" />
+              <img src="/logo.png" alt="Chamical Candy Shop Logo" className="w-full h-full object-cover rounded-xl bg-white" />
             </motion.div>
             <h2 className="font-headline font-extrabold text-2xl sm:text-3xl text-gray-900">
               {isLogin ? 'Bienvenido de vuelta' : 'Crear cuenta'}

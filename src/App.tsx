@@ -399,8 +399,8 @@ export default function App() {
                 {/* Brand */}
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2.5">
-                    <div className="w-9 h-9 rounded-full candy-gradient-bg flex items-center justify-center shadow-md">
-                      <Sparkles className="w-4.5 h-4.5 text-white" />
+                    <div className="w-10 h-10 rounded-full p-0.5 candy-gradient-bg flex items-center justify-center shadow-md overflow-hidden">
+                      <img src="/logo.png" alt="Chamical Candy Shop" className="w-full h-full object-cover rounded-full bg-white" />
                     </div>
                     <div>
                       <span className="font-headline font-extrabold text-lg text-white tracking-tight">Chamical</span>
