@@ -234,16 +234,22 @@ export default function App() {
     if (!session.isLoggedIn) {
       setCart(prev => {
         const existing = prev.find(
-          i => i.product.id === product.id && i.selectedSize === itemSize
+          i => i.product.id === product.id && (product.unit_type === 'weight' ? true : i.selectedSize === itemSize)
         )
         if (existing) {
-          return prev.map(i =>
-            i.product.id === product.id && i.selectedSize === itemSize
-              ? { ...i, ...(product.unit_type === 'weight' ? { weight_grams, itemPrice: priceVal } : { quantity: i.quantity + itemQty }) }
-              : i
-          )
+          return prev.map(i => {
+            if (i.product.id !== product.id) return i;
+            if (product.unit_type === 'weight') {
+              const newWeight = (i.weight_grams || 0) + (weight_grams || 50);
+              const newPrice = Math.round((newWeight / 1000) * (product.price_per_kg || 0) * 100) / 100;
+              return { ...i, weight_grams: newWeight, itemPrice: newPrice };
+            } else {
+              if (i.selectedSize !== itemSize) return i;
+              return { ...i, quantity: i.quantity + itemQty };
+            }
+          });
         }
-        return [...prev, newItem]
+        return [...prev, newItem];
       })
       showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g' : itemQty + 'x'} ${product.name} a tu Bolsa!`)
       return
@@ -270,8 +276,8 @@ export default function App() {
       }))
       setCart(mapped)
       showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g' : itemQty + 'x'} ${product.name} a tu Bolsa!`)
-    } catch {
-      showToast('Error al añadir al carrito', 'info')
+    } catch (err: any) {
+      showToast(err.message || 'Error al añadir al carrito', 'info')
     }
   };
 

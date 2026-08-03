@@ -115,8 +115,8 @@ export const cart = {
   add: (data: { product_id: string; quantity: number; selected_size: string; item_price: number; weight_grams?: number }) =>
     request<any>('/cart', { method: 'POST', body: JSON.stringify(data) }),
 
-  update: (id: string, quantity: number) =>
-    request<any>(`/cart/${id}`, { method: 'PUT', body: JSON.stringify({ quantity }) }),
+  update: (id: string, payload: number | { quantity?: number; weight_grams?: number }) =>
+    request<any>(`/cart/${id}`, { method: 'PUT', body: JSON.stringify(typeof payload === 'number' ? { quantity: payload } : payload) }),
 
   remove: (id: string) =>
     request<{ message: string }>(`/cart/${id}`, { method: 'DELETE' }),

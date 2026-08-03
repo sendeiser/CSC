@@ -53,17 +53,42 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
 
   const handleQuantityChange = async (index: number, delta: number) => {
     const item = cart[index]
-    if (item.weight_grams) return  // weight items don't use quantity
+
+    if (item.weight_grams) {
+      const step = 50 // Modificar de a 50 gramos
+      const newWeight = (item.weight_grams || 0) + (delta > 0 ? step : -step)
+      if (newWeight < 50) {
+        await handleRemoveItem(index)
+        return
+      }
+      const pricePerKg = Number(item.product.price_per_kg) || 0
+      const newPrice = Math.round((newWeight / 1000) * pricePerKg * 100) / 100
+
+      if (isLoggedIn) {
+        try {
+          const items = await cartApi.list()
+          const apiItem = items.find((i: any) => i.product_id === item.product.id)
+          if (apiItem) await cartApi.update(apiItem.id, { weight_grams: newWeight })
+        } catch { /* ignore */ }
+      }
+      setCart(prev => {
+        const updated = [...prev]
+        updated[index] = { ...updated[index], weight_grams: newWeight, itemPrice: newPrice }
+        return updated
+      })
+      return
+    }
+
     const newQty = item.quantity + delta
     if (newQty <= 0) {
-      setCart(prev => prev.filter((_, i) => i !== index))
+      await handleRemoveItem(index)
       return
     }
     if (isLoggedIn) {
       try {
         const items = await cartApi.list()
         const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize)
-        if (apiItem) await cartApi.update(apiItem.id, newQty)
+        if (apiItem) await cartApi.update(apiItem.id, { quantity: newQty })
       } catch { /* ignore */ }
     }
     setCart(prev => {
@@ -78,7 +103,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
     if (isLoggedIn) {
       try {
         const items = await cartApi.list()
-        const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize)
+        const apiItem = items.find((i: any) => i.product_id === item.product.id && (item.weight_grams ? true : i.selected_size === item.selectedSize))
         if (apiItem) await cartApi.remove(apiItem.id)
       } catch { /* ignore */ }
     }
@@ -317,17 +342,29 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                       </div>
                       <div className="flex items-center justify-between mt-3">
                         <div className="flex items-center space-x-2">
-                          {item.weight_grams ? (
-                            <span className="text-sm font-bold bg-purple-50 text-purple-700 px-3 py-1 rounded-full">{item.weight_grams}g</span>
-                          ) : (
-                            <div className="flex items-center bg-gray-100 rounded-full p-0.5 space-x-1">
-                              <button onClick={() => handleQuantityChange(index, -1)} className="w-7 h-7 rounded-full bg-white shadow-sm text-gray-600 hover:text-red-500 transition-colors flex items-center justify-center font-bold text-sm">−</button>
-                              <span className="text-sm font-bold w-6 text-center">{item.quantity}</span>
-                              <button onClick={() => handleQuantityChange(index, 1)} className="w-7 h-7 rounded-full bg-white shadow-sm text-gray-600 hover:text-purple-600 transition-colors flex items-center justify-center font-bold text-sm">+</button>
-                            </div>
-                          )}
+                          <div className="flex items-center bg-gray-100 rounded-full p-0.5 space-x-1">
+                            <button
+                              onClick={() => handleQuantityChange(index, -1)}
+                              className="w-7 h-7 rounded-full bg-white shadow-sm text-gray-600 hover:text-red-500 transition-colors flex items-center justify-center font-bold text-sm"
+                              title={item.weight_grams ? "Restar 50g" : "Restar 1"}
+                            >
+                              −
+                            </button>
+                            <span className="text-sm font-bold min-w-[3rem] text-center px-1">
+                              {item.weight_grams ? `${item.weight_grams}g` : item.quantity}
+                            </span>
+                            <button
+                              onClick={() => handleQuantityChange(index, 1)}
+                              className="w-7 h-7 rounded-full bg-white shadow-sm text-gray-600 hover:text-purple-600 transition-colors flex items-center justify-center font-bold text-sm"
+                              title={item.weight_grams ? "Sumar 50g" : "Sumar 1"}
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
-                        <span className="font-bold text-base text-gray-900">${(item.itemPrice * item.quantity).toFixed(2)}</span>
+                        <span className="font-bold text-base text-gray-900">
+                          ${(item.weight_grams ? item.itemPrice : item.itemPrice * item.quantity).toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   </motion.div>
