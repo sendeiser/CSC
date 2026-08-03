@@ -9,6 +9,7 @@ import { CartScreen } from './components/CartScreen';
 import { AuthScreens } from './components/AuthScreens';
 import { AdminPanel } from './components/AdminPanel';
 import { AboutUsScreen } from './components/AboutUsScreen';
+import { HowToBuyScreen } from './components/HowToBuyScreen';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken, setOnAuthExpired } from './lib/api';
 import { supabase } from './lib/supabase';
@@ -388,6 +389,12 @@ export default function App() {
               <AboutUsScreen setActiveScreen={setActiveScreen} />
             </motion.div>
           )}
+
+          {activeScreen === 'como-comprar' && (
+            <motion.div key="como-comprar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              <HowToBuyScreen setActiveScreen={setActiveScreen} />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
@@ -425,6 +432,7 @@ export default function App() {
                     {[
                       { label: 'Inicio', screen: 'inicio' },
                       { label: 'Catálogo', screen: 'catalogo' },
+                      { label: '¿Cómo comprar?', screen: 'como-comprar' },
                       { label: 'Nosotros', screen: 'nosotros' },
                     ].map(({ label, screen }) => (
                       <li key={screen}>

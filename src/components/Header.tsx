@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Sparkles, LogOut, Menu, X, Home, Package, Info, Settings } from 'lucide-react';
+import { ShoppingBag, Sparkles, LogOut, Menu, X, Home, Package, Info, Settings, HelpCircle } from 'lucide-react';
 import { ActiveScreen, CartItem, UserSession } from '../types';
 import { auth as authApi, setAuthToken } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -48,10 +48,15 @@ export const Header: React.FC<HeaderProps> = ({
   // Close drawer on screen change
   React.useEffect(() => { setMobileMenuOpen(false); }, [activeScreen]);
 
+  const handleNavClick = (screen: string) => {
+    setActiveScreen(screen as ActiveScreen);
+  };
+
   const navItems = [
-    { label: 'Inicio', screen: 'inicio' as ActiveScreen, Icon: Home },
-    { label: 'Catálogo', screen: 'catalogo' as ActiveScreen, Icon: Package },
-    { label: 'Nosotros', screen: 'nosotros' as ActiveScreen, Icon: Info },
+    { label: 'Inicio', screen: 'inicio', Icon: Home },
+    { label: 'Catálogo', screen: 'catalogo', Icon: Package },
+    { label: '¿Cómo comprar?', screen: 'como-comprar', Icon: HelpCircle },
+    { label: 'Nosotros', screen: 'nosotros', Icon: Info },
   ];
 
   const handleLogout = async () => {
@@ -100,7 +105,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <button
                     key={item.screen}
                     id={`nav-link-${item.screen}`}
-                    onClick={() => setActiveScreen(item.screen)}
+                    onClick={() => handleNavClick(item.screen)}
                     className={`relative px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
                       isActive
                         ? 'text-purple-700 bg-purple-50'
@@ -274,7 +279,7 @@ export const Header: React.FC<HeaderProps> = ({
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05 }}
-                      onClick={() => { setActiveScreen(item.screen); setMobileMenuOpen(false); }}
+                      onClick={() => { handleNavClick(item.screen); setMobileMenuOpen(false); }}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
                         isActive
                           ? 'bg-purple-50 text-purple-700 border border-purple-100'
