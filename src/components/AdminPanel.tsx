@@ -567,7 +567,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
         <div className="flex-shrink-0 p-5 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center space-x-3 overflow-hidden">
             <div className="w-9 h-9 rounded-2xl p-0.5 bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-sm font-black flex-shrink-0 shadow-lg shadow-purple-900/50 overflow-hidden">
-              <img src="/logo.png" alt="CSC Admin Logo" className="w-full h-full object-cover rounded-xl bg-white" />
+              <img src="/logo.png" alt="CSC Admin Logo" className="w-full h-full object-contain rounded-xl bg-white p-0.5" />
             </div>
             <div className="inline md:hidden lg:block overflow-hidden">
               <span className="font-headline font-black text-white text-sm block leading-none">CSC Admin</span>

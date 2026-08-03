@@ -79,8 +79,8 @@ export const Header: React.FC<HeaderProps> = ({
               className="flex items-center space-x-2.5 cursor-pointer group select-none"
               whileTap={{ scale: 0.97 }}
             >
-              <div className={`rounded-full p-0.5 candy-gradient-bg flex items-center justify-center text-white shadow-md shadow-purple-300/40 group-hover:shadow-purple-400/50 transition-all duration-300 overflow-hidden ${scrolled ? 'w-8.5 h-8.5' : 'w-10.5 h-10.5'}`}>
-                <img src="/logo.png" alt="Chamical Candy Shop Logo" className="w-full h-full object-cover rounded-full bg-white" />
+              <div className={`rounded-full p-0.5 candy-gradient-bg flex items-center justify-center text-white shadow-md shadow-purple-300/40 group-hover:shadow-purple-400/50 transition-all duration-300 overflow-hidden ${scrolled ? 'w-9 h-9' : 'w-11 h-11'}`}>
+                <img src="/logo.png" alt="Chamical Candy Shop Logo" className="w-full h-full object-contain rounded-full bg-white p-0.5" />
               </div>
               <div className="flex flex-col leading-none">
                 <span className="font-headline font-extrabold text-lg sm:text-xl tracking-tight candy-gradient-text">

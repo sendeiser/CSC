@@ -400,7 +400,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2.5">
                     <div className="w-10 h-10 rounded-full p-0.5 candy-gradient-bg flex items-center justify-center shadow-md overflow-hidden">
-                      <img src="/logo.png" alt="Chamical Candy Shop" className="w-full h-full object-cover rounded-full bg-white" />
+                      <img src="/logo.png" alt="Chamical Candy Shop" className="w-full h-full object-contain rounded-full bg-white p-0.5" />
                     </div>
                     <div>
                       <span className="font-headline font-extrabold text-lg text-white tracking-tight">Chamical</span>
