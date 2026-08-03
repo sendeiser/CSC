@@ -391,7 +391,7 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
               {/* Video Player */}
               <div className="aspect-video relative bg-black flex items-center justify-center">
                 <video
-                  src="/uploads/Video_comercial_promocional_c.mp4"
+                  src="/uploads/Un_video_comercial_publicitari.mp4"
                   controls
                   autoPlay
                   className="w-full h-full object-cover"

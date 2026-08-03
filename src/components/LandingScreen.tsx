@@ -5,7 +5,6 @@ import { getCategoryIcon } from '../lib/categoryIcons';
 import { ActiveScreen, Product } from '../types';
 import { PRODUCTS } from '../data';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
-import { PromoVideoSection } from './PromoVideoSection';
 
 interface LandingScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
@@ -52,8 +51,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
         switch (section.section_type) {
           case 'hero':
             return (
-              <React.Fragment key={section.id}>
-                <section className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
+              <section key={section.id} className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
                   {/* Lightweight radial gradient ambient background */}
                   <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_30%_30%,_rgba(236,72,153,0.18),transparent_50%),radial-gradient(circle_at_70%_70%,_rgba(168,85,247,0.18),transparent_50%)]" />
 
@@ -203,27 +201,8 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                       <path d="M0 80L1440 80L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 80Z" fill="white"/>
                     </svg>
                   </div>
-                </section>
-                {!sections.some(s => s.section_type === 'video') && (
-                  <PromoVideoSection setActiveScreen={setActiveScreen} />
-                )}
-              </React.Fragment>
+              </section>
             )
-
-          case 'video': {
-            const vSection = getSection('video')
-            const vContent = vSection?.content || {}
-            return (
-              <PromoVideoSection
-                key={section.id}
-                setActiveScreen={setActiveScreen}
-                videoUrl={vContent.video_url}
-                title={vSection?.title}
-                subtitle={vSection?.subtitle}
-                description={vContent.description}
-              />
-            )
-          }
 
           case 'about': {
             const about = getSection('about')
