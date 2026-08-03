@@ -53,8 +53,15 @@ async function request<T>(
     if (res.status === 502 || res.status === 503 || res.status === 504) {
       throw new Error('El servidor no está disponible en este momento. Intentá de nuevo en unos instantes.')
     }
-    const err = await res.json().catch(() => ({ error: 'Error de conexión' }))
-    throw new Error(err.error || `Error ${res.status}`)
+    const text = await res.text().catch(() => '')
+    let errDetail = `Error ${res.status}`
+    try {
+      const json = JSON.parse(text)
+      errDetail = json.error || json.message || errDetail
+    } catch {
+      if (text && text.length < 200) errDetail = text
+    }
+    throw new Error(errDetail)
   }
 
   return res.json()
@@ -201,4 +208,38 @@ export const homepage = {
 // Categories (public)
 export const categories = {
   list: () => request<any[]>('/categories'),
+}
+
+// Upload (Admin)
+export const upload = {
+  single: async (file: File): Promise<{ url: string }> => {
+    const token = getAuthToken()
+    const formData = new FormData()
+    formData.append('image', file)
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Error al subir imagen' }))
+      throw new Error(err.error || 'Error al subir imagen')
+    }
+    return res.json()
+  },
+  multiple: async (files: File[]): Promise<{ urls: string[] }> => {
+    const token = getAuthToken()
+    const formData = new FormData()
+    files.forEach((f) => formData.append('images', f))
+    const res = await fetch('/api/upload/multiple', {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Error al subir imágenes' }))
+      throw new Error(err.error || 'Error al subir imágenes')
+    }
+    return res.json()
+  },
 }

@@ -37,7 +37,14 @@ router.get('/', async (req: Request, res: Response) => {
     return
   }
 
-  res.json(data)
+  const formattedData = (data || []).map((p: any) => ({
+    ...p,
+    images: (p.images && Array.isArray(p.images) && p.images.length > 0)
+      ? p.images
+      : (p.image_url ? [p.image_url] : [])
+  }))
+
+  res.json(formattedData)
 })
 
 router.get('/:slug', async (req: Request, res: Response) => {
@@ -58,38 +65,117 @@ router.get('/:slug', async (req: Request, res: Response) => {
     .eq('product_id', data.id)
     .order('created_at', { ascending: false })
 
-  res.json({ ...data, reviews: reviews || [] })
+  const formatted = {
+    ...data,
+    images: (data.images && Array.isArray(data.images) && data.images.length > 0)
+      ? data.images
+      : (data.image_url ? [data.image_url] : []),
+    reviews: reviews || []
+  }
+
+  res.json(formatted)
 })
 
 router.post('/', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await db
-    .from('products')
-    .insert(req.body)
-    .select()
-    .single()
+  try {
+    const payload = { ...req.body }
+    if (!payload.id) delete payload.id
+    delete payload.created_at
 
-  if (error) {
-    res.status(400).json({ error: error.message })
-    return
+    // Asegurar valores por defecto para campos obligatorios en DB
+    payload.description = (payload.description && payload.description.trim()) ? payload.description : (payload.name || 'Sin descripción')
+    payload.category = (payload.category && payload.category.trim()) ? payload.category : 'Caramelos'
+    payload.base_price = typeof payload.base_price === 'number' ? payload.base_price : (parseFloat(payload.base_price) || 0)
+    payload.stock = typeof payload.stock === 'number' ? payload.stock : (parseInt(payload.stock, 10) || 0)
+
+    // Generar slug si no viene presente
+    if (!payload.slug && payload.name) {
+      payload.slug = payload.name
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)+/g, '') + '-' + Date.now().toString(36)
+    }
+
+    let { data, error } = await db
+      .from('products')
+      .insert(payload)
+      .select()
+      .single()
+
+    // Si Supabase falla porque la columna 'images' no existe aún en el esquema de PostgreSQL, reintentar filtrando 'images'
+    if (error && (error.message?.includes("'images' column") || error.message?.includes('schema cache') || error.message?.includes('column "images"'))) {
+      const { images, ...payloadWithoutImages } = payload
+      const retry = await db
+        .from('products')
+        .insert(payloadWithoutImages)
+        .select()
+        .single()
+
+      data = retry.data
+      error = retry.error
+      if (data) {
+        data.images = Array.isArray(images) && images.length > 0 ? images : (data.image_url ? [data.image_url] : [])
+      }
+    }
+
+    if (error) {
+      res.status(400).json({ error: error.message })
+      return
+    }
+
+    res.status(201).json(data)
+  } catch (err: any) {
+    console.error('Error al crear producto:', err)
+    res.status(500).json({ error: err?.message || 'Error interno al crear el producto' })
   }
-
-  res.status(201).json(data)
 })
 
 router.put('/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await db
-    .from('products')
-    .update(req.body)
-    .eq('id', req.params.id)
-    .select()
-    .single()
+  try {
+    const payload = { ...req.body }
+    delete payload.id
+    delete payload.created_at
 
-  if (error) {
-    res.status(400).json({ error: error.message })
-    return
+    if (payload.description !== undefined && !payload.description) {
+      payload.description = payload.name || 'Sin descripción'
+    }
+
+    let { data, error } = await db
+      .from('products')
+      .update(payload)
+      .eq('id', req.params.id)
+      .select()
+      .single()
+
+    // Si Supabase falla porque la columna 'images' no existe aún en el esquema de PostgreSQL, reintentar filtrando 'images'
+    if (error && (error.message?.includes("'images' column") || error.message?.includes('schema cache') || error.message?.includes('column "images"'))) {
+      const { images, ...payloadWithoutImages } = payload
+      const retry = await db
+        .from('products')
+        .update(payloadWithoutImages)
+        .eq('id', req.params.id)
+        .select()
+        .single()
+
+      data = retry.data
+      error = retry.error
+      if (data) {
+        data.images = Array.isArray(images) && images.length > 0 ? images : (data.image_url ? [data.image_url] : [])
+      }
+    }
+
+    if (error) {
+      res.status(400).json({ error: error.message })
+      return
+    }
+
+    res.json(data)
+  } catch (err: any) {
+    console.error('Error al actualizar producto:', err)
+    res.status(500).json({ error: err?.message || 'Error interno al actualizar el producto' })
   }
-
-  res.json(data)
 })
 
 router.post('/bulk-delete', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {

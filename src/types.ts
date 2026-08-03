@@ -20,6 +20,7 @@ export interface Product {
   min_weight?: number;
   max_weight?: number;
   weight_step?: number;
+  images?: string[];
   created_at: string;
 }
 

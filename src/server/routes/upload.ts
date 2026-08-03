@@ -35,6 +35,54 @@ async function ensureBucketExists(client: any) {
   }
 }
 
+async function saveFileBuffer(buffer: Buffer, originalname: string, mimetype: string): Promise<string> {
+  const ext = path.extname(originalname).toLowerCase() || '.jpg'
+  const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
+  const filePath = `products/${filename}`
+
+  const client = serviceClient || supabase
+  await ensureBucketExists(client)
+
+  let { error: uploadError } = await client.storage
+    .from('products')
+    .upload(filePath, buffer, {
+      contentType: mimetype,
+      upsert: true,
+    })
+
+  if (uploadError && (uploadError.message.includes('not found') || uploadError.message.includes('Bucket') || uploadError.message.includes('does not exist'))) {
+    await client.storage.createBucket('products', { public: true }).catch(() => {})
+    const retry = await client.storage
+      .from('products')
+      .upload(filePath, buffer, {
+        contentType: mimetype,
+        upsert: true,
+      })
+    uploadError = retry.error
+  }
+
+  if (!uploadError) {
+    const { data: { publicUrl } } = client.storage
+      .from('products')
+      .getPublicUrl(filePath)
+    return publicUrl
+  }
+
+  // Fallback a public/uploads o data URI
+  const localDir = path.join(process.cwd(), 'public', 'uploads')
+  try {
+    if (!fs.existsSync(localDir)) {
+      fs.mkdirSync(localDir, { recursive: true })
+    }
+    const localFilePath = path.join(localDir, filename)
+    fs.writeFileSync(localFilePath, buffer)
+    return `/uploads/${filename}`
+  } catch {
+    const base64 = buffer.toString('base64')
+    return `data:${mimetype};base64,${base64}`
+  }
+}
+
 router.post('/', requireAdmin, upload.single('image'), async (req: AuthenticatedRequest, res: Response) => {
   if (!req.file) {
     res.status(400).json({ error: 'No se proporcionó ningún archivo de imagen' })
@@ -42,63 +90,31 @@ router.post('/', requireAdmin, upload.single('image'), async (req: Authenticated
   }
 
   try {
-    const ext = path.extname(req.file.originalname).toLowerCase() || '.jpg'
-    const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
-    const filePath = `products/${filename}`
-
-    const client = serviceClient || supabase
-
-    // Intentar asegurar que el bucket 'products' exista en Supabase
-    await ensureBucketExists(client)
-
-    let { error: uploadError } = await client.storage
-      .from('products')
-      .upload(filePath, req.file.buffer, {
-        contentType: req.file.mimetype,
-        upsert: true,
-      })
-
-    // Si falló por bucket no encontrado o no existente, intentar crear bucket y reintentar
-    if (uploadError && (uploadError.message.includes('not found') || uploadError.message.includes('Bucket') || uploadError.message.includes('does not exist'))) {
-      await client.storage.createBucket('products', { public: true }).catch(() => {})
-      const retry = await client.storage
-        .from('products')
-        .upload(filePath, req.file.buffer, {
-          contentType: req.file.mimetype,
-          upsert: true,
-        })
-      uploadError = retry.error
-    }
-
-    if (!uploadError) {
-      const { data: { publicUrl } } = client.storage
-        .from('products')
-        .getPublicUrl(filePath)
-      res.json({ url: publicUrl, filename })
-      return
-    }
-
-    // Fallback: Si Supabase Storage falla (ej: sin permisos o bucket no creado en cloud), guardar localmente o data URI
-    console.warn('[Upload] Supabase Storage error, using resilient fallback:', uploadError?.message)
-    const localDir = path.join(process.cwd(), 'public', 'uploads')
-    try {
-      if (!fs.existsSync(localDir)) {
-        fs.mkdirSync(localDir, { recursive: true })
-      }
-      const localFilePath = path.join(localDir, filename)
-      fs.writeFileSync(localFilePath, req.file.buffer)
-      res.json({ url: `/uploads/${filename}`, filename })
-      return
-    } catch {
-      // Si el filesystem es read-only (Netlify), devolver Data URI base64
-      const base64 = req.file.buffer.toString('base64')
-      const dataUri = `data:${req.file.mimetype};base64,${base64}`
-      res.json({ url: dataUri, filename })
-      return
-    }
+    const url = await saveFileBuffer(req.file.buffer, req.file.originalname, req.file.mimetype)
+    res.json({ url })
   } catch (err: any) {
     console.error('Upload error:', err)
     res.status(500).json({ error: err?.message || 'Error interno al subir imagen' })
+  }
+})
+
+router.post('/multiple', requireAdmin, upload.any(), async (req: AuthenticatedRequest, res: Response) => {
+  const files = req.files as Express.Multer.File[]
+  if (!files || files.length === 0) {
+    res.status(400).json({ error: 'No se proporcionaron archivos de imagen' })
+    return
+  }
+
+  try {
+    const urls: string[] = []
+    for (const file of files) {
+      const url = await saveFileBuffer(file.buffer, file.originalname, file.mimetype)
+      urls.push(url)
+    }
+    res.json({ urls })
+  } catch (err: any) {
+    console.error('Multiple upload error:', err)
+    res.status(500).json({ error: err?.message || 'Error interno al subir imágenes' })
   }
 })
 

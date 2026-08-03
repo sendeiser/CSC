@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Star, Heart, ShoppingBag, ArrowLeft, ShieldCheck, Truck, Sparkles, MessageSquare, Plus, Minus, Tag } from 'lucide-react';
+import { Star, Heart, ShoppingBag, ArrowLeft, ShieldCheck, Truck, Sparkles, MessageSquare, Plus, Minus, Tag, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ActiveScreen, Product } from '../types';
 
 interface ProductDetailScreenProps {
@@ -63,9 +63,19 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 }) => {
   const isExplosionGalactica = product.id === 'gomitas-explosion-galactica';
   
-  // Choose images based on whether it is Explosion Galactica or another item
-  const galleryImages = isExplosionGalactica ? GALACTIC_GALLERY : [product.image_url];
-  const [activeImage, setActiveImage] = React.useState(galleryImages[0]);
+  // Choose images based on product.images array or fallback to product.image_url
+  const galleryImages = (product.images && product.images.length > 0)
+    ? product.images
+    : (isExplosionGalactica ? GALACTIC_GALLERY : [product.image_url].filter(Boolean));
+
+  const [activeImage, setActiveImage] = React.useState(galleryImages[0] || product.image_url);
+  const [isLightboxOpen, setIsLightboxOpen] = React.useState(false);
+  const [lightboxIndex, setLightboxIndex] = React.useState(0);
+
+  const openLightbox = (index: number) => {
+    setLightboxIndex(index);
+    setIsLightboxOpen(true);
+  };
   
   // Set first size key as active
   const sizeKeys = product.sizes ? Object.keys(product.sizes) : ['Estándar'];
@@ -88,13 +98,16 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
 
   // Re-evaluate image if selected product changes
   React.useEffect(() => {
-    setActiveImage(galleryImages[0]);
+    const imgs = (product.images && product.images.length > 0)
+      ? product.images
+      : (isExplosionGalactica ? GALACTIC_GALLERY : [product.image_url].filter(Boolean));
+    setActiveImage(imgs[0] || product.image_url);
     const keys = product.sizes ? Object.keys(product.sizes) : ['Estándar'];
     setSelectedSize(keys[0]);
     setQuantity(1);
     setWeightGrams(product.min_weight || 50);
     setSuccessMsg(false);
-    window.scrollTo(0, 0)
+    window.scrollTo(0, 0);
   }, [product]);
 
   const activePrice = product.unit_type === 'weight'
@@ -147,8 +160,14 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           {/* Left Gallery Panel */}
           <div className="lg:col-span-6 flex flex-col space-y-4">
             
-            {/* Visual canvas */}
-            <div className="relative aspect-square rounded-3xl bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 overflow-hidden flex items-center justify-center border border-purple-100/50 shadow-lg shadow-purple-100/30">
+            {/* Visual canvas with zoom trigger */}
+            <div
+              onClick={() => {
+                const currentIdx = galleryImages.indexOf(activeImage);
+                openLightbox(currentIdx >= 0 ? currentIdx : 0);
+              }}
+              className="relative aspect-square rounded-3xl bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 overflow-hidden flex items-center justify-center border border-purple-100/50 shadow-lg shadow-purple-100/30 cursor-zoom-in group"
+            >
               <motion.img
                 key={activeImage}
                 initial={{ opacity: 0, scale: 1.05 }}
@@ -158,8 +177,17 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                 alt={product.name}
                 referrerPolicy="no-referrer"
                 decoding="async"
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
               />
+
+              {/* Zoom overlay badge */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/15 transition-all flex items-center justify-center">
+                <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center space-x-2 transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                  <Maximize2 className="w-4 h-4 text-pink-400" />
+                  <span>Tocar para ampliar imagen</span>
+                </span>
+              </div>
+
               {/* Stock badge */}
               {product.stock === 0 && (
                 <div className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow">
@@ -167,7 +195,11 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                 </div>
               )}
               <button
-                onClick={() => toggleFavorite(product.id)}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleFavorite(product.id);
+                }}
                 className={`absolute top-4 right-4 p-3 rounded-2xl shadow-xl transition-all ${
                   isFav 
                     ? 'bg-pink-500 text-white shadow-pink-300/60' 
@@ -187,8 +219,8 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                     <button
                       key={index}
                       onClick={() => setActiveImage(imgUrl)}
-                      className={`relative aspect-square rounded-xl overflow-hidden bg-slate-100 border-2 transition-all cursor-pointer ${
-                        isCurrent ? 'border-purple-600 ring-2 ring-purple-100' : 'border-transparent hover:border-slate-300'
+                      className={`relative aspect-square rounded-xl overflow-hidden bg-slate-100 border-2 transition-all cursor-pointer group ${
+                        isCurrent ? 'border-purple-600 ring-2 ring-purple-100 scale-105' : 'border-transparent hover:border-purple-300 opacity-80 hover:opacity-100'
                       }`}
                     >
                       <img
@@ -614,6 +646,87 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         </div>
 
       </div>
+
+      {/* Fullscreen Image Lightbox Modal */}
+      <AnimatePresence>
+        {isLightboxOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col justify-between p-4 sm:p-6"
+            onClick={() => setIsLightboxOpen(false)}
+          >
+            {/* Top Bar */}
+            <div className="flex items-center justify-between z-10" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center space-x-3">
+                <span className="text-white font-bold text-sm sm:text-base">{product.name}</span>
+                <span className="bg-white/10 text-pink-300 text-xs px-3 py-1 rounded-full font-mono font-bold border border-white/10">
+                  {lightboxIndex + 1} / {galleryImages.length}
+                </span>
+              </div>
+              <button
+                onClick={() => setIsLightboxOpen(false)}
+                className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                title="Cerrar"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Main Lightbox Image View */}
+            <div className="relative flex-1 flex items-center justify-center my-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              {galleryImages.length > 1 && (
+                <button
+                  onClick={() => setLightboxIndex((prev) => (prev > 0 ? prev - 1 : galleryImages.length - 1))}
+                  className="absolute left-2 sm:left-4 z-10 w-12 h-12 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-colors cursor-pointer"
+                  title="Anterior"
+                >
+                  <ChevronLeft className="w-7 h-7" />
+                </button>
+              )}
+
+              <motion.img
+                key={lightboxIndex}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.25 }}
+                src={galleryImages[lightboxIndex]}
+                alt={`${product.name} amplia ${lightboxIndex + 1}`}
+                className="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl border border-white/10 select-none"
+              />
+
+              {galleryImages.length > 1 && (
+                <button
+                  onClick={() => setLightboxIndex((prev) => (prev < galleryImages.length - 1 ? prev + 1 : 0))}
+                  className="absolute right-2 sm:right-4 z-10 w-12 h-12 rounded-full bg-black/50 hover:bg-black/80 text-white flex items-center justify-center backdrop-blur-sm transition-colors cursor-pointer"
+                  title="Siguiente"
+                >
+                  <ChevronRight className="w-7 h-7" />
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Thumbnail Strip inside Lightbox */}
+            {galleryImages.length > 1 && (
+              <div className="flex items-center justify-center space-x-2.5 overflow-x-auto py-2 z-10" onClick={(e) => e.stopPropagation()}>
+                {galleryImages.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setLightboxIndex(idx)}
+                    className={`w-14 h-14 rounded-xl overflow-hidden border-2 transition-all cursor-pointer flex-shrink-0 ${
+                      idx === lightboxIndex ? 'border-pink-500 ring-2 ring-pink-500/50 scale-110' : 'border-white/20 opacity-50 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt={`thumb ${idx}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

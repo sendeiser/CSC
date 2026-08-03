@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown } from 'lucide-react';
 import { AdminSection, Product } from '../types';
-import { admin as adminApi, products as productsApi, categories as categoriesApi, setAuthToken, getAuthToken } from '../lib/api';
+import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
 import AdminAboutPageEditor from './AdminAboutPageEditor';
 import { AdminOrdersSection } from './AdminOrdersSection';
@@ -268,9 +268,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
   const [imgSearchError, setImgSearchError] = useState('');
   const [showImgSearch, setShowImgSearch] = useState(false);
 
-  // Image Upload State
-  const [imgUploadFile, setImgUploadFile] = useState<File | null>(null);
-  const [imgUploadPreview, setImgUploadPreview] = useState<string>('');
+  // Image Upload State (Multi-image support)
+  const [imgUploadFiles, setImgUploadFiles] = useState<File[]>([]);
+  const [imgUploadPreviews, setImgUploadPreviews] = useState<string[]>([]);
   const [imgUploading, setImgUploading] = useState(false);
 
   const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_ACCESS_KEY || '';
@@ -413,32 +413,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     setActiveScreen('inicio')
   }
 
+  const handleOpenProductForm = (productToEdit?: Product) => {
+    setImgUploadFiles([])
+    setImgUploadPreviews([])
+    setShowImgSearch(false)
+    setImgSearchResults([])
+    setImgSearchQuery('')
+    if (productToEdit) {
+      const existingImages = (productToEdit.images && productToEdit.images.length > 0)
+        ? [...productToEdit.images]
+        : (productToEdit.image_url ? [productToEdit.image_url] : [])
+      setEditingProduct({
+        ...productToEdit,
+        images: existingImages,
+        image_url: existingImages[0] || productToEdit.image_url || ''
+      })
+    } else {
+      setEditingProduct({})
+    }
+    setShowProductForm(true)
+  }
+
   const saveProduct = async () => {
     if (!editingProduct) return
     try {
-      let imageUrl = editingProduct.image_url || ''
-
-      // If a local file was selected, upload it first
-      if (imgUploadFile) {
-        setImgUploading(true)
-        const formData = new FormData()
-        formData.append('image', imgUploadFile)
-        const token = getAuthToken()
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body: formData,
-        })
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.error || 'Error al subir imagen')
-        }
-        const { url } = await res.json()
-        imageUrl = url
-        setImgUploading(false)
+      setImgUploading(true)
+      let productImages: string[] = Array.isArray(editingProduct.images) ? [...editingProduct.images] : []
+      if (!productImages.length && editingProduct.image_url) {
+        productImages = [editingProduct.image_url]
       }
 
-      const payload = { ...editingProduct, image_url: imageUrl }
+      // Upload local pending files if selected
+      if (imgUploadFiles && imgUploadFiles.length > 0) {
+        const { urls } = await uploadApi.multiple(imgUploadFiles)
+        if (urls && Array.isArray(urls)) {
+          productImages = [...productImages, ...urls]
+        }
+      }
+
+      // Ensure duplicates are removed while keeping order
+      productImages = Array.from(new Set(productImages.filter(Boolean)))
+      const mainImageUrl = productImages[0] || editingProduct.image_url || ''
+
+      const payload = {
+        ...editingProduct,
+        image_url: mainImageUrl,
+        images: productImages
+      }
 
       if (editingProduct.id) {
         await productsApi.update(editingProduct.id, payload)
@@ -447,8 +468,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
       }
       setShowProductForm(false)
       setEditingProduct(null)
-      setImgUploadFile(null)
-      setImgUploadPreview('')
+      setImgUploadFiles([])
+      setImgUploadPreviews([])
+      setImgUploading(false)
       loadSection('products')
     } catch (err: any) {
       setImgUploading(false)
@@ -994,7 +1016,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                       <p className="text-xs text-slate-500 mt-0.5">Gestioná y buscá los productos de tu catálogo</p>
                     </div>
                     <button
-                      onClick={() => { setEditingProduct({}); setShowProductForm(true) }}
+                      onClick={() => handleOpenProductForm()}
                       className="flex items-center justify-center space-x-2 px-5 py-2.5 candy-gradient-bg text-white rounded-xl text-sm font-bold hover:opacity-95 w-full sm:w-auto shadow-lg shadow-purple-300/40 transition-all hover:-translate-y-0.5"
                     >
                       <Plus className="w-4 h-4" /><span>Nuevo Producto</span>
@@ -1216,7 +1238,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                 <td className="px-4 py-3 text-right whitespace-nowrap">
                                   <div className="flex items-center justify-end space-x-1">
                                     <button
-                                      onClick={() => { setEditingProduct(p); setShowProductForm(true) }}
+                                      onClick={() => handleOpenProductForm(p)}
                                       className="p-2 text-slate-400 hover:text-purple-700 hover:bg-purple-50 rounded-xl transition-all"
                                     >
                                       <Edit3 className="w-4 h-4" />
@@ -1637,102 +1659,123 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
 
               {/* Image Picker Section */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                    Imagen del Producto
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => { setShowImgSearch((s) => !s); setImgSearchResults([]); setImgSearchQuery(''); }}
-                    className={`text-[11px] font-bold px-3 py-1 rounded-lg transition-colors ${
-                      showImgSearch ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                    }`}
-                  >
-                    {showImgSearch ? '✕ Cerrar buscador' : '🔍 Buscar imagen'}
-                  </button>
-                </div>
-
-                {/* Current image preview */}
-                {editingProduct?.image_url ? (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group">
-                    <img
-                      src={editingProduct.image_url}
-                      alt="Vista previa"
-                      className="w-full h-32 object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end justify-between p-3">
-                      <span className="text-white text-[10px] font-semibold bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                        Imagen Seleccionada
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setEditingProduct((p) => ({ ...p, image_url: '' }))}
-                        className="text-white bg-red-500/80 hover:bg-red-600 p-1 rounded-lg backdrop-blur-sm transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ) : imgUploadPreview ? (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 group">
-                    <img
-                      src={imgUploadPreview}
-                      alt="Vista previa local"
-                      className="w-full h-32 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent flex items-end justify-between p-3">
-                      <span className="text-white text-[10px] font-semibold bg-black/40 px-2 py-0.5 rounded-full backdrop-blur-sm">
-                        📁 Archivo local (se subirá al guardar)
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => { setImgUploadFile(null); setImgUploadPreview(''); }}
-                        className="text-white bg-red-500/80 hover:bg-red-600 p-1 rounded-lg backdrop-blur-sm transition-colors"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Upload local */}
-                    <label
-                      htmlFor="product-img-upload"
-                      className="h-24 rounded-xl border-2 border-dashed border-purple-200 bg-purple-50/40 flex flex-col items-center justify-center text-purple-500 space-y-1 cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-colors"
+                {/* Gallery of uploaded/attached images */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Galería de Imágenes del Producto
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => { setShowImgSearch((s) => !s); setImgSearchResults([]); setImgSearchQuery(''); }}
+                      className={`text-[11px] font-bold px-3 py-1 rounded-lg transition-colors ${
+                        showImgSearch ? 'bg-purple-700 text-white' : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                      }`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                      </svg>
-                      <span className="text-xs font-semibold">Subir imagen</span>
-                      <span className="text-[10px] text-purple-400">JPG, PNG, WEBP · máx 5MB</span>
+                      {showImgSearch ? '✕ Cerrar buscador' : '🔍 Buscar imagen online'}
+                    </button>
+                  </div>
+
+                  {/* Display Grid of Current Images */}
+                  {((editingProduct?.images && editingProduct.images.length > 0) || editingProduct?.image_url || imgUploadPreviews.length > 0) && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      {/* Attached URL images */}
+                      {(editingProduct?.images || (editingProduct?.image_url ? [editingProduct.image_url] : [])).map((imgUrl: string, idx: number) => {
+                        const isMain = idx === 0 || editingProduct?.image_url === imgUrl;
+                        return (
+                          <div key={idx} className={`relative rounded-xl overflow-hidden border-2 bg-slate-50 group aspect-square ${isMain ? 'border-purple-600 ring-2 ring-purple-200' : 'border-slate-200'}`}>
+                            <img src={imgUrl} alt={`Prod img ${idx + 1}`} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-between">
+                              <div className="flex justify-between items-center w-full">
+                                {isMain ? (
+                                  <span className="text-[9px] font-bold bg-purple-600 text-white px-2 py-0.5 rounded-full">⭐ Principal</span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const curImgs = editingProduct?.images ? [...editingProduct.images] : [editingProduct.image_url];
+                                      const filtered = curImgs.filter(i => i !== imgUrl);
+                                      setEditingProduct(p => ({ ...p, image_url: imgUrl, images: [imgUrl, ...filtered] }));
+                                    }}
+                                    className="text-[9px] font-bold bg-white/90 text-purple-700 hover:bg-white px-2 py-0.5 rounded-full"
+                                  >
+                                    Hacer Principal
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const curImgs = editingProduct?.images ? [...editingProduct.images] : [editingProduct.image_url];
+                                    const nextImgs = curImgs.filter(i => i !== imgUrl);
+                                    setEditingProduct(p => ({ ...p, image_url: nextImgs[0] || '', images: nextImgs }));
+                                  }}
+                                  className="p-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Local pending upload files */}
+                      {imgUploadPreviews.map((prevUrl: string, idx: number) => (
+                        <div key={`local-${idx}`} className="relative rounded-xl overflow-hidden border-2 border-dashed border-purple-300 bg-purple-50/50 aspect-square group">
+                          <img src={prevUrl} alt={`Local preview ${idx + 1}`} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity p-2 flex flex-col justify-between">
+                            <span className="text-[9px] font-bold bg-purple-900/80 text-white px-2 py-0.5 rounded-full">📁 Pendiente</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImgUploadFiles(prev => prev.filter((_, i) => i !== idx));
+                                setImgUploadPreviews(prev => prev.filter((_, i) => i !== idx));
+                              }}
+                              className="p-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors self-end"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Multiple file upload button */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <label
+                      htmlFor="product-img-upload-multi"
+                      className="h-20 rounded-xl border-2 border-dashed border-purple-200 bg-purple-50/40 flex flex-col items-center justify-center text-purple-600 space-y-1 cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-colors"
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span className="text-xs font-bold">Subir imágenes</span>
+                      <span className="text-[9px] text-purple-400">Podés seleccionar varios archivos</span>
                       <input
-                        id="product-img-upload"
+                        id="product-img-upload-multi"
                         type="file"
+                        multiple
                         accept="image/*"
                         className="hidden"
                         onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (!file) return
-                          setImgUploadFile(file)
-                          const preview = URL.createObjectURL(file)
-                          setImgUploadPreview(preview)
-                          // Clear any URL that was set
-                          setEditingProduct((p) => ({ ...p, image_url: '' }))
+                          const files = Array.from(e.target.files || []) as File[];
+                          if (!files.length) return;
+                          setImgUploadFiles(prev => [...prev, ...files]);
+                          const newPreviews = files.map(f => URL.createObjectURL(f));
+                          setImgUploadPreviews(prev => [...prev, ...newPreviews]);
                         }}
                       />
                     </label>
-                    {/* Search online */}
+
                     <div
-                      className="h-24 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 space-y-1 cursor-pointer hover:border-purple-300 hover:bg-purple-50/30 transition-colors"
+                      className="h-20 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center text-slate-400 space-y-1 cursor-pointer hover:border-purple-300 hover:bg-purple-50/30 transition-colors"
                       onClick={() => setShowImgSearch(true)}
                     >
-                      <Eye className="w-7 h-7" />
-                      <span className="text-xs font-semibold">Buscar en línea</span>
-                      <span className="text-[10px] text-slate-400">Pexels / Unsplash</span>
+                      <Eye className="w-5 h-5" />
+                      <span className="text-xs font-bold">Buscar en línea</span>
+                      <span className="text-[9px] text-slate-400">Pexels / Unsplash</span>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Image Search Panel */}
                 {showImgSearch && (
@@ -1793,7 +1836,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                             <div
                               key={img.id}
                               onClick={() => {
-                                setEditingProduct((p) => ({ ...p, image_url: img.regular }));
+                                setEditingProduct((p) => {
+                                  const curImgs = p?.images || (p?.image_url ? [p.image_url] : []);
+                                  const updated = Array.from(new Set([...curImgs, img.regular]));
+                                  return {
+                                    ...p,
+                                    image_url: p?.image_url || img.regular,
+                                    images: updated
+                                  };
+                                });
                                 setShowImgSearch(false);
                               }}
                               className={`relative cursor-pointer rounded-xl overflow-hidden border-2 transition-all group ${
