@@ -352,6 +352,58 @@ router.delete('/orders/:id', requireAdmin, async (req: AuthenticatedRequest, res
   }
 })
 
+function toLocalDateKey(d: Date): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+router.get('/users', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const db = serviceClient || supabase
+  const { data: users, error } = await db
+    .from('profiles')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    res.status(500).json({ error: error.message })
+    return
+  }
+
+  const { data: allOrders } = await db
+    .from('orders')
+    .select('id, user_id, total, status, created_at, shipping_name, shipping_address, order_items(*, products(*))')
+    .order('created_at', { ascending: false })
+
+  const userOrdersMap: Record<string, any[]> = {}
+  if (allOrders) {
+    allOrders.forEach(o => {
+      if (o.user_id) {
+        if (!userOrdersMap[o.user_id]) userOrdersMap[o.user_id] = []
+        userOrdersMap[o.user_id].push(o)
+      }
+    })
+  }
+
+  const PAID_STATUSES = ['paid', 'shipped', 'delivered', 'completed']
+
+  const enrichedUsers = (users || []).map(u => {
+    const userOrders = userOrdersMap[u.id] || []
+    const paidOrders = userOrders.filter(o => PAID_STATUSES.includes((o.status || '').toLowerCase()))
+    const totalSpent = paidOrders.reduce((sum, o) => sum + Number(o.total || 0), 0)
+    return {
+      ...u,
+      ordersCount: userOrders.length,
+      paidOrdersCount: paidOrders.length,
+      totalSpent,
+      orders: userOrders
+    }
+  })
+
+  res.json(enrichedUsers)
+})
+
 router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const db = serviceClient || supabase
   const { count: totalProducts } = await db.from('products').select('*', { head: true, count: 'exact' })
@@ -372,7 +424,7 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
     cancelled: 0,
   }
 
-  const PAID_STATUSES = ['paid', 'shipped', 'delivered']
+  const PAID_STATUSES = ['paid', 'shipped', 'delivered', 'completed']
 
   let totalRevenue = 0
   let todaySales = 0
@@ -385,11 +437,12 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
   const sevenDaysAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000)
   const thirtyDaysAgo = now.getTime() - (30 * 24 * 60 * 60 * 1000)
 
-  // 1. Sales by Last 7 Days
+  // 1. Sales by Last 7 Days (usando zona horaria local)
   const daysMap: Record<string, { date: string; dayName: string; total: number; count: number }> = {}
   for (let i = 6; i >= 0; i--) {
-    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000)
-    const dateKey = d.toISOString().split('T')[0]
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const dateKey = toLocalDateKey(d)
     const dayName = d.toLocaleDateString('es-AR', { weekday: 'short' })
     const label = `${d.getDate()}/${d.getMonth() + 1}`
     daysMap[dateKey] = { date: label, dayName, total: 0, count: 0 }
@@ -401,12 +454,13 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
 
   if (orders) {
     orders.forEach(o => {
-      if (statusCounts[o.status as keyof typeof statusCounts] !== undefined) {
-        statusCounts[o.status as keyof typeof statusCounts]++
+      const st = (o.status || '').toLowerCase()
+      if (statusCounts[st as keyof typeof statusCounts] !== undefined) {
+        statusCounts[st as keyof typeof statusCounts]++
       }
 
-      // ONLY paid, shipped, or delivered orders count towards Revenue & Sales Analytics!
-      if (PAID_STATUSES.includes(o.status)) {
+      // SOLO los pedidos confirmados/pagados suman en las métricas de ingresos
+      if (PAID_STATUSES.includes(st)) {
         const orderTotal = Number(o.total || 0)
         totalRevenue += orderTotal
 
@@ -415,7 +469,7 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
         if (orderTime >= sevenDaysAgo) weeklySales += orderTotal
         if (orderTime >= thirtyDaysAgo) monthlySales += orderTotal
 
-        const orderDateKey = new Date(o.created_at).toISOString().split('T')[0]
+        const orderDateKey = toLocalDateKey(new Date(o.created_at))
         if (daysMap[orderDateKey]) {
           daysMap[orderDateKey].total += orderTotal
           daysMap[orderDateKey].count++
@@ -423,13 +477,31 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
 
         if (o.order_items && Array.isArray(o.order_items)) {
           o.order_items.forEach((item: any) => {
-            const qty = Number(item.quantity || 1)
             const prod = item.products || {}
             const prodId = item.product_id || prod.id || 'unknown'
-            const unitPrice = Number(item.unit_price || prod.base_price || 0)
-            const itemTotal = unitPrice * qty
-            const unitCost = prod.cost_price ? Number(prod.cost_price) : (unitPrice * 0.6)
-            totalCogs += unitCost * qty
+            
+            let itemTotal = Number(item.unit_price || 0)
+            let qtySold = Number(item.quantity || 1)
+            let itemCost = 0
+
+            if (item.weight_grams) {
+              // Producto vendido a granel / por peso (gramos)
+              qtySold = item.weight_grams / 1000 // Convertido a kg para unidades
+              if (!itemTotal || itemTotal === Number(prod.base_price || 0)) {
+                itemTotal = (Number(prod.base_price || 0) * item.weight_grams) / 1000
+              }
+              const costPerKg = prod.cost_price ? Number(prod.cost_price) : (Number(prod.base_price || 0) * 0.6)
+              itemCost = (costPerKg * item.weight_grams) / 1000
+            } else {
+              // Producto vendido por unidad
+              if (itemTotal === 0 && prod.base_price) {
+                itemTotal = Number(prod.base_price) * qtySold
+              }
+              const unitCost = prod.cost_price ? Number(prod.cost_price) : (Number(prod.base_price || item.unit_price || 0) * 0.6)
+              itemCost = unitCost * qtySold
+            }
+
+            totalCogs += itemCost
 
             const cat = prod.category || 'General'
             categorySalesMap[cat] = (categorySalesMap[cat] || 0) + itemTotal
@@ -443,7 +515,7 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
                 revenue: 0,
               }
             }
-            productSalesMap[prodId].totalSold += qty
+            productSalesMap[prodId].totalSold += qtySold
             productSalesMap[prodId].revenue += itemTotal
           })
         }
@@ -458,8 +530,13 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
       const stock = Number(p.stock || 0)
       const price = Number(p.base_price || 0)
       const cost = p.cost_price ? Number(p.cost_price) : (price * 0.6)
-      totalInventoryCost += cost * stock
-      totalInventoryValue += price * stock
+
+      // Para productos por peso, el stock está en GRAMOS y el precio/costo por KG (1000g)
+      const isWeight = p.unit_type === 'weight'
+      const realQty = isWeight ? (stock / 1000) : stock
+
+      totalInventoryCost += cost * realQty
+      totalInventoryValue += price * realQty
     })
   }
 
