@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, Star, MapPin, Clock, Phone, Instagram, Store, Heart, ChevronRight, Send, Sparkles, ShoppingBag } from 'lucide-react';
+import { ArrowRight, Star, MapPin, Clock, Phone, Instagram, Store, Heart, ChevronRight, Send, Sparkles, ShoppingBag, Facebook, Video, MessageCircle, ExternalLink, Mail } from 'lucide-react';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { ActiveScreen, Product } from '../types';
 import { PRODUCTS } from '../data';
@@ -393,30 +393,103 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                           </div>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="space-y-5">
+                          {/* Contacto & WhatsApp */}
                           <div className="flex items-start space-x-4">
                             <div className="w-10 h-10 rounded-2xl bg-teal-100 flex items-center justify-center flex-shrink-0">
                               <Phone className="w-5 h-5 text-teal-600" />
                             </div>
                             <div>
-                              <h4 className="font-bold text-gray-900 text-sm mb-1">Contacto</h4>
-                              <p className="text-sm text-gray-600">{sContent.phone || ''}</p>
-                              <p className="text-sm text-gray-600">{sContent.email || ''}</p>
+                              <h4 className="font-bold text-gray-900 text-sm mb-1">Contacto Directo</h4>
+                              {sContent.whatsapp ? (
+                                <a
+                                  href={`https://wa.me/${sContent.whatsapp.replace(/[^0-9]/g, '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 hover:underline flex items-center space-x-1"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" />
+                                  <span>WhatsApp: {sContent.whatsapp}</span>
+                                </a>
+                              ) : sContent.phone ? (
+                                <a
+                                  href={`tel:${sContent.phone.replace(/[^0-9+]/g, '')}`}
+                                  className="text-sm font-semibold text-slate-700 hover:text-purple-600 hover:underline block"
+                                >
+                                  {sContent.phone}
+                                </a>
+                              ) : null}
+
+                              {sContent.email && (
+                                <a
+                                  href={`mailto:${sContent.email}`}
+                                  className="text-sm text-slate-500 hover:text-purple-600 hover:underline flex items-center space-x-1 mt-0.5"
+                                >
+                                  <Mail className="w-3.5 h-3.5" />
+                                  <span>{sContent.email}</span>
+                                </a>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-start space-x-4">
-                            <div className="w-10 h-10 rounded-2xl bg-pink-100 flex items-center justify-center flex-shrink-0">
-                              <Instagram className="w-5 h-5 text-pink-600" />
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-gray-900 text-sm mb-1">Instagram</h4>
-                              <p className="text-sm text-purple-600 font-semibold">{sContent.instagram || ''}</p>
+
+                          {/* Redes Sociales (Iconos clickeables) */}
+                          <div className="space-y-2 pt-1">
+                            <h4 className="font-bold text-gray-900 text-sm">Nuestras Redes Sociales</h4>
+                            <div className="flex items-center space-x-3 pt-1">
+                              {sContent.instagram && (
+                                <a
+                                  href={sContent.instagram.startsWith('http') ? sContent.instagram : `https://instagram.com/${sContent.instagram.replace('@', '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Instagram"
+                                  className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white flex items-center justify-center shadow-sm hover:shadow-md hover:scale-110 transition-all duration-200"
+                                >
+                                  <Instagram className="w-5 h-5" />
+                                </a>
+                              )}
+
+                              {sContent.facebook && (
+                                <a
+                                  href={sContent.facebook.startsWith('http') ? sContent.facebook : `https://facebook.com/${sContent.facebook}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Facebook"
+                                  className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-sm hover:shadow-md hover:scale-110 transition-all duration-200"
+                                >
+                                  <Facebook className="w-5 h-5" />
+                                </a>
+                              )}
+
+                              {sContent.tiktok && (
+                                <a
+                                  href={sContent.tiktok.startsWith('http') ? sContent.tiktok : `https://tiktok.com/@${sContent.tiktok.replace('@', '')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="TikTok"
+                                  className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-sm hover:shadow-md hover:scale-110 transition-all duration-200"
+                                >
+                                  <Video className="w-5 h-5 text-pink-400" />
+                                </a>
+                              )}
+
+                              {!sContent.instagram && !sContent.facebook && !sContent.tiktok && (
+                                <a
+                                  href="https://instagram.com/chamicalcandyshop"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Instagram @chamicalcandyshop"
+                                  className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 text-white flex items-center justify-center shadow-sm hover:shadow-md hover:scale-110 transition-all duration-200"
+                                >
+                                  <Instagram className="w-5 h-5" />
+                                </a>
+                              )}
                             </div>
                           </div>
+
                           <div className="pt-2">
                             <span className="inline-flex items-center space-x-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-100">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                              <span>Abiertos — Física y Online</span>
+                              <span>Abiertos — Tienda Física y Online</span>
                             </span>
                           </div>
                         </div>
