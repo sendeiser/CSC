@@ -11,15 +11,27 @@ const router = Router()
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']
-    if (allowed.includes(file.mimetype)) {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml']
+    if (allowed.includes(file.mimetype) || file.mimetype.startsWith('image/')) {
       cb(null, true)
     } else {
-      cb(new Error('Solo se permiten imágenes (JPEG, PNG, WEBP, GIF, AVIF)'))
+      cb(new Error('Solo se permiten imágenes (JPEG, PNG, WEBP, GIF, AVIF, SVG)'))
     }
   },
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB max
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB max
 })
+
+// Middleware para capturar errores de multer y responder JSON limpio 400 sin romper Express
+const handleUploadMiddleware = (uploader: any) => (req: any, res: Response, next: any) => {
+  uploader(req, res, (err: any) => {
+    if (err) {
+      console.warn('[Upload Multer Error]:', err?.message || err)
+      res.status(400).json({ error: err?.message || 'Error en el archivo enviado' })
+      return
+    }
+    next()
+  })
+}
 
 async function ensureBucketExists(client: any) {
   try {
@@ -27,7 +39,7 @@ async function ensureBucketExists(client: any) {
     if (error || !bucket) {
       await client.storage.createBucket('products', {
         public: true,
-        fileSizeLimit: 5242880,
+        fileSizeLimit: 15728640,
       })
     }
   } catch (e) {
@@ -40,35 +52,42 @@ async function saveFileBuffer(buffer: Buffer, originalname: string, mimetype: st
   const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`
   const filePath = filename
 
-  const client = serviceClient || supabase
-  await ensureBucketExists(client)
+  try {
+    const client = serviceClient || supabase
+    await ensureBucketExists(client)
 
-  let { error: uploadError } = await client.storage
-    .from('products')
-    .upload(filePath, buffer, {
-      contentType: mimetype,
-      upsert: true,
-    })
-
-  if (uploadError && (uploadError.message.includes('not found') || uploadError.message.includes('Bucket') || uploadError.message.includes('does not exist'))) {
-    await client.storage.createBucket('products', { public: true }).catch(() => {})
-    const retry = await client.storage
+    let { error: uploadError } = await client.storage
       .from('products')
       .upload(filePath, buffer, {
         contentType: mimetype,
         upsert: true,
       })
-    uploadError = retry.error
+
+    const msg = uploadError?.message || ''
+    if (uploadError && (msg.includes('not found') || msg.includes('Bucket') || msg.includes('does not exist'))) {
+      await client.storage.createBucket('products', { public: true }).catch(() => {})
+      const retry = await client.storage
+        .from('products')
+        .upload(filePath, buffer, {
+          contentType: mimetype,
+          upsert: true,
+        })
+      uploadError = retry.error
+    }
+
+    if (!uploadError) {
+      const { data } = client.storage
+        .from('products')
+        .getPublicUrl(filePath)
+      if (data?.publicUrl) {
+        return data.publicUrl
+      }
+    }
+  } catch (err) {
+    console.warn('[Supabase Storage Upload Warning]:', err)
   }
 
-  if (!uploadError) {
-    const { data: { publicUrl } } = client.storage
-      .from('products')
-      .getPublicUrl(filePath)
-    return publicUrl
-  }
-
-  // Fallback a public/uploads o data URI
+  // Fallback 100% seguro a public/uploads o data URI
   const localDir = path.join(process.cwd(), 'public', 'uploads')
   try {
     if (!fs.existsSync(localDir)) {
@@ -77,13 +96,13 @@ async function saveFileBuffer(buffer: Buffer, originalname: string, mimetype: st
     const localFilePath = path.join(localDir, filename)
     fs.writeFileSync(localFilePath, buffer)
     return `/uploads/${filename}`
-  } catch {
+  } catch (_e) {
     const base64 = buffer.toString('base64')
     return `data:${mimetype};base64,${base64}`
   }
 }
 
-router.post('/', requireAdmin, upload.single('image'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/', requireAdmin, handleUploadMiddleware(upload.single('image')), async (req: AuthenticatedRequest, res: Response) => {
   if (!req.file) {
     res.status(400).json({ error: 'No se proporcionó ningún archivo de imagen' })
     return
@@ -98,7 +117,7 @@ router.post('/', requireAdmin, upload.single('image'), async (req: Authenticated
   }
 })
 
-router.post('/multiple', requireAdmin, upload.any(), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/multiple', requireAdmin, handleUploadMiddleware(upload.any()), async (req: AuthenticatedRequest, res: Response) => {
   const files = req.files as Express.Multer.File[]
   if (!files || files.length === 0) {
     res.status(400).json({ error: 'No se proporcionaron archivos de imagen' })
