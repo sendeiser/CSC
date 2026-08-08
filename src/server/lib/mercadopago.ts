@@ -24,11 +24,15 @@ interface PreferenceResult {
 export async function createPreference(
   items: PreferenceItem[],
   payerName: string,
-  backUrls: { success: string; failure: string; pending: string },
+  backUrls?: { success?: string; failure?: string; pending?: string },
   payerEmail?: string
 ): Promise<PreferenceResult> {
   const token = process.env.MERCADO_PAGO_ACCESS_TOKEN
-  const publicUrl = process.env.PUBLIC_URL || process.env.APP_URL
+  const publicUrl = process.env.PUBLIC_URL || process.env.APP_URL || process.env.CORS_ORIGIN
+
+  const cleanSuccess = (backUrls?.success || '').trim()
+  const cleanFailure = (backUrls?.failure || '').trim()
+  const cleanPending = (backUrls?.pending || '').trim()
 
   const body: any = {
     items: items.map(item => ({
@@ -42,12 +46,20 @@ export async function createPreference(
       name: payerName,
       ...(payerEmail ? { email: payerEmail } : {}),
     },
-    back_urls: backUrls,
-    auto_return: 'approved',
+  }
+
+  if (cleanSuccess && (cleanSuccess.startsWith('http://') || cleanSuccess.startsWith('https://'))) {
+    body.back_urls = {
+      success: cleanSuccess,
+      failure: cleanFailure || cleanSuccess,
+      pending: cleanPending || cleanSuccess,
+    }
+    body.auto_return = 'approved'
   }
 
   if (publicUrl && (publicUrl.startsWith('http://') || publicUrl.startsWith('https://'))) {
-    body.notification_url = `${publicUrl}/api/payments/webhook`
+    const cleanPublic = publicUrl.replace(/\/$/, '')
+    body.notification_url = `${cleanPublic}/api/payments/webhook`
   }
 
   const preference = await new Preference(getClient()).create({ body })

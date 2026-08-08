@@ -50,10 +50,21 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
       unit_price: Math.max(0.01, Number((item.item_price * discountRatio).toFixed(2))),
     }))
 
+    let baseUrl = 'http://localhost:3000'
+    const originHeader = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : '')
+    if (originHeader && (originHeader.startsWith('http://') || originHeader.startsWith('https://'))) {
+      baseUrl = originHeader
+    } else if (process.env.CORS_ORIGIN) {
+      baseUrl = process.env.CORS_ORIGIN
+    } else if (process.env.PUBLIC_URL) {
+      baseUrl = process.env.PUBLIC_URL
+    }
+    baseUrl = baseUrl.replace(/\/$/, '')
+
     const backUrls = {
-      success: `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/?payment_success=1`,
-      failure: `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/?payment_failure=1`,
-      pending: `${process.env.CORS_ORIGIN || 'http://localhost:3000'}/?payment_pending=1`,
+      success: `${baseUrl}/?payment_success=1`,
+      failure: `${baseUrl}/?payment_failure=1`,
+      pending: `${baseUrl}/?payment_pending=1`,
     }
 
     const preference = await createPreference(mpItems, shipping_name, backUrls, req.user?.email)
