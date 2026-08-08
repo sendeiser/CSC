@@ -1,6 +1,13 @@
 import { CartItem } from '../types';
 
-export const WHATSAPP_NUMERO = '543826432180';
+export let WHATSAPP_NUMERO_1 = '543826432180';
+export let WHATSAPP_NUMERO_2 = '5493826432180';
+export const WHATSAPP_NUMERO = WHATSAPP_NUMERO_1;
+
+export function setWhatsAppNumbers(num1?: string, num2?: string) {
+  if (num1) WHATSAPP_NUMERO_1 = num1;
+  if (num2) WHATSAPP_NUMERO_2 = num2;
+}
 
 export const DATOS_BANCO = {
   titular: 'Gonzalez Martin Gustavo',
@@ -65,6 +72,7 @@ export function buildMensajePedido(pedido: PedidoWhatsApp): string {
   return lineas.join('\n');
 }
 
-export function waLink(mensaje: string): string {
-  return `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensaje)}`;
+export function waLink(mensaje: string, targetPhone?: string): string {
+  const phone = (targetPhone || WHATSAPP_NUMERO_1).replace(/[^0-9]/g, '');
+  return `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
 }

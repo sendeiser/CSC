@@ -287,6 +287,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
       setSavingFinancial(false);
     }
   };
+
+  const [waConfig, setWaConfig] = useState({
+    whatsapp_number_1: '543826432180',
+    whatsapp_number_2: '5493826432180',
+  });
+  const [savingWaConfig, setSavingWaConfig] = useState(false);
+
+  useEffect(() => {
+    adminApi.getStoreSettings().then((st) => {
+      if (st) {
+        setWaConfig({
+          whatsapp_number_1: st.whatsapp_number_1 || '543826432180',
+          whatsapp_number_2: st.whatsapp_number_2 || '5493826432180',
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveWaConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingWaConfig(true);
+    try {
+      await adminApi.updateStoreSettings(waConfig);
+      showAlert({ title: 'Éxito', message: 'Números de WhatsApp actualizados correctamente', type: 'success' });
+    } catch (err: any) {
+      showAlert({ title: 'Error', message: err.message || 'Error al guardar los números', type: 'error' });
+    } finally {
+      setSavingWaConfig(false);
+    }
+  };
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -1081,6 +1111,57 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                         <span className="text-2xl font-black text-purple-900">{stats.statusCounts?.delivered || 0}</span>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Configuration card for WhatsApp lines 1 & 2 */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div>
+                        <h3 className="font-headline font-bold text-sm text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+                          <MessageCircle className="w-4 h-4 text-emerald-600" />
+                          <span>Líneas de WhatsApp para Envío de Comprobantes</span>
+                        </h3>
+                        <p className="text-xs text-slate-500 mt-0.5">Configurá los números de Teléfono (Número 1 y Número 2) para el envío de comprobantes de pago</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleSaveWaConfig} className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700">
+                          📱 Teléfono WhatsApp Número 1
+                        </label>
+                        <input
+                          type="text"
+                          value={waConfig.whatsapp_number_1}
+                          onChange={(e) => setWaConfig({ ...waConfig, whatsapp_number_1: e.target.value })}
+                          placeholder="ej: 543826432180"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700">
+                          📱 Teléfono WhatsApp Número 2
+                        </label>
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            value={waConfig.whatsapp_number_2}
+                            onChange={(e) => setWaConfig({ ...waConfig, whatsapp_number_2: e.target.value })}
+                            placeholder="ej: 5493826432180"
+                            className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                          />
+                          <button
+                            type="submit"
+                            disabled={savingWaConfig}
+                            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition-all shrink-0 flex items-center space-x-1.5 cursor-pointer"
+                          >
+                            {savingWaConfig ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            <span>Guardar</span>
+                          </button>
+                        </div>
+                      </div>
+                    </form>
                   </div>
 
                   {/* Recent Orders Widget */}

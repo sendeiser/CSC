@@ -5,6 +5,88 @@ import { supabase, serviceClient } from '../lib/supabase'
 import { requireAdmin, AuthenticatedRequest } from '../lib/auth'
 
 const FINANCIAL_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'financial_settings.json')
+const STORE_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'store_settings.json')
+
+export async function getStoreSettingsHelper() {
+  const db = serviceClient || supabase
+  try {
+    const { data } = await db
+      .from('homepage_sections')
+      .select('content')
+      .eq('section_type', 'store_settings')
+      .single()
+
+    if (data?.content) {
+      return {
+        whatsapp_number_1: data.content.whatsapp_number_1 || '543826432180',
+        whatsapp_number_2: data.content.whatsapp_number_2 || '5493826432180',
+      }
+    }
+  } catch (_e) {}
+
+  try {
+    if (fs.existsSync(STORE_SETTINGS_FILE)) {
+      const raw = fs.readFileSync(STORE_SETTINGS_FILE, 'utf-8')
+      const parsed = JSON.parse(raw)
+      return {
+        whatsapp_number_1: parsed.whatsapp_number_1 || '543826432180',
+        whatsapp_number_2: parsed.whatsapp_number_2 || '5493826432180',
+      }
+    }
+  } catch (_e) {}
+
+  return {
+    whatsapp_number_1: '543826432180',
+    whatsapp_number_2: '5493826432180',
+  }
+}
+
+export async function saveStoreSettingsHelper(payload: any) {
+  const db = serviceClient || supabase
+  const cleanPayload = {
+    whatsapp_number_1: String(payload.whatsapp_number_1 || '543826432180').trim(),
+    whatsapp_number_2: String(payload.whatsapp_number_2 || '5493826432180').trim(),
+  }
+
+  try {
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+    fs.writeFileSync(STORE_SETTINGS_FILE, JSON.stringify(cleanPayload, null, 2), 'utf-8')
+  } catch (err) {
+    console.error('[Store Settings File Error]:', err)
+  }
+
+  try {
+    const { data: existing } = await db
+      .from('homepage_sections')
+      .select('id')
+      .eq('section_type', 'store_settings')
+      .single()
+
+    if (existing?.id) {
+      await db
+        .from('homepage_sections')
+        .update({ content: cleanPayload })
+        .eq('id', existing.id)
+    } else {
+      await db
+        .from('homepage_sections')
+        .insert({
+          section_type: 'store_settings',
+          title: 'Configuración General de la Tienda',
+          visible: false,
+          order_index: 98,
+          content: cleanPayload,
+        })
+    }
+  } catch (err) {
+    console.warn('[Store Settings DB Upsert Warning]:', err)
+  }
+
+  return cleanPayload
+}
 
 async function getFinancialSettingsHelper() {
   const db = serviceClient || supabase
@@ -699,6 +781,16 @@ router.get('/financial-settings', requireAdmin, async (_req: AuthenticatedReques
 
 router.put('/financial-settings', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const saved = await saveFinancialSettingsHelper(req.body)
+  res.json(saved)
+})
+
+router.get('/store-settings', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  const settings = await getStoreSettingsHelper()
+  res.json(settings)
+})
+
+router.put('/store-settings', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const saved = await saveStoreSettingsHelper(req.body)
   res.json(saved)
 })
 

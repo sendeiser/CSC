@@ -1,10 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone } from 'lucide-react';
 import { ActiveScreen, CartItem } from '../types';
-import { cart as cartApi, orders as ordersApi, payments as paymentsApi } from '../lib/api';
+import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
-import { buildMensajePedido, waLink, DATOS_BANCO, WHATSAPP_NUMERO } from '../lib/whatsapp';
+import { buildMensajePedido, waLink, DATOS_BANCO, WHATSAPP_NUMERO, WHATSAPP_NUMERO_1, WHATSAPP_NUMERO_2, setWhatsAppNumbers } from '../lib/whatsapp';
 
 interface CartScreenProps {
   cart: CartItem[];
@@ -31,6 +31,22 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [paymentMethod, setPaymentMethod] = React.useState<'mercadopago' | 'transferencia'>('mercadopago');
   const [lastOrderItems, setLastOrderItems] = React.useState<CartItem[]>([]);
   const [lastOrderTotal, setLastOrderTotal] = React.useState<number>(0);
+  const [selectedWaNum, setSelectedWaNum] = React.useState<'num1' | 'num2'>('num1');
+  const [waNumbers, setWaNumbers] = React.useState<{ num1: string; num2: string }>({
+    num1: WHATSAPP_NUMERO_1,
+    num2: WHATSAPP_NUMERO_2,
+  });
+
+  React.useEffect(() => {
+    homepageApi.getSettings().then((st) => {
+      if (st?.whatsapp_number_1 || st?.whatsapp_number_2) {
+        const num1 = st.whatsapp_number_1 || WHATSAPP_NUMERO_1;
+        const num2 = st.whatsapp_number_2 || WHATSAPP_NUMERO_2;
+        setWaNumbers({ num1, num2 });
+        setWhatsAppNumbers(num1, num2);
+      }
+    }).catch(() => {});
+  }, []);
 
   const subTotal = cart.reduce((acc, item) => acc + (item.itemPrice * item.quantity), 0);
   const discountAmount = activeDiscount ? subTotal * (activeDiscount.percent / 100) : 0;
@@ -239,7 +255,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
             </div>
 
             {paymentMethod === 'transferencia' && (
-              <div className="max-w-md mx-auto text-left bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-200 rounded-2xl p-6 space-y-3 shadow-sm">
+              <div className="max-w-md mx-auto text-left bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-200 rounded-2xl p-6 space-y-4 shadow-sm">
                 <h3 className="font-headline font-bold text-gray-900 flex items-center space-x-2">
                   <Landmark className="w-5 h-5 text-purple-600" />
                   <span>Pagá por transferencia</span>
@@ -257,35 +273,86 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                   <span className="text-gray-500">Total a transferir</span>
                   <span className="font-bold text-purple-700">${lastOrderTotal.toFixed(2)}</span>
                 </div>
+
+                {/* Selector de Teléfono WhatsApp 1 y 2 */}
+                <div className="bg-white rounded-xl p-3.5 border border-purple-100 space-y-2">
+                  <span className="text-xs font-bold text-gray-800 flex items-center justify-between">
+                    <span className="flex items-center space-x-1.5">
+                      <Phone className="w-4 h-4 text-purple-600" />
+                      <span>Elegí la línea para enviar comprobante:</span>
+                    </span>
+                  </span>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWaNum('num1')}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center space-y-0.5 cursor-pointer ${
+                        selectedWaNum === 'num1'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-200 shadow-sm'
+                          : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="flex items-center space-x-1">
+                        <span>📱 Número 1</span>
+                        {selectedWaNum === 'num1' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      </span>
+                      <span className="text-[10px] font-mono opacity-75">{waNumbers.num1}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedWaNum('num2')}
+                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center space-y-0.5 cursor-pointer ${
+                        selectedWaNum === 'num2'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-200 shadow-sm'
+                          : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="flex items-center space-x-1">
+                        <span>📱 Número 2</span>
+                        {selectedWaNum === 'num2' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                      </span>
+                      <span className="text-[10px] font-mono opacity-75">{waNumbers.num2}</span>
+                    </button>
+                  </div>
+                </div>
+
                 <a
-                  href={waLink(buildMensajePedido({
-                    orderId,
-                    items: lastOrderItems.length > 0 ? lastOrderItems : cart,
-                    fullName,
-                    addressLine,
-                    cityField,
-                    phoneField,
-                    subTotal: lastOrderTotal,
-                    discountAmount: 0,
-                    grandTotal: lastOrderTotal,
-                    formaPago: 'transferencia',
-                  }))}
+                  href={waLink(
+                    buildMensajePedido({
+                      orderId,
+                      items: lastOrderItems.length > 0 ? lastOrderItems : cart,
+                      fullName,
+                      addressLine,
+                      cityField,
+                      phoneField,
+                      subTotal: lastOrderTotal,
+                      discountAmount: 0,
+                      grandTotal: lastOrderTotal,
+                      formaPago: 'transferencia',
+                    }),
+                    selectedWaNum === 'num1' ? waNumbers.num1 : waNumbers.num2
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-colors shadow-md"
+                  className="w-full flex items-center justify-center space-x-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-md"
                 >
                   <MessageCircle className="w-5 h-5" />
-                  <span>Enviar pedido por WhatsApp</span>
+                  <span>Enviar a WhatsApp (Número {selectedWaNum === 'num1' ? '1' : '2'})</span>
                 </a>
               </div>
             )}
             <a
-              href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(`Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`)}`}
+              href={waLink(
+                `Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`,
+                selectedWaNum === 'num1' ? waNumbers.num1 : waNumbers.num2
+              )}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-colors shadow-md"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-md"
             >
-              <span>Contactar por WhatsApp</span>
+              <span>Contactar por WhatsApp (Número {selectedWaNum === 'num1' ? '1' : '2'})</span>
             </a>
             <div className="pt-4">
               <button

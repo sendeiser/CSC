@@ -1,5 +1,6 @@
 import { Router, Response } from 'express'
 import { supabase } from '../lib/supabase'
+import { getStoreSettingsHelper } from './admin'
 
 const router = Router()
 
@@ -33,6 +34,12 @@ router.get('/about', async (_req, res: Response) => {
   }
 
   res.json(data)
+})
+
+// Public: get store settings (WhatsApp numbers, etc)
+router.get('/settings', async (_req, res: Response) => {
+  const settings = await getStoreSettingsHelper()
+  res.json(settings)
 })
 
 export default router
