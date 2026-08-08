@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
@@ -270,6 +270,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     initial_investment: 0,
   });
   const [savingFinancial, setSavingFinancial] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [expandFinancialGuide, setExpandFinancialGuide] = useState(false);
 
   const handleSaveFinancial = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -887,40 +889,170 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                     </div>
                   </div>
 
-                  {/* Financial Analytics: Inventory Investment & Profit Margins */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-sm">
-                      <h3 className="font-headline font-bold text-sm text-slate-800 uppercase tracking-wider">
-                        Inversión & Valuación de Productos
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3 pt-1">
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                          <span className="text-xs text-slate-500 font-semibold block">Inversión Total en Stock</span>
-                          <span className="text-xl font-black text-slate-900 mt-1 block">${(stats.totalInventoryCost || 0).toFixed(2)}</span>
-                          <span className="text-[10px] text-slate-400">Costo total de inventario</span>
+                  {/* Financial Analytics: Inventory Investment & Profit Margins with Explanatory Reports */}
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+                      <div className="flex items-center space-x-2.5">
+                        <span className="p-2 rounded-xl bg-purple-600 text-white shadow-sm">
+                          <BarChart2 className="w-5 h-5" />
+                        </span>
+                        <div>
+                          <h3 className="font-headline font-bold text-sm text-slate-900">Análisis Financiero de Inventario & Rendimiento</h3>
+                          <p className="text-xs text-slate-500">Valoración en depósito, potencial comercial y rentabilidad de ventas</p>
                         </div>
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-                          <span className="text-xs text-slate-500 font-semibold block">Valor Comercial Stock</span>
-                          <span className="text-xl font-black text-purple-700 mt-1 block">${(stats.totalInventoryValue || 0).toFixed(2)}</span>
-                          <span className="text-[10px] text-slate-400">Precio de venta potencial</span>
-                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => setExpandFinancialGuide(!expandFinancialGuide)}
+                          className="inline-flex items-center space-x-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                        >
+                          <HelpCircle className="w-4 h-4 text-purple-600" />
+                          <span>¿Cómo se calcula?</span>
+                          {expandFinancialGuide ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                        </button>
+
+                        <button
+                          onClick={() => setShowReportModal(true)}
+                          className="inline-flex items-center space-x-1.5 px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold rounded-xl shadow-sm transition-transform hover:scale-105 cursor-pointer"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span>Ver Informe Explicativo Completo</span>
+                        </button>
                       </div>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3 shadow-sm">
-                      <h3 className="font-headline font-bold text-sm text-slate-800 uppercase tracking-wider">
-                        Rendimientos & Ganancia Neta
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3 pt-1">
-                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
-                          <span className="text-xs text-emerald-800 font-semibold block">Ganancia Neta Estimada</span>
-                          <span className="text-xl font-black text-emerald-900 mt-1 block">${(stats.netProfit || 0).toFixed(2)}</span>
-                          <span className="text-[10px] text-emerald-700">Ingresos pagados - Costos</span>
+                    {/* Expandable Guide Card */}
+                    {expandFinancialGuide && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="bg-purple-900 text-white p-5 rounded-2xl shadow-lg border border-purple-800 space-y-3"
+                      >
+                        <div className="flex items-center space-x-2 text-pink-300 font-headline font-bold text-sm border-b border-purple-800 pb-2">
+                          <Info className="w-5 h-5 text-pink-400" />
+                          <span>Guía Explicativa de Métricas Financieras</span>
                         </div>
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
-                          <span className="text-xs text-blue-800 font-semibold block">Margen de Rendimiento</span>
-                          <span className="text-xl font-black text-blue-900 mt-1 block">{(stats.profitMargin || 0).toFixed(1)}%</span>
-                          <span className="text-[10px] text-blue-700">Margen neto de beneficio</span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs leading-relaxed text-purple-100">
+                          <div className="bg-purple-950/60 p-3.5 rounded-xl border border-purple-800 space-y-1">
+                            <span className="font-bold text-white block">📦 Inversión Total en Stock ($)</span>
+                            <p>Es la suma total del dinero invertido a precio de costo (fabricación o compra a proveedores) para tener disponible todo el stock actual en inventario. No toma en cuenta el margen de ganancia.</p>
+                          </div>
+                          <div className="bg-purple-950/60 p-3.5 rounded-xl border border-purple-800 space-y-1">
+                            <span className="font-bold text-pink-300 block">🏷️ Valor Comercial en Stock ($)</span>
+                            <p>Es la facturación bruta proyectada si se vende el 100% del stock acumulado al precio de venta al público configurado. Muestra el potencial económico total del depósito.</p>
+                          </div>
+                          <div className="bg-purple-950/60 p-3.5 rounded-xl border border-purple-800 space-y-1">
+                            <span className="font-bold text-emerald-300 block">💰 Ganancia Neta Estimada ($)</span>
+                            <p>Ganancia real producida por los pedidos cobrados y entregados, descontando únicamente el costo de los productos vendidos (COGS = Unidades vendidas × Costo unitario).</p>
+                          </div>
+                          <div className="bg-purple-950/60 p-3.5 rounded-xl border border-purple-800 space-y-1">
+                            <span className="font-bold text-cyan-300 block">📈 Margen de Rendimiento (%)</span>
+                            <p>Porcentaje de rentabilidad limpia sobre las ventas: <code className="bg-purple-900 px-1.5 py-0.5 rounded text-white font-mono">(Ganancia Neta / Ventas Totales) × 100</code>. Refleja qué tan eficiente es el margen de venta.</p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Card 1: Inversión & Valuación de Productos */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm hover:border-purple-200 transition-colors">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <div>
+                            <h3 className="font-headline font-bold text-sm text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+                              <span>Inversión & Valuación de Productos</span>
+                            </h3>
+                            <p className="text-[11px] text-slate-400">Capital invertido vs recaudación potencial del stock</p>
+                          </div>
+                          <span className="p-1.5 bg-purple-50 text-purple-700 rounded-lg">
+                            <Package className="w-4 h-4" />
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-slate-500 font-bold block">Inversión en Stock</span>
+                              <span className="text-[10px] text-slate-400 font-mono">Al Costo</span>
+                            </div>
+                            <span className="text-2xl font-black text-slate-900 block">${(stats.totalInventoryCost || 0).toFixed(2)}</span>
+                            <p className="text-[11px] text-slate-500 leading-snug">Costo de adquisición/producción del inventario activo.</p>
+                          </div>
+
+                          <div className="bg-purple-50/60 border border-purple-200 rounded-xl p-3.5 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-purple-900 font-bold block">Valor Comercial</span>
+                              <span className="text-[10px] text-purple-600 font-mono">Precio Público</span>
+                            </div>
+                            <span className="text-2xl font-black text-purple-700 block">${(stats.totalInventoryValue || 0).toFixed(2)}</span>
+                            <p className="text-[11px] text-purple-700 leading-snug">Facturación potencial al vender el 100% del stock.</p>
+                          </div>
+                        </div>
+
+                        {/* Potencial Bruto de Inventario */}
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-100 rounded-xl p-3 flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">Ganancia Bruta Potencial en Depósito</span>
+                            <span className="text-[11px] text-slate-500">Diferencia limpia al liquidar todo el stock disponible</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-lg font-black text-purple-900 block">
+                              +${Math.max(0, (stats.totalInventoryValue || 0) - (stats.totalInventoryCost || 0)).toFixed(2)}
+                            </span>
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full inline-block">
+                              {(stats.totalInventoryCost || 0) > 0 ? `${((stats.totalInventoryValue || 0) / stats.totalInventoryCost!).toFixed(2)}x retorno` : '1.0x'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 2: Rendimientos & Ganancia Neta */}
+                      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm hover:border-emerald-200 transition-colors">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <div>
+                            <h3 className="font-headline font-bold text-sm text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+                              <span>Rendimientos & Ganancia Neta</span>
+                            </h3>
+                            <p className="text-[11px] text-slate-400">Beneficio real realizado por ventas cobradas</p>
+                          </div>
+                          <span className="p-1.5 bg-emerald-50 text-emerald-700 rounded-lg">
+                            <TrendingUp className="w-4 h-4" />
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-emerald-900 font-bold block">Ganancia Neta</span>
+                              <span className="text-[10px] text-emerald-700 font-mono">Limpia</span>
+                            </div>
+                            <span className="text-2xl font-black text-emerald-900 block">${(stats.netProfit || 0).toFixed(2)}</span>
+                            <p className="text-[11px] text-emerald-800 leading-snug">Ventas cobradas menos el costo de productos (COGS).</p>
+                          </div>
+
+                          <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-3.5 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-blue-900 font-bold block">Margen Neto</span>
+                              <span className="text-[10px] text-blue-700 font-mono">Eficiencia</span>
+                            </div>
+                            <span className="text-2xl font-black text-blue-900 block">{(stats.profitMargin || 0).toFixed(1)}%</span>
+                            <p className="text-[11px] text-blue-800 leading-snug">Porcentaje convertido en ganancia neta por venta.</p>
+                          </div>
+                        </div>
+
+                        {/* Comparación de Ganancia Real acumulada */}
+                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-100 rounded-xl p-3 flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 block">Facturación Bruta vs Ganancia</span>
+                            <span className="text-[11px] text-slate-500">De cada $100 cobrados, en mano quedan:</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-lg font-black text-emerald-900 block">
+                              ${((stats.profitMargin || 0)).toFixed(1)}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block">por cada $100 de venta</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2557,6 +2689,170 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 </button>
               </div>
             </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal de Informe Financiero Explicativo de Inventario & Rendimientos */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]"
+          >
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-slate-900 via-purple-950 to-indigo-950 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-11 h-11 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                  <BarChart2 className="w-6 h-6 text-pink-300" />
+                </div>
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-white">Informe Financiero Explicativo</h3>
+                  <p className="text-xs text-purple-200">Análisis detallado de stock, valuación comercial y ganancias de la tienda</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body / Report Document */}
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 text-slate-800 text-xs sm:text-sm">
+              
+              {/* Resumen Ejecutivo */}
+              <div className="bg-gradient-to-r from-purple-50 via-pink-50 to-indigo-50 border border-purple-200 rounded-2xl p-4 space-y-2">
+                <div className="flex items-center space-x-2 text-purple-900 font-bold font-headline text-sm">
+                  <Star className="w-4 h-4 text-purple-600 fill-purple-600" />
+                  <span>Resumen Ejecutivo de Rendimiento</span>
+                </div>
+                <p className="text-slate-700 leading-relaxed text-xs">
+                  Este informe desglosa el capital inmovilizado en mercancía física, el potencial bruto de facturación y el beneficio neto real generado por los pedidos procesados en tu tienda Chamical Candy Shop.
+                </p>
+              </div>
+
+              {/* Sección 1: Inversión en Stock vs Valor Comercial */}
+              <div className="space-y-3">
+                <h4 className="font-headline font-bold text-sm text-slate-900 flex items-center space-x-2 border-b border-slate-200 pb-2">
+                  <Package className="w-4 h-4 text-purple-600" />
+                  <span>1. Inversión y Valuación del Stock de Productos</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-1.5">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Inversión Total en Stock</span>
+                    <span className="text-2xl font-black text-slate-900 block">${(stats.totalInventoryCost || 0).toFixed(2)}</span>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Sumatoria del <strong>costo unitario de fabricación o compra</strong> por la cantidad disponible de cada producto en inventario.
+                    </p>
+                    <div className="pt-2 text-[11px] font-mono text-slate-500 bg-white p-2 rounded border border-slate-200">
+                      Fórmula: Σ (Stock × Costo Unitario)
+                    </div>
+                  </div>
+
+                  <div className="bg-purple-50/70 border border-purple-200 rounded-xl p-4 space-y-1.5">
+                    <span className="text-xs font-bold text-purple-800 uppercase tracking-wider block">Valor Comercial del Stock</span>
+                    <span className="text-2xl font-black text-purple-900 block">${(stats.totalInventoryValue || 0).toFixed(2)}</span>
+                    <p className="text-xs text-purple-900 leading-relaxed">
+                      Recaudación bruta potencial que ingresará a la tienda si se comercializa el <strong>100% de la mercancía en depósito</strong>.
+                    </p>
+                    <div className="pt-2 text-[11px] font-mono text-purple-800 bg-white p-2 rounded border border-purple-200">
+                      Fórmula: Σ (Stock × Precio Público)
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-800">📊 Margen de Ganancia Bruta Potencial del Inventario:</span>
+                    <span className="text-purple-700 font-mono text-sm">
+                      +${Math.max(0, (stats.totalInventoryValue || 0) - (stats.totalInventoryCost || 0)).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600">
+                    Al vender todo tu stock activo, recuperarás tu inversión en mercadería de <strong>${(stats.totalInventoryCost || 0).toFixed(2)}</strong> y generarás una ganancia bruta de <strong>${Math.max(0, (stats.totalInventoryValue || 0) - (stats.totalInventoryCost || 0)).toFixed(2)}</strong> (Multiplicador comercial de <strong>{(stats.totalInventoryCost || 0) > 0 ? `${((stats.totalInventoryValue || 0) / stats.totalInventoryCost!).toFixed(2)}x` : '1.0x'}</strong> sobre el costo).
+                  </p>
+                </div>
+              </div>
+
+              {/* Sección 2: Rendimientos y Ganancia Neta Realizada */}
+              <div className="space-y-3">
+                <h4 className="font-headline font-bold text-sm text-slate-900 flex items-center space-x-2 border-b border-slate-200 pb-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  <span>2. Rendimientos y Ganancia Neta Realizada (Ventas)</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 space-y-1.5">
+                    <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider block">Ganancia Neta Estimada</span>
+                    <span className="text-2xl font-black text-emerald-950 block">${(stats.netProfit || 0).toFixed(2)}</span>
+                    <p className="text-xs text-emerald-900 leading-relaxed">
+                      Ganancia en caja limpia proveniente de pedidos pagados, restando únicamente el costo directo del producto vendido.
+                    </p>
+                    <div className="pt-2 text-[11px] font-mono text-emerald-900 bg-white p-2 rounded border border-emerald-200">
+                      Fórmula: Ventas Pagadas - Costo Productos
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-4 space-y-1.5">
+                    <span className="text-xs font-bold text-blue-800 uppercase tracking-wider block">Margen Neto de Rendimiento</span>
+                    <span className="text-2xl font-black text-blue-950 block">{(stats.profitMargin || 0).toFixed(1)}%</span>
+                    <p className="text-xs text-blue-900 leading-relaxed">
+                      Mide qué porcentaje del valor total gastado por los clientes se transforma directamente en beneficio neto para el negocio.
+                    </p>
+                    <div className="pt-2 text-[11px] font-mono text-blue-900 bg-white p-2 rounded border border-blue-200">
+                      Fórmula: (Ganancia Neta / Ventas) × 100
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sección 3: Inversión Inicial Global & ROI */}
+                <div className="bg-slate-900 text-white p-4.5 rounded-2xl space-y-3 border border-slate-800 shadow-md">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span className="font-bold font-headline text-xs uppercase tracking-wider text-purple-300">
+                      💰 Relación con Inversión Inicial Global
+                    </span>
+                    <span className="px-2.5 py-0.5 bg-purple-500/20 text-purple-300 rounded-full text-[10px] font-bold">
+                      Configuración Global
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-400 block">Inversión Inicial Total:</span>
+                      <strong className="text-white text-sm">${(stats.initialInvestment || 0).toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Recuperación de Capital:</span>
+                      <strong className="text-purple-300 text-sm">{stats.recoveryPct || 0}% de avance</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block">Resultado Neto Global:</span>
+                      <strong className={`text-sm ${((stats.realNetProfit || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400')}`}>
+                        ${(stats.realNetProfit || 0).toFixed(2)}
+                      </strong>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed pt-1 border-t border-slate-800">
+                    * Tu Inversión Inicial incluye gastos acumulados de <strong>productos (${(stats.financialSettings?.products_cost || 0).toFixed(2)})</strong>, <strong>envíos (${(stats.financialSettings?.shipping_cost || 0).toFixed(2)})</strong> y <strong>packaging (${(stats.financialSettings?.packaging_cost || 0).toFixed(2)})</strong>.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="px-6 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow transition-colors cursor-pointer"
+              >
+                Entendido / Cerrar Informe
+              </button>
+            </div>
           </motion.div>
         </div>
       )}
