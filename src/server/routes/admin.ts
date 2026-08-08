@@ -1,6 +1,100 @@
 import { Router, Response, NextFunction } from 'express'
+import fs from 'fs'
+import path from 'path'
 import { supabase, serviceClient } from '../lib/supabase'
 import { requireAdmin, AuthenticatedRequest } from '../lib/auth'
+
+const FINANCIAL_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'financial_settings.json')
+
+async function getFinancialSettingsHelper() {
+  const db = serviceClient || supabase
+  try {
+    const { data } = await db
+      .from('homepage_sections')
+      .select('content')
+      .eq('section_type', 'financial_settings')
+      .single()
+
+    if (data?.content) {
+      return data.content
+    }
+  } catch (_e) {}
+
+  try {
+    if (fs.existsSync(FINANCIAL_SETTINGS_FILE)) {
+      const raw = fs.readFileSync(FINANCIAL_SETTINGS_FILE, 'utf-8')
+      return JSON.parse(raw)
+    }
+  } catch (_e) {}
+
+  return {
+    initial_investment: 0,
+    products_cost: 0,
+    shipping_cost: 0,
+    packaging_cost: 0,
+    other_cost: 0,
+  }
+}
+
+async function saveFinancialSettingsHelper(payload: any) {
+  const db = serviceClient || supabase
+  const products_cost = Number(payload.products_cost || 0)
+  const shipping_cost = Number(payload.shipping_cost || 0)
+  const packaging_cost = Number(payload.packaging_cost || 0)
+  const other_cost = Number(payload.other_cost || 0)
+
+  const computedTotal = products_cost + shipping_cost + packaging_cost + other_cost
+  const initial_investment = payload.initial_investment !== undefined && payload.initial_investment !== null && payload.initial_investment !== ''
+    ? Number(payload.initial_investment)
+    : computedTotal
+
+  const cleanPayload = {
+    initial_investment,
+    products_cost,
+    shipping_cost,
+    packaging_cost,
+    other_cost,
+  }
+
+  try {
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+    fs.writeFileSync(FINANCIAL_SETTINGS_FILE, JSON.stringify(cleanPayload, null, 2), 'utf-8')
+  } catch (err) {
+    console.error('[Financial Settings File Error]:', err)
+  }
+
+  try {
+    const { data: existing } = await db
+      .from('homepage_sections')
+      .select('id')
+      .eq('section_type', 'financial_settings')
+      .single()
+
+    if (existing?.id) {
+      await db
+        .from('homepage_sections')
+        .update({ content: cleanPayload })
+        .eq('id', existing.id)
+    } else {
+      await db
+        .from('homepage_sections')
+        .insert({
+          section_type: 'financial_settings',
+          title: 'Configuración de Inversión Inicial',
+          visible: false,
+          order_index: 99,
+          content: cleanPayload,
+        })
+    }
+  } catch (err) {
+    console.warn('[Financial Settings DB Upsert Warning]:', err)
+  }
+
+  return cleanPayload
+}
 
 const router = Router()
 
@@ -567,6 +661,12 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
     profiles: profilesMap[o.user_id] || null
   }))
 
+  const financialSettings = await getFinancialSettingsHelper()
+  const initialInvestment = Number(financialSettings.initial_investment || 0)
+  const realNetProfit = totalRevenue - initialInvestment
+  const roiPct = initialInvestment > 0 ? ((totalRevenue - initialInvestment) / initialInvestment) * 100 : 0
+  const recoveryPct = initialInvestment > 0 ? Math.min(100, Math.round((totalRevenue / initialInvestment) * 100)) : 100
+
   res.json({
     totalProducts: totalProducts || 0,
     totalUsers: totalUsers || 0,
@@ -579,12 +679,27 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
     totalInventoryValue,
     netProfit,
     profitMargin,
+    initialInvestment,
+    financialSettings,
+    realNetProfit,
+    roiPct,
+    recoveryPct,
     salesByDay,
     topProducts,
     salesByCategory,
     statusCounts,
     recentOrders: recentOrdersWithProfiles
   })
+})
+
+router.get('/financial-settings', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  const settings = await getFinancialSettingsHelper()
+  res.json(settings)
+})
+
+router.put('/financial-settings', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const saved = await saveFinancialSettingsHelper(req.body)
+  res.json(saved)
 })
 
 router.get('/promo-codes', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {

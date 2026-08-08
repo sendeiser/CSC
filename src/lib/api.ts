@@ -197,6 +197,9 @@ export const admin = {
     request<any>(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCategory: (id: string) =>
     request<any>(`/admin/categories/${id}`, { method: 'DELETE' }),
+  getFinancialSettings: () => request<any>('/admin/financial-settings'),
+  updateFinancialSettings: (data: any) =>
+    request<any>('/admin/financial-settings', { method: 'PUT', body: JSON.stringify(data) }),
 }
 
 // Homepage (public)

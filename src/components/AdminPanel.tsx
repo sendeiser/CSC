@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator } from 'lucide-react';
 import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
@@ -222,6 +222,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     totalInventoryValue?: number;
     netProfit?: number;
     profitMargin?: number;
+    initialInvestment?: number;
+    financialSettings?: {
+      initial_investment: number;
+      products_cost: number;
+      shipping_cost: number;
+      packaging_cost: number;
+      other_cost: number;
+    };
+    realNetProfit?: number;
+    roiPct?: number;
+    recoveryPct?: number;
     salesByDay?: any[];
     topProducts?: any[];
     salesByCategory?: any[];
@@ -239,12 +250,41 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     totalInventoryValue: 0,
     netProfit: 0,
     profitMargin: 0,
+    initialInvestment: 0,
+    realNetProfit: 0,
+    roiPct: 0,
+    recoveryPct: 0,
     salesByDay: [],
     topProducts: [],
     salesByCategory: [],
     statusCounts: {},
     recentOrders: [],
   });
+
+  const [showFinancialModal, setShowFinancialModal] = useState(false);
+  const [financialForm, setFinancialForm] = useState({
+    products_cost: 0,
+    shipping_cost: 0,
+    packaging_cost: 0,
+    other_cost: 0,
+    initial_investment: 0,
+  });
+  const [savingFinancial, setSavingFinancial] = useState(false);
+
+  const handleSaveFinancial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingFinancial(true);
+    try {
+      await adminApi.updateFinancialSettings(financialForm);
+      setShowFinancialModal(false);
+      await loadSection('dashboard');
+      showAlert({ title: 'Éxito', message: 'Inversión inicial guardada correctamente', type: 'success' });
+    } catch (err: any) {
+      showAlert({ title: 'Error', message: err.message || 'Error al guardar la inversión inicial', type: 'error' });
+    } finally {
+      setSavingFinancial(false);
+    }
+  };
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -732,6 +772,118 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                           <span className="text-2xl sm:text-3xl font-black text-white block">${value.toFixed(2)}</span>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Widget de Inversión Inicial & Gastos Operativos (Productos, Envíos, Packaging) */}
+                  <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="p-1.5 rounded-lg bg-purple-100 text-purple-700">
+                            <DollarSign className="w-5 h-5" />
+                          </span>
+                          <h3 className="font-headline font-bold text-base text-slate-900">Inversión Inicial & Gastos Globales</h3>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Gasto total acumulado en compra de productos, envíos/fletes y packaging inicial
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setFinancialForm({
+                            products_cost: stats.financialSettings?.products_cost || 0,
+                            shipping_cost: stats.financialSettings?.shipping_cost || 0,
+                            packaging_cost: stats.financialSettings?.packaging_cost || 0,
+                            other_cost: stats.financialSettings?.other_cost || 0,
+                            initial_investment: stats.initialInvestment || 0,
+                          });
+                          setShowFinancialModal(true);
+                        }}
+                        className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 shrink-0"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        <span>Configurar Inversión Inicial</span>
+                      </button>
+                    </div>
+
+                    {/* Financial stats cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div className="bg-slate-900 text-white rounded-2xl p-4 space-y-2 border border-slate-800 shadow-md">
+                        <div className="flex items-center justify-between text-xs text-slate-400">
+                          <span className="font-bold">Inversión Inicial Total</span>
+                          <span>💰 Total</span>
+                        </div>
+                        <span className="text-2xl font-black text-white block">
+                          ${(stats.initialInvestment || 0).toFixed(2)}
+                        </span>
+                        <span className="text-[11px] text-purple-300 block">
+                          Productos + Envíos + Packaging
+                        </span>
+                      </div>
+
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+                        <div className="flex items-center justify-between text-xs text-slate-600">
+                          <span className="font-bold">Recuperación de Inversión</span>
+                          <span className="font-black text-purple-700">{stats.recoveryPct || 0}%</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-pink-500 via-purple-600 to-emerald-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(100, stats.recoveryPct || 0)}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] text-slate-500 block">
+                          {stats.totalRevenue >= (stats.initialInvestment || 0)
+                            ? '✓ Inversión recuperada'
+                            : `Faltan $${((stats.initialInvestment || 0) - stats.totalRevenue).toFixed(2)} para recuperar`}
+                        </span>
+                      </div>
+
+                      <div className={`rounded-2xl p-4 space-y-1 border ${
+                        (stats.realNetProfit || 0) >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-rose-50 border-rose-200 text-rose-950'
+                      }`}>
+                        <span className="text-xs font-bold block opacity-80">Resultado Neto Global</span>
+                        <span className="text-2xl font-black block">
+                          ${(stats.realNetProfit || 0).toFixed(2)}
+                        </span>
+                        <span className="text-[11px] block font-semibold opacity-70">
+                          Ventas Totales - Inversión Inicial
+                        </span>
+                      </div>
+
+                      <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 space-y-1 text-purple-950">
+                        <span className="text-xs font-bold block opacity-80">Retorno de Inversión (ROI)</span>
+                        <span className="text-2xl font-black block">
+                          {(stats.roiPct || 0).toFixed(1)}%
+                        </span>
+                        <span className="text-[11px] block font-semibold opacity-70">
+                          Retorno porcentual sobre el capital
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Breakdown pills */}
+                    <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2 text-xs">
+                      <span className="px-3 py-1.5 bg-slate-100 text-slate-700 font-semibold rounded-xl flex items-center space-x-1.5">
+                        <span>📦 Productos / Stock:</span>
+                        <strong className="text-slate-900">${(stats.financialSettings?.products_cost || 0).toFixed(2)}</strong>
+                      </span>
+                      <span className="px-3 py-1.5 bg-slate-100 text-slate-700 font-semibold rounded-xl flex items-center space-x-1.5">
+                        <span>🚚 Envíos / Fletes:</span>
+                        <strong className="text-slate-900">${(stats.financialSettings?.shipping_cost || 0).toFixed(2)}</strong>
+                      </span>
+                      <span className="px-3 py-1.5 bg-slate-100 text-slate-700 font-semibold rounded-xl flex items-center space-x-1.5">
+                        <span>🛍️ Packaging / Cajas / Bolsas:</span>
+                        <strong className="text-slate-900">${(stats.financialSettings?.packaging_cost || 0).toFixed(2)}</strong>
+                      </span>
+                      {Boolean(stats.financialSettings?.other_cost) && (
+                        <span className="px-3 py-1.5 bg-slate-100 text-slate-700 font-semibold rounded-xl flex items-center space-x-1.5">
+                          <span>⚙️ Otros Gastos:</span>
+                          <strong className="text-slate-900">${(stats.financialSettings?.other_cost || 0).toFixed(2)}</strong>
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -2234,6 +2386,177 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 </button>
               </div>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal para configurar Inversión Inicial & Gastos Globales */}
+      {showFinancialModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]"
+          >
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-purple-900 to-indigo-900 text-white flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-pink-300" />
+                </div>
+                <div>
+                  <h3 className="font-headline font-bold text-lg text-white">Inversión Inicial & Gastos</h3>
+                  <p className="text-xs text-purple-200">Ingresá los costos iniciales de tu negocio</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowFinancialModal(false)}
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body Form */}
+            <form onSubmit={handleSaveFinancial} className="p-6 space-y-4 overflow-y-auto flex-1">
+              <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 text-xs text-purple-900 space-y-1">
+                <p className="font-bold flex items-center space-x-1.5">
+                  <Calculator className="w-4 h-4 text-purple-600" />
+                  <span>Calculadora de Gastos Globales</span>
+                </p>
+                <p className="text-purple-700 leading-relaxed">
+                  Podés detallar el gasto en productos, envíos/fletes y packaging. La suma total se calculará automáticamente, o podés escribir el valor total de forma directa.
+                </p>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    📦 Gasto Total en Productos / Stock Inicial ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={financialForm.products_cost}
+                    onChange={(e) => {
+                      const val = Number(e.target.value || 0);
+                      const updated = { ...financialForm, products_cost: val };
+                      updated.initial_investment = updated.products_cost + updated.shipping_cost + updated.packaging_cost + updated.other_cost;
+                      setFinancialForm(updated);
+                    }}
+                    placeholder="0.00"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    🚚 Gasto en Envíos / Fletes / Logística ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={financialForm.shipping_cost}
+                    onChange={(e) => {
+                      const val = Number(e.target.value || 0);
+                      const updated = { ...financialForm, shipping_cost: val };
+                      updated.initial_investment = updated.products_cost + updated.shipping_cost + updated.packaging_cost + updated.other_cost;
+                      setFinancialForm(updated);
+                    }}
+                    placeholder="0.00"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    🛍️ Gasto en Packaging / Bolsas / Cajas ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={financialForm.packaging_cost}
+                    onChange={(e) => {
+                      const val = Number(e.target.value || 0);
+                      const updated = { ...financialForm, packaging_cost: val };
+                      updated.initial_investment = updated.products_cost + updated.shipping_cost + updated.packaging_cost + updated.other_cost;
+                      setFinancialForm(updated);
+                    }}
+                    placeholder="0.00"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    ⚙️ Otros Gastos Iniciales ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={financialForm.other_cost}
+                    onChange={(e) => {
+                      const val = Number(e.target.value || 0);
+                      const updated = { ...financialForm, other_cost: val };
+                      updated.initial_investment = updated.products_cost + updated.shipping_cost + updated.packaging_cost + updated.other_cost;
+                      setFinancialForm(updated);
+                    }}
+                    placeholder="0.00"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                  />
+                </div>
+
+                <div className="pt-2 border-t border-slate-100">
+                  <label className="block text-xs font-black text-slate-900 uppercase tracking-wider mb-1">
+                    💰 Inversión Inicial Total ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={financialForm.initial_investment}
+                    onChange={(e) => setFinancialForm({ ...financialForm, initial_investment: Number(e.target.value || 0) })}
+                    placeholder="0.00"
+                    className="w-full px-4 py-3 rounded-xl border-2 border-purple-600 text-lg font-black text-purple-900 bg-purple-50/50 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Este valor se tomará como el gasto de inversión inicial para calcular el retorno (ROI) y la ganancia neta.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-4 flex items-center justify-end space-x-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowFinancialModal(false)}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingFinancial}
+                  className="inline-flex items-center space-x-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-lg transition-all"
+                >
+                  {savingFinancial ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Guardar Inversión Inicial</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </motion.div>
         </div>
       )}
