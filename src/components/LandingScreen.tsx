@@ -10,6 +10,7 @@ interface LandingScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
   setSelectedProductById: (id: string) => void;
   heroProduct: Product;
+  allProducts?: Product[];
 }
 
 const FALLBACK_CATEGORIES = [
@@ -23,7 +24,8 @@ const FALLBACK_CATEGORIES = [
 export const LandingScreen: React.FC<LandingScreenProps> = ({
   setActiveScreen,
   setSelectedProductById,
-  heroProduct
+  heroProduct,
+  allProducts = [],
 }) => {
   const [loading, setLoading] = useState(true)
   const [sections, setSections] = useState<any[]>([])
@@ -505,7 +507,8 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
             const gallery = getSection('gallery')
             const gContent = gallery?.content || {}
             const limit = gContent.limit || 6
-            const galleryProducts = PRODUCTS.slice(0, limit)
+            const sourceProducts = (allProducts && allProducts.length > 0) ? allProducts : PRODUCTS
+            const galleryProducts = sourceProducts.slice(0, limit)
             return (
               <section key={section.id} className="py-20 bg-gradient-to-br from-purple-50/50 via-white to-pink-50/30">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -525,34 +528,47 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                   </motion.div>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5">
-                    {galleryProducts.map((product, idx) => (
-                      <motion.div
-                        key={product.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.4, delay: idx * 0.07 }}
-                        onClick={() => { setSelectedProductById(product.id); setActiveScreen('detalle'); }}
-                        className="group cursor-pointer bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all duration-300 hover:-translate-y-1 border border-pink-100/60"
-                      >
-                        <div className="aspect-square overflow-hidden bg-pink-50">
-                          <img
-                            src={product.image_url}
-                            alt={product.name}
-                            referrerPolicy="no-referrer"
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                          />
-                        </div>
-                        <div className="p-3 sm:p-4">
-                          <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider">{product.category}</span>
-                          <h3 className="font-headline font-bold text-sm sm:text-base text-gray-900 mt-0.5 truncate">{product.name}</h3>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-sm font-bold candy-gradient-text">${product.base_price.toFixed(2)}</span>
-                            <span className="text-[10px] text-gray-400 group-hover:text-purple-500 transition-colors">Ver detalle →</span>
+                    {galleryProducts.map((product, idx) => {
+                      const displayPrice = product.unit_type === 'weight'
+                        ? `$${Number(product.price_per_kg || product.base_price || 0).toFixed(2)}/kg`
+                        : `$${Number(product.base_price || 0).toFixed(2)}`;
+
+                      return (
+                        <motion.div
+                          key={product.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.4, delay: idx * 0.07 }}
+                          onClick={() => { setSelectedProductById(product.id); setActiveScreen('detalle'); }}
+                          className="group cursor-pointer bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all duration-300 hover:-translate-y-1 border border-pink-100/60 flex flex-col justify-between"
+                        >
+                          <div className="aspect-square overflow-hidden bg-pink-50 relative">
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                            {product.unit_type === 'weight' && (
+                              <span className="absolute top-2 left-2 bg-purple-900/80 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                                Granel
+                              </span>
+                            )}
                           </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                          <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                              <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider">{product.category}</span>
+                              <h3 className="font-headline font-bold text-sm sm:text-base text-gray-900 mt-0.5 truncate">{product.name}</h3>
+                            </div>
+                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-50">
+                              <span className="text-xs sm:text-sm font-bold candy-gradient-text">{displayPrice}</span>
+                              <span className="text-[10px] text-gray-400 group-hover:text-purple-500 transition-colors font-medium">Ver detalle →</span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
                   </div>
 
                   <div className="text-center mt-12">

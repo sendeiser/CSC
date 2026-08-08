@@ -11,6 +11,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { AboutUsScreen } from './components/AboutUsScreen';
 import { HowToBuyScreen } from './components/HowToBuyScreen';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
+import { PRODUCTS } from './data';
 import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken, setOnAuthExpired } from './lib/api';
 import { supabase } from './lib/supabase';
 import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
@@ -392,13 +393,12 @@ export default function App() {
         <AnimatePresence mode="wait">
           {activeScreen === 'inicio' && (
             <motion.div key="inicio" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              {allProducts.length > 0 && (
-                <LandingScreen
-                  setActiveScreen={handleSetActiveScreen}
-                  setSelectedProductById={handleSetSelectedProductId}
-                  heroProduct={allProducts[0]}
-                />
-              )}
+              <LandingScreen
+                setActiveScreen={handleSetActiveScreen}
+                setSelectedProductById={handleSetSelectedProductId}
+                heroProduct={allProducts[0] || PRODUCTS[0]}
+                allProducts={allProducts}
+              />
             </motion.div>
           )}
 
