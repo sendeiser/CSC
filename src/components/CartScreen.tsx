@@ -31,19 +31,14 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [paymentMethod, setPaymentMethod] = React.useState<'mercadopago' | 'transferencia'>('mercadopago');
   const [lastOrderItems, setLastOrderItems] = React.useState<CartItem[]>([]);
   const [lastOrderTotal, setLastOrderTotal] = React.useState<number>(0);
-  const [selectedWaNum, setSelectedWaNum] = React.useState<'num1' | 'num2'>('num1');
-  const [waNumbers, setWaNumbers] = React.useState<{ num1: string; num2: string }>({
-    num1: WHATSAPP_NUMERO_1,
-    num2: WHATSAPP_NUMERO_2,
-  });
+  const [activePhone, setActivePhone] = React.useState<string>(WHATSAPP_NUMERO_1);
 
   React.useEffect(() => {
     homepageApi.getSettings().then((st) => {
-      if (st?.whatsapp_number_1 || st?.whatsapp_number_2) {
-        const num1 = st.whatsapp_number_1 || WHATSAPP_NUMERO_1;
-        const num2 = st.whatsapp_number_2 || WHATSAPP_NUMERO_2;
-        setWaNumbers({ num1, num2 });
-        setWhatsAppNumbers(num1, num2);
+      if (st) {
+        const phone = st.active_phone || st.whatsapp_number_1 || WHATSAPP_NUMERO_1;
+        setActivePhone(phone);
+        setWhatsAppNumbers(st.whatsapp_number_1, st.whatsapp_number_2);
       }
     }).catch(() => {});
   }, []);
@@ -274,50 +269,6 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                   <span className="font-bold text-purple-700">${lastOrderTotal.toFixed(2)}</span>
                 </div>
 
-                {/* Selector de Teléfono WhatsApp 1 y 2 */}
-                <div className="bg-white rounded-xl p-3.5 border border-purple-100 space-y-2">
-                  <span className="text-xs font-bold text-gray-800 flex items-center justify-between">
-                    <span className="flex items-center space-x-1.5">
-                      <Phone className="w-4 h-4 text-purple-600" />
-                      <span>Elegí la línea para enviar comprobante:</span>
-                    </span>
-                  </span>
-
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedWaNum('num1')}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center space-y-0.5 cursor-pointer ${
-                        selectedWaNum === 'num1'
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-200 shadow-sm'
-                          : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="flex items-center space-x-1">
-                        <span>📱 Número 1</span>
-                        {selectedWaNum === 'num1' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                      </span>
-                      <span className="text-[10px] font-mono opacity-75">{waNumbers.num1}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedWaNum('num2')}
-                      className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex flex-col items-center justify-center space-y-0.5 cursor-pointer ${
-                        selectedWaNum === 'num2'
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-950 ring-2 ring-emerald-200 shadow-sm'
-                          : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <span className="flex items-center space-x-1">
-                        <span>📱 Número 2</span>
-                        {selectedWaNum === 'num2' && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                      </span>
-                      <span className="text-[10px] font-mono opacity-75">{waNumbers.num2}</span>
-                    </button>
-                  </div>
-                </div>
-
                 <a
                   href={waLink(
                     buildMensajePedido({
@@ -332,27 +283,28 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                       grandTotal: lastOrderTotal,
                       formaPago: 'transferencia',
                     }),
-                    selectedWaNum === 'num1' ? waNumbers.num1 : waNumbers.num2
+                    activePhone
                   )}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center space-x-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-md"
+                  className="w-full flex items-center justify-center space-x-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-md cursor-pointer text-sm"
                 >
                   <MessageCircle className="w-5 h-5" />
-                  <span>Enviar a WhatsApp (Número {selectedWaNum === 'num1' ? '1' : '2'})</span>
+                  <span>Enviar comprobante por WhatsApp</span>
                 </a>
               </div>
             )}
             <a
               href={waLink(
                 `Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`,
-                selectedWaNum === 'num1' ? waNumbers.num1 : waNumbers.num2
+                activePhone
               )}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-md"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-md text-sm"
             >
-              <span>Contactar por WhatsApp (Número {selectedWaNum === 'num1' ? '1' : '2'})</span>
+              <MessageCircle className="w-5 h-5" />
+              <span>Contactar por WhatsApp</span>
             </a>
             <div className="pt-4">
               <button

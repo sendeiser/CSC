@@ -9,6 +9,12 @@ const STORE_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'store
 
 export async function getStoreSettingsHelper() {
   const db = serviceClient || supabase
+  let settings = {
+    whatsapp_number_1: '543826432180',
+    whatsapp_number_2: '5493826432180',
+    active_whatsapp_number: 'num1',
+  }
+
   try {
     const { data } = await db
       .from('homepage_sections')
@@ -17,27 +23,29 @@ export async function getStoreSettingsHelper() {
       .single()
 
     if (data?.content) {
-      return {
+      settings = {
         whatsapp_number_1: data.content.whatsapp_number_1 || '543826432180',
         whatsapp_number_2: data.content.whatsapp_number_2 || '5493826432180',
+        active_whatsapp_number: data.content.active_whatsapp_number || 'num1',
       }
-    }
-  } catch (_e) {}
-
-  try {
-    if (fs.existsSync(STORE_SETTINGS_FILE)) {
+    } else if (fs.existsSync(STORE_SETTINGS_FILE)) {
       const raw = fs.readFileSync(STORE_SETTINGS_FILE, 'utf-8')
       const parsed = JSON.parse(raw)
-      return {
+      settings = {
         whatsapp_number_1: parsed.whatsapp_number_1 || '543826432180',
         whatsapp_number_2: parsed.whatsapp_number_2 || '5493826432180',
+        active_whatsapp_number: parsed.active_whatsapp_number || 'num1',
       }
     }
   } catch (_e) {}
 
+  const active_phone = settings.active_whatsapp_number === 'num2'
+    ? settings.whatsapp_number_2
+    : settings.whatsapp_number_1
+
   return {
-    whatsapp_number_1: '543826432180',
-    whatsapp_number_2: '5493826432180',
+    ...settings,
+    active_phone,
   }
 }
 
@@ -46,6 +54,7 @@ export async function saveStoreSettingsHelper(payload: any) {
   const cleanPayload = {
     whatsapp_number_1: String(payload.whatsapp_number_1 || '543826432180').trim(),
     whatsapp_number_2: String(payload.whatsapp_number_2 || '5493826432180').trim(),
+    active_whatsapp_number: payload.active_whatsapp_number === 'num2' ? 'num2' : 'num1',
   }
 
   try {
@@ -85,7 +94,14 @@ export async function saveStoreSettingsHelper(payload: any) {
     console.warn('[Store Settings DB Upsert Warning]:', err)
   }
 
-  return cleanPayload
+  const active_phone = cleanPayload.active_whatsapp_number === 'num2'
+    ? cleanPayload.whatsapp_number_2
+    : cleanPayload.whatsapp_number_1
+
+  return {
+    ...cleanPayload,
+    active_phone,
+  }
 }
 
 async function getFinancialSettingsHelper() {

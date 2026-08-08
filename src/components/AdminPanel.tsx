@@ -288,9 +288,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     }
   };
 
-  const [waConfig, setWaConfig] = useState({
+  const [waConfig, setWaConfig] = useState<{
+    whatsapp_number_1: string;
+    whatsapp_number_2: string;
+    active_whatsapp_number: 'num1' | 'num2';
+  }>({
     whatsapp_number_1: '543826432180',
     whatsapp_number_2: '5493826432180',
+    active_whatsapp_number: 'num1',
   });
   const [savingWaConfig, setSavingWaConfig] = useState(false);
 
@@ -300,19 +305,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
         setWaConfig({
           whatsapp_number_1: st.whatsapp_number_1 || '543826432180',
           whatsapp_number_2: st.whatsapp_number_2 || '5493826432180',
+          active_whatsapp_number: st.active_whatsapp_number || 'num1',
         });
       }
     }).catch(() => {});
   }, []);
 
-  const handleSaveWaConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveWaConfig = async (e?: React.FormEvent, updatedData?: typeof waConfig) => {
+    if (e) e.preventDefault();
     setSavingWaConfig(true);
+    const dataToSave = updatedData || waConfig;
     try {
-      await adminApi.updateStoreSettings(waConfig);
-      showAlert({ title: 'Éxito', message: 'Números de WhatsApp actualizados correctamente', type: 'success' });
+      await adminApi.updateStoreSettings(dataToSave);
+      setWaConfig(dataToSave);
+      showAlert({ title: 'Éxito', message: 'Configuración de WhatsApp actualizada correctamente', type: 'success' });
     } catch (err: any) {
-      showAlert({ title: 'Error', message: err.message || 'Error al guardar los números', type: 'error' });
+      showAlert({ title: 'Error', message: err.message || 'Error al guardar la configuración', type: 'error' });
     } finally {
       setSavingWaConfig(false);
     }
@@ -1113,43 +1121,101 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                     </div>
                   </div>
 
-                  {/* Configuration card for WhatsApp lines 1 & 2 */}
+                  {/* Configuration card for WhatsApp lines 1 & 2 + Active Line Switch */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                       <div>
                         <h3 className="font-headline font-bold text-sm text-slate-800 uppercase tracking-wider flex items-center space-x-2">
                           <MessageCircle className="w-4 h-4 text-emerald-600" />
-                          <span>Líneas de WhatsApp para Envío de Comprobantes</span>
+                          <span>Configuración & Switch de Línea de WhatsApp para Ventas</span>
                         </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">Configurá los números de Teléfono (Número 1 y Número 2) para el envío de comprobantes de pago</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Elegí cuál número estará activo en la tienda para que los clientes envíen sus comprobantes
+                        </p>
+                      </div>
+
+                      {/* Active Line Switch Selector */}
+                      <div className="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shrink-0">
+                        <span className="text-[11px] font-bold text-slate-500 px-2">Línea Activa:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...waConfig, active_whatsapp_number: 'num1' as const };
+                            setWaConfig(updated);
+                            handleSaveWaConfig(undefined, updated);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                            waConfig.active_whatsapp_number === 'num1'
+                              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${waConfig.active_whatsapp_number === 'num1' ? 'bg-white animate-pulse' : 'bg-slate-400'}`} />
+                          <span>Número 1</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = { ...waConfig, active_whatsapp_number: 'num2' as const };
+                            setWaConfig(updated);
+                            handleSaveWaConfig(undefined, updated);
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                            waConfig.active_whatsapp_number === 'num2'
+                              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${waConfig.active_whatsapp_number === 'num2' ? 'bg-white animate-pulse' : 'bg-slate-400'}`} />
+                          <span>Número 2</span>
+                        </button>
                       </div>
                     </div>
 
-                    <form onSubmit={handleSaveWaConfig} className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-700">
-                          📱 Teléfono WhatsApp Número 1
-                        </label>
+                    <form onSubmit={(e) => handleSaveWaConfig(e)} className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                      <div className={`space-y-1.5 p-3 rounded-xl border transition-all ${
+                        waConfig.active_whatsapp_number === 'num1' ? 'border-emerald-300 bg-emerald-50/50 ring-2 ring-emerald-100' : 'border-slate-200 bg-slate-50/30'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-slate-700">
+                            📱 Teléfono WhatsApp Número 1
+                          </label>
+                          {waConfig.active_whatsapp_number === 'num1' && (
+                            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                              <span>✓ ACTIVO EN VENTAS</span>
+                            </span>
+                          )}
+                        </div>
                         <input
                           type="text"
                           value={waConfig.whatsapp_number_1}
                           onChange={(e) => setWaConfig({ ...waConfig, whatsapp_number_1: e.target.value })}
                           placeholder="ej: 543826432180"
-                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 outline-none bg-white"
                         />
                       </div>
 
-                      <div className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-700">
-                          📱 Teléfono WhatsApp Número 2
-                        </label>
+                      <div className={`space-y-1.5 p-3 rounded-xl border transition-all ${
+                        waConfig.active_whatsapp_number === 'num2' ? 'border-emerald-300 bg-emerald-50/50 ring-2 ring-emerald-100' : 'border-slate-200 bg-slate-50/30'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-slate-700">
+                            📱 Teléfono WhatsApp Número 2
+                          </label>
+                          {waConfig.active_whatsapp_number === 'num2' && (
+                            <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                              <span>✓ ACTIVO EN VENTAS</span>
+                            </span>
+                          )}
+                        </div>
                         <div className="flex space-x-2">
                           <input
                             type="text"
                             value={waConfig.whatsapp_number_2}
                             onChange={(e) => setWaConfig({ ...waConfig, whatsapp_number_2: e.target.value })}
                             placeholder="ej: 5493826432180"
-                            className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 outline-none"
+                            className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-purple-500 outline-none bg-white"
                           />
                           <button
                             type="submit"
