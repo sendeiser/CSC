@@ -5,6 +5,7 @@ import { ActiveScreen, Product } from '../types';
 
 interface ProductDetailScreenProps {
   product: Product;
+  allProducts?: Product[];
   setActiveScreen: (screen: ActiveScreen) => void;
   setSelectedProductById: (id: string) => void;
   addToCart: (product: Product, size: string, quantity: number, weight_grams?: number) => void;
@@ -21,46 +22,18 @@ const GALACTIC_GALLERY = [
   'https://lh3.googleusercontent.com/aida-public/AB6AXuCnw8MeSq_M_9W3_9Ena8i60qfdWhMO-bJqTpo2gcKrIT-M_ugfBlI-pTBTR0FBjthPB0AzAyTBUZt2KVyTzr62qWCuQxZXxT2zz2p_Tugy0WEoTo4F0SF71NcYUyM5qGx-XgAgDpKBqbTWquPpyq6neQJjcZfo74rVPYQhyfNPXChJcvsHhOrkp2QXzYmvhkI9LOgdm8kHjwejbAx3qrWHhKPm8lIsJX3Rvc_R8AZ17dgBglyQHgSfQntzDorzULTfshbk_4QmVcM'
 ];
 
-// Related items with beautiful assets
-const RELATED_PRODUCTS = [
-  {
-    id: 'ositos-cosmicos',
-    name: 'Ositos Cósmicos',
-    price: 36.00,
-    category: 'Gomitas',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAnTn-8eN_rgTy-4OoAKqTOyvmfJe77NZsy_yb5Rw1nconCv-rVZbv-sdRLjJkpIPEplZUYOA6LGKSVyzhMBztoYcSD1Sxsq2gZYRsZHto5J9oSWf-3lrop4Dh6X5ijmDL40Hl4erLX62j92n2qaOoPrktp6E2Mgf7EkTCBVj_zuE10WKqPYkqzUSMz2LA04nVGz04htPOJc8lE4Avun7SHMafBQiiw3eyjQ3Ovh2J45F4l0m6rMmUDSexmQ1_6rriHL9vATX-SYkQ'
-  },
-  {
-    id: 'cintas-neon',
-    name: 'Cintas Neón',
-    price: 25.00,
-    category: 'Acidulados',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBKcX9ouLcbBZed9-5IMR9dZRT8qVFnD_9hxpyZ_pA213DQ8Bmnyxj7b0Zjjq0JnZwzee2Ym7kok6AhuuvoC-cVDO_-1KtDNzvY-YE6jQqu89oT_GffZ5Jm1GZRXqOib6aR0oeVgD_MM0uhle88ragzvYi0U6oxPMfxC-bC9gUkeMj8BRXXUz3rw3BhSArN7Amaualolqjz4rtqh14usosAeBWR-qomc0TXEZgPTYiNtWl0r1wFrErPenSxEJ5hhmwHEwbLgT7PETE'
-  },
-  {
-    id: 'trufas-galacticas',
-    name: 'Trufas Galácticas',
-    price: 89.00,
-    category: 'Chocolates',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6PG13q1F54FjFcTqlALl73SWWjXh9dkTtBhWkdbaHptLs529Fxi1giKbBCIPUEL-iUV-nC1YC_Ps2G-rxI-0WKJC0XXBWR0WZXD31xtnDZbvKTEGaIpeM871GYMmL37-9tTzfmpQ8bLWc_OsXCUiVJAZWadhdOzPIbgISCO53AQcZmvnQPKbMlh6FRjmNG84G0LGWw8kqOomb5ZoH7G5FVdEw7Q-DGDFrL2ol9ggf8o3Mm_4GRlJc2OrVUxzu8mGpSWOee5PtpUA'
-  },
-  {
-    id: 'nubes-algodon',
-    name: 'Nubes de Algodón',
-    price: 55.00,
-    category: 'Caramelos',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD40m9zbl6ELzkkdCNfNeOQ1pZR2u75kMN7FNNp6a_Q2Ou-W7TtEMw2DQ-iT-fhihLw4uRyAJEwp99jm1WjpevuKN7TUwqkgQgXdFqZhs1TJ0OFYx6JSMgwYRPnsnEe_GV5_kgnEJwzPiaTZtWCOIHtImVYoK1LgnJaNaUlaGJchgOzz5EehtdD42YFy4tlhqxViag1NZqLiYvAPU1KTDLzmCXMMHuoh_5LvaW1AniJL_MhNlvF4DFOnRBKwBtrWDqTCGYS16BUAU0'
-  }
-];
-
 export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   product,
+  allProducts = [],
   setActiveScreen,
   setSelectedProductById,
   addToCart,
   favorites,
   toggleFavorite
 }) => {
+  const relatedProducts = (allProducts || [])
+    .filter(p => p.id !== product.id && p.slug !== product.slug)
+    .slice(0, 4);
   const isExplosionGalactica = product.id === 'gomitas-explosion-galactica';
   
   // Choose images based on product.images array or fallback to product.image_url
@@ -235,23 +208,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               </div>
             )}
 
-            {/* Guarantees bar */}
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 mt-2">
-              <div className="flex items-center space-x-2.5">
-                <Truck className="w-5 h-5 text-purple-600 shrink-0" />
-                <div className="text-xs leading-none">
-                  <p className="font-bold text-slate-800">Envío Climatizado</p>
-                  <p className="text-slate-500 mt-0.5">Control de derretido</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2.5">
-                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-                <div className="text-xs leading-none">
-                  <p className="font-bold text-slate-800">Materias Primas</p>
-                  <p className="text-slate-500 mt-0.5">Orgánico vegetal</p>
-                </div>
-              </div>
-            </div>
+
 
           </div>
           {/* Right Description and controls */}
@@ -435,7 +392,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
           <div className="flex border-b border-slate-100 bg-slate-50/50">
             {[
               { id: 'info', label: 'Descripción' },
-              { id: 'ingredientes', label: 'Ingredientes' },
               { id: 'comentarios', label: `Opiniones (${localFeedback.length})` }
             ].map((tb) => (
               <button
@@ -460,43 +416,11 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
             {activeTab === 'info' && (
               <div className="space-y-4 max-w-3xl">
                 <h3 className="font-headline font-bold text-lg text-slate-900">
-                  La experiencia sensorial de {product.name}
+                  Descripción del Producto
                 </h3>
-                <p className="text-slate-600 text-sm leading-relaxed font-sans">
-                  Elaborado con jarabes de agave naturales, pulpa condensada y colorantes de extractos vegetales directos (remolacha, espirulina, zanahoria negra). La cocción lenta en ollas de cobre previene que el sabor se deteriore y garantiza gominolas suaves con elasticidad excelente.
+                <p className="text-slate-650 text-sm leading-relaxed font-sans whitespace-pre-line">
+                  {product.description || 'Sin descripción disponible.'}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <p className="text-xs font-bold text-slate-800">Presentación</p>
-                    <p className="text-xs text-slate-500 mt-1">Bolsa termosellada con zip reutilizable libre de polipropilenos nocivos.</p>
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <p className="text-xs font-bold text-slate-800">Conservación</p>
-                    <p className="text-xs text-slate-500 mt-1">Mantener en un lugar fresco y seco alejado del sol (idealmente entre 15°C y 22°C).</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'ingredientes' && (
-              <div className="space-y-6 max-w-3xl">
-                <div>
-                  <h3 className="font-headline font-bold text-lg text-slate-900 mb-2">
-                    Fórmula de origen transparente:
-                  </h3>
-                  <p className="text-xs text-slate-500 bg-yellow-50 text-yellow-800 p-3 rounded border border-yellow-100 flex items-center space-x-2 font-semibold">
-                    <span>⚠️ AVISO ALERGENOS: Fabricado en instalaciones que procesan frutos de cáscara y trazas de lactosa.</span>
-                  </p>
-                </div>
-                
-                <div className="prose prose-pink text-slate-650 text-sm font-sans space-y-3 leading-relaxed">
-                  <p>
-                    <span className="font-bold text-slate-850">Gomitas / Caramelos:</span> Jugo de fruta reconstituido (32%), fructosa orgánica de agave, espesante (pectina de manzana cítrica 100% vegetal), corrector de acidez (ácido cítrico natural, ácido málico), aromas naturales de frambuesa silvestre y pitaya fresca, agentes de recubrimiento (cera de carnauba ecológica).
-                  </p>
-                  <p>
-                    <span className="font-bold text-slate-850">Chocolates:</span> Licor de cacao, azúcar de caña orgánica, manteca de cacao pura desodorizada, emulsionante (lecitina de girasol no transgénica), flor de sal marina de colima en trufas de caramelo.
-                  </p>
-                </div>
               </div>
             )}
 
@@ -604,21 +528,22 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
         </div>
 
         {/* 3. Related Items Section */}
-        <div className="mt-14 space-y-6">
-          <h2 className="font-headline font-bold text-xl sm:text-2xl text-slate-900 text-center sm:text-left">
-            Otros exploradores compraron también:
-          </h2>
+        {relatedProducts.length > 0 && (
+          <div className="mt-14 space-y-6">
+            <h2 className="font-headline font-bold text-xl sm:text-2xl text-slate-900 text-center sm:text-left">
+              Otros exploradores compraron también:
+            </h2>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {RELATED_PRODUCTS.map((relItem) => (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {relatedProducts.map((relItem) => (
                 <div 
                   key={relItem.id}
-                  onClick={() => setSelectedProductById(relItem.id)}
+                  onClick={() => setSelectedProductById(relItem.id || relItem.slug)}
                   className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-md cursor-pointer transition-all group p-3 space-y-3"
                 >
                   <div className="aspect-square rounded-xl bg-slate-50 overflow-hidden">
                     <img
-                      src={relItem.image}
+                      src={relItem.image_url}
                       alt={relItem.name}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -633,7 +558,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                     </h4>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs sm:text-sm font-black text-slate-900">
-                        ${relItem.price.toFixed(2)}
+                        ${(relItem.base_price || 0).toFixed(2)}
                       </span>
                       <span className="text-[10px] text-pink-500 font-bold group-hover:underline">
                         Detalles
@@ -642,8 +567,9 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
 
