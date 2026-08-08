@@ -30,6 +30,66 @@ export default function App() {
   });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
+  // Navegación centralizada sincronizada con el historial del navegador (soporta botón Atrás del celular)
+  const navigateTo = (screen: ActiveScreen, productId?: string, replace = false) => {
+    setActiveScreen(screen);
+    if (productId !== undefined) {
+      setSelectedProductId(productId);
+    }
+
+    const targetHash = screen === 'inicio' ? '#' : `#${screen}`;
+    const targetState = { screen, productId: productId || (screen === 'detalle' ? selectedProductId : '') };
+
+    if (replace) {
+      window.history.replaceState(targetState, '', targetHash);
+    } else {
+      if (window.location.hash !== targetHash || (productId && productId !== selectedProductId)) {
+        window.history.pushState(targetState, '', targetHash);
+      }
+    }
+  };
+
+  const handleSetActiveScreen = (screen: ActiveScreen) => {
+    navigateTo(screen);
+  };
+
+  const handleSetSelectedProductId = (id: string) => {
+    navigateTo('detalle', id);
+  };
+
+  useEffect(() => {
+    const validScreens: ActiveScreen[] = ['inicio', 'catalogo', 'detalle', 'carrito', 'login', 'registro', 'admin', 'nosotros', 'como-comprar'];
+    const currentHash = window.location.hash.slice(1) as ActiveScreen;
+    const initialScreen = validScreens.includes(currentHash) ? currentHash : 'inicio';
+
+    if (!window.history.state) {
+      window.history.replaceState(
+        { screen: initialScreen, productId: selectedProductId },
+        '',
+        initialScreen === 'inicio' ? '#' : `#${initialScreen}`
+      );
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.screen) {
+        setActiveScreen(event.state.screen);
+        if (event.state.productId) {
+          setSelectedProductId(event.state.productId);
+        }
+      } else {
+        const hash = window.location.hash.slice(1) as ActiveScreen;
+        if (validScreens.includes(hash)) {
+          setActiveScreen(hash);
+        } else {
+          setActiveScreen('inicio');
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [selectedProductId]);
+
   const refreshProducts = () => {
     productsApi.list().then(setAllProducts).catch(console.error)
   }
@@ -43,7 +103,7 @@ export default function App() {
     setAuthToken(null)
     setSession({ isLoggedIn: false, email: null, name: null })
     setFavorites({})
-    setActiveScreen('inicio')
+    navigateTo('inicio', undefined, true)
   }
 
   useEffect(() => {
@@ -321,7 +381,7 @@ export default function App() {
       {activeScreen !== 'admin' && (
         <Header
           activeScreen={activeScreen}
-          setActiveScreen={setActiveScreen}
+          setActiveScreen={handleSetActiveScreen}
           cart={cart}
           session={session}
           setSession={setSession}
@@ -334,8 +394,8 @@ export default function App() {
             <motion.div key="inicio" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
               {allProducts.length > 0 && (
                 <LandingScreen
-                  setActiveScreen={setActiveScreen}
-                  setSelectedProductById={(id) => { setSelectedProductId(id); setActiveScreen('detalle'); }}
+                  setActiveScreen={handleSetActiveScreen}
+                  setSelectedProductById={handleSetSelectedProductId}
                   heroProduct={allProducts[0]}
                 />
               )}
@@ -345,8 +405,8 @@ export default function App() {
           {activeScreen === 'catalogo' && (
             <motion.div key="catalogo" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
               <CatalogScreen
-                setActiveScreen={setActiveScreen}
-                setSelectedProductById={setSelectedProductId}
+                setActiveScreen={handleSetActiveScreen}
+                setSelectedProductById={handleSetSelectedProductId}
                 addToCart={addToCart}
                 favorites={favorites}
                 toggleFavorite={toggleFavorite}
@@ -359,8 +419,8 @@ export default function App() {
               <ProductDetailScreen
                 product={activeProduct}
                 allProducts={allProducts}
-                setActiveScreen={setActiveScreen}
-                setSelectedProductById={setSelectedProductId}
+                setActiveScreen={handleSetActiveScreen}
+                setSelectedProductById={handleSetSelectedProductId}
                 addToCart={addToCart}
                 favorites={favorites}
                 toggleFavorite={toggleFavorite}
@@ -373,7 +433,7 @@ export default function App() {
               <CartScreen
                 cart={cart}
                 setCart={setCart}
-                setActiveScreen={setActiveScreen}
+                setActiveScreen={handleSetActiveScreen}
                 isLoggedIn={session.isLoggedIn}
               />
             </motion.div>
@@ -381,29 +441,29 @@ export default function App() {
 
           {activeScreen === 'login' && (
             <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <AuthScreens type="login" setActiveScreen={setActiveScreen} setSession={setSession} />
+              <AuthScreens type="login" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
             </motion.div>
           )}
 
           {activeScreen === 'registro' && (
             <motion.div key="registro" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <AuthScreens type="register" setActiveScreen={setActiveScreen} setSession={setSession} />
+              <AuthScreens type="register" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
             </motion.div>
           )}
 
           {activeScreen === 'admin' && session.role === 'admin' && (
-            <AdminPanel setActiveScreen={setActiveScreen} setSession={setSession} onProductsUpdated={refreshProducts} />
+            <AdminPanel setActiveScreen={handleSetActiveScreen} setSession={setSession} onProductsUpdated={refreshProducts} />
           )}
 
           {activeScreen === 'nosotros' && (
             <motion.div key="nosotros" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <AboutUsScreen setActiveScreen={setActiveScreen} />
+              <AboutUsScreen setActiveScreen={handleSetActiveScreen} />
             </motion.div>
           )}
 
           {activeScreen === 'como-comprar' && (
             <motion.div key="como-comprar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <HowToBuyScreen setActiveScreen={setActiveScreen} />
+              <HowToBuyScreen setActiveScreen={handleSetActiveScreen} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -448,7 +508,7 @@ export default function App() {
                     ].map(({ label, screen }) => (
                       <li key={screen}>
                         <button
-                          onClick={() => setActiveScreen(screen as any)}
+                          onClick={() => handleSetActiveScreen(screen as any)}
                           className="text-sm text-slate-400 hover:text-white transition-colors hover:translate-x-1 inline-flex transform duration-150"
                         >
                           {label}
