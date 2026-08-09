@@ -688,8 +688,12 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                       key={st.id}
                       type="button"
                       onClick={async () => {
-                        await onUpdateStatus(selectedOrder.id, st.id);
-                        setSelectedOrder((prev: any) => prev ? { ...prev, status: st.id } : null);
+                        const updated = await onUpdateStatus(selectedOrder.id, st.id);
+                        if (updated && updated.status) {
+                          setSelectedOrder(updated);
+                        } else {
+                          setSelectedOrder((prev: any) => prev ? { ...prev, status: st.id } : null);
+                        }
                       }}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
                         isCurrent
@@ -721,8 +725,12 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     <button
                       type="button"
                       onClick={async () => {
-                        await onUpdateStatus(selectedOrder.id, 'paid');
-                        setSelectedOrder((prev: any) => prev ? { ...prev, status: 'paid' } : null);
+                        const updated = await onUpdateStatus(selectedOrder.id, 'paid');
+                        if (updated && updated.status) {
+                          setSelectedOrder(updated);
+                        } else {
+                          setSelectedOrder((prev: any) => prev ? { ...prev, status: 'paid' } : null);
+                        }
                       }}
                       className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
                       title="Marcar como Pagado / Confirmado"
@@ -745,8 +753,12 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     <button
                       type="button"
                       onClick={async () => {
-                        await onUpdateStatus(selectedOrder.id, 'preparing');
-                        setSelectedOrder((prev: any) => prev ? { ...prev, status: 'preparing' } : null);
+                        const updated = await onUpdateStatus(selectedOrder.id, 'preparing');
+                        if (updated && updated.status) {
+                          setSelectedOrder(updated);
+                        } else {
+                          setSelectedOrder((prev: any) => prev ? { ...prev, status: 'preparing' } : null);
+                        }
                       }}
                       className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
                       title="Marcar como En Preparación"
@@ -769,8 +781,12 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     <button
                       type="button"
                       onClick={async () => {
-                        await onUpdateStatus(selectedOrder.id, 'ready');
-                        setSelectedOrder((prev: any) => prev ? { ...prev, status: 'ready' } : null);
+                        const updated = await onUpdateStatus(selectedOrder.id, 'ready');
+                        if (updated && updated.status) {
+                          setSelectedOrder(updated);
+                        } else {
+                          setSelectedOrder((prev: any) => prev ? { ...prev, status: 'ready' } : null);
+                        }
                       }}
                       className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
                       title="Marcar como Listo para Retirar"
@@ -793,8 +809,12 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     <button
                       type="button"
                       onClick={async () => {
-                        await onUpdateStatus(selectedOrder.id, 'delivered');
-                        setSelectedOrder((prev: any) => prev ? { ...prev, status: 'delivered' } : null);
+                        const updated = await onUpdateStatus(selectedOrder.id, 'delivered');
+                        if (updated && updated.status) {
+                          setSelectedOrder(updated);
+                        } else {
+                          setSelectedOrder((prev: any) => prev ? { ...prev, status: 'delivered' } : null);
+                        }
                       }}
                       className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
                       title="Marcar como Entregado"

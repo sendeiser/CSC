@@ -428,10 +428,23 @@ function normalizeOrder(o: any) {
 }
 
 async function updateOrderStatusHelper(db: any, orderId: string, targetStatus: string) {
-  // 1. Intenta la actualización directa
+  // Obtener dirección actual y limpiar cualquier tag de estado previo
+  const { data: currentOrder } = await db.from('orders').select('shipping_address').eq('id', orderId).single()
+  let cleanAddress = (currentOrder?.shipping_address || '').replace(/\[Estado: [^\]]+\]/g, '').trim()
+
+  let tag = ''
+  if (targetStatus === 'preparing' || targetStatus === 'en_preparacion') {
+    tag = '[Estado: En preparación]'
+  } else if (targetStatus === 'ready' || targetStatus === 'listo') {
+    tag = '[Estado: Listo]'
+  }
+
+  const finalAddress = tag ? `${cleanAddress} ${tag}`.trim() : cleanAddress
+
+  // 1. Intenta la actualización directa con el estado deseado y la dirección limpia de tags viejos
   const { data: directData, error: directErr } = await db
     .from('orders')
-    .update({ status: targetStatus })
+    .update({ status: targetStatus, shipping_address: finalAddress })
     .eq('id', orderId)
     .select('*, order_items(*, products(*))')
     .single()
@@ -442,27 +455,14 @@ async function updateOrderStatusHelper(db: any, orderId: string, targetStatus: s
 
   // 2. Si falla por restricción CHECK de PostgreSQL (orders_status_check)
   if (directErr && (directErr.message?.includes('orders_status_check') || directErr.code === '23514')) {
-    const { data: currentOrder } = await db.from('orders').select('shipping_address').eq('id', orderId).single()
-    let currentAddress = (currentOrder?.shipping_address || '').replace(/\[Estado: [^\]]+\]/g, '').trim()
-
     let dbStatus = targetStatus
-    let tag = ''
-
-    if (targetStatus === 'preparing' || targetStatus === 'en_preparacion') {
+    if (targetStatus === 'preparing' || targetStatus === 'en_preparacion' || targetStatus === 'ready' || targetStatus === 'listo') {
       dbStatus = 'paid'
-      tag = '[Estado: En preparación]'
-    } else if (targetStatus === 'ready' || targetStatus === 'listo') {
-      dbStatus = 'paid'
-      tag = '[Estado: Listo]'
-    } else {
-      currentAddress = currentAddress.replace(/\[Estado: [^\]]+\]/g, '').trim()
     }
-
-    const newAddress = tag ? `${currentAddress} ${tag}`.trim() : currentAddress
 
     const { data: fallbackData, error: fallbackErr } = await db
       .from('orders')
-      .update({ status: dbStatus, shipping_address: newAddress })
+      .update({ status: dbStatus, shipping_address: finalAddress })
       .eq('id', orderId)
       .select('*, order_items(*, products(*))')
       .single()

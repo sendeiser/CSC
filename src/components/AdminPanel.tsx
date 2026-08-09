@@ -581,10 +581,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
 
   const updateOrderStatus = async (id: string, status: string) => {
     try {
-      await adminApi.updateOrderStatus(id, status)
-      loadSection('orders')
-    } catch (err) {
+      const res = await adminApi.updateOrderStatus(id, status)
+      await loadSection('orders')
+      return res
+    } catch (err: any) {
       console.error(err)
+      showAlert({ title: 'Error', message: err.message || 'Error al cambiar estado', type: 'error' })
     }
   }
 
