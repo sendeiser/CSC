@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone, Store, Truck } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone, Store, Truck, Copy, Info, Search } from 'lucide-react';
 import { ActiveScreen, CartItem, UserSession } from '../types';
 import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
@@ -36,6 +36,16 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [activePhone, setActivePhone] = React.useState<string>(WHATSAPP_NUMERO_1);
   const [storeSettings, setStoreSettings] = React.useState<any>(null);
   const [deliveryMode, setDeliveryMode] = React.useState<'pickup' | 'delivery'>('pickup');
+  const [copiedOrderId, setCopiedOrderId] = React.useState(false);
+
+  const handleCopyOrderId = () => {
+    const code = orderId ? orderId.slice(0, 8).toUpperCase() : '';
+    if (code) {
+      navigator.clipboard.writeText(code);
+      setCopiedOrderId(true);
+      setTimeout(() => setCopiedOrderId(false), 3000);
+    }
+  };
 
   // Auto-completado automático de Nombre y Celular para usuarios registrados o previos
   React.useEffect(() => {
@@ -299,11 +309,54 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
             <div className="w-24 h-24 mx-auto rounded-full bg-emerald-100 flex items-center justify-center">
               <PartyPopper className="w-12 h-12 text-emerald-600" />
             </div>
-            <div>
+
+            <div className="space-y-3">
               <h2 className="text-2xl font-headline font-bold text-gray-900">¡Pedido Confirmado!</h2>
-              <p className="text-gray-500 mt-2">Tu pedido #<span className="font-mono font-bold text-purple-700">{orderId.slice(0, 8).toUpperCase()}</span> está listo.</p>
-              <p className="text-sm text-gray-400 mt-1">{paymentMethod === 'transferencia' ? 'Te esperamos para confirmarlo con el comprobante.' : 'Te contactaremos por WhatsApp si hay novedades.'}</p>
+              
+              <div className="inline-flex items-center space-x-2 bg-purple-50 border border-purple-200 px-4 py-2 rounded-xl text-sm font-semibold text-purple-900 shadow-sm">
+                <span>N° de Pedido: <strong className="font-mono font-bold text-purple-700 text-base">#{orderId.slice(0, 8).toUpperCase()}</strong></span>
+                <button
+                  onClick={handleCopyOrderId}
+                  className="ml-2 inline-flex items-center space-x-1 px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                  title="Copiar N° de Pedido"
+                >
+                  {copiedOrderId ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedOrderId ? '¡Copiado!' : 'Copiar'}</span>
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-500 mt-1">{paymentMethod === 'transferencia' ? 'Te esperamos para confirmarlo con el comprobante.' : 'Te contactaremos por WhatsApp si hay novedades.'}</p>
             </div>
+
+            {/* Aviso especial para clientes Invitados */}
+            {!isLoggedIn && (
+              <div className="max-w-md mx-auto bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 text-left space-y-3 shadow-sm">
+                <div className="flex items-center space-x-2 font-bold text-amber-950 text-sm">
+                  <Copy className="w-5 h-5 text-amber-600 shrink-0" />
+                  <span>📌 ¡Guarda tu N° de Pedido!</span>
+                </div>
+                <p className="text-xs text-amber-900 leading-relaxed">
+                  Al comprar como <strong>invitado</strong> no tenés un historial automático vinculado a una cuenta. Por favor, <strong>copia tu N° de Pedido (<code>#{orderId.slice(0, 8).toUpperCase()}</code>)</strong> para pegarlo en la sección <strong>"Mis Pedidos"</strong> y consultar su estado en tiempo real en cualquier momento.
+                </p>
+                <div className="pt-1 flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={handleCopyOrderId}
+                    className="flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                  >
+                    {copiedOrderId ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
+                    <span>{copiedOrderId ? '¡Código Copiado!' : 'Copiar N° de Pedido'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setActiveScreen('mis-pedidos')}
+                    className="flex-1 inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                  >
+                    <Search className="w-4 h-4" />
+                    <span>Ir a "Mis Pedidos"</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
             {paymentMethod === 'transferencia' && (
               <div className="max-w-md mx-auto text-left bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-200 rounded-2xl p-6 space-y-4 shadow-sm">
@@ -350,22 +403,22 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                 </a>
               </div>
             )}
-            <a
-              href={waLink(
-                `Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`,
-                activePhone
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-md text-sm"
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span>Contactar por WhatsApp</span>
-            </a>
-            <div className="pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <a
+                href={waLink(
+                  `Hola! Quiero consultar sobre mi pedido #${orderId.slice(0, 8).toUpperCase()}`,
+                  activePhone
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl transition-colors shadow-md text-sm cursor-pointer"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span>Contactar por WhatsApp</span>
+              </a>
               <button
                 onClick={() => { setStep('basket'); setActiveDiscount(null); setActiveScreen('catalogo'); }}
-                className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg"
+                className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all text-sm cursor-pointer"
               >
                 Seguir Comprando
               </button>
@@ -502,6 +555,27 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           <div className="max-w-lg mx-auto space-y-6">
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-100 rounded-2xl p-6 sm:p-8 space-y-5">
               
+              {!isLoggedIn && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs space-y-2 text-amber-950 shadow-sm">
+                  <div className="flex items-center space-x-2 font-bold text-amber-950 text-sm">
+                    <Info className="w-4.5 h-4.5 text-amber-600 shrink-0" />
+                    <span>Estás comprando como Cliente Invitado</span>
+                  </div>
+                  <p className="text-amber-900 leading-relaxed text-[11px]">
+                    Podés realizar tu compra sin necesidad de tener cuenta. 💡 <strong>Ten en cuenta:</strong> Los clientes registrados cuentan con ventajas exclusivas como guardado de lista de favoritos, autocompletado de datos en 1 clic e historial unificado de pedidos en su perfil.
+                  </p>
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveScreen('login')}
+                      className="text-[11px] font-bold text-purple-700 hover:text-purple-900 underline cursor-pointer"
+                    >
+                      ¿Querés registrarte o iniciar sesión antes de comprar? Haz clic aquí
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Fulfillment Type / Mode Selector */}
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
