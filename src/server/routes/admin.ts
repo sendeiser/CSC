@@ -19,6 +19,12 @@ export async function getStoreSettingsHelper() {
     msg_order_status: '',
     msg_preparing: '',
     msg_ready: '',
+    fulfillment_type: 'both',
+    delivery_cost: 0,
+    free_delivery_over: 0,
+    pickup_address: 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
+    pickup_schedule: 'Lunes a Sábado de 09:00 a 20:00 hs',
+    delivery_notes: 'Envíos en el día dentro del radio urbano de Chamical.',
   }
 
   try {
@@ -39,6 +45,12 @@ export async function getStoreSettingsHelper() {
         msg_order_status: data.content.msg_order_status || '',
         msg_preparing: data.content.msg_preparing || '',
         msg_ready: data.content.msg_ready || '',
+        fulfillment_type: data.content.fulfillment_type || 'both',
+        delivery_cost: Number(data.content.delivery_cost || 0),
+        free_delivery_over: Number(data.content.free_delivery_over || 0),
+        pickup_address: data.content.pickup_address || 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
+        pickup_schedule: data.content.pickup_schedule || 'Lunes a Sábado de 09:00 a 20:00 hs',
+        delivery_notes: data.content.delivery_notes || 'Envíos en el día dentro del radio urbano de Chamical.',
       }
     } else if (fs.existsSync(STORE_SETTINGS_FILE)) {
       const raw = fs.readFileSync(STORE_SETTINGS_FILE, 'utf-8')
@@ -53,6 +65,12 @@ export async function getStoreSettingsHelper() {
         msg_order_status: parsed.msg_order_status || '',
         msg_preparing: parsed.msg_preparing || '',
         msg_ready: parsed.msg_ready || '',
+        fulfillment_type: parsed.fulfillment_type || 'both',
+        delivery_cost: Number(parsed.delivery_cost || 0),
+        free_delivery_over: Number(parsed.free_delivery_over || 0),
+        pickup_address: parsed.pickup_address || 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
+        pickup_schedule: parsed.pickup_schedule || 'Lunes a Sábado de 09:00 a 20:00 hs',
+        delivery_notes: parsed.delivery_notes || 'Envíos en el día dentro del radio urbano de Chamical.',
       }
     }
   } catch (_e) {}
@@ -79,6 +97,12 @@ export async function saveStoreSettingsHelper(payload: any) {
     msg_order_status: payload.msg_order_status !== undefined ? String(payload.msg_order_status) : '',
     msg_preparing: payload.msg_preparing !== undefined ? String(payload.msg_preparing) : '',
     msg_ready: payload.msg_ready !== undefined ? String(payload.msg_ready) : '',
+    fulfillment_type: ['both', 'pickup_only', 'delivery_only'].includes(payload.fulfillment_type) ? payload.fulfillment_type : 'both',
+    delivery_cost: Number(payload.delivery_cost || 0),
+    free_delivery_over: Number(payload.free_delivery_over || 0),
+    pickup_address: payload.pickup_address !== undefined ? String(payload.pickup_address).trim() : 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
+    pickup_schedule: payload.pickup_schedule !== undefined ? String(payload.pickup_schedule).trim() : 'Lunes a Sábado de 09:00 a 20:00 hs',
+    delivery_notes: payload.delivery_notes !== undefined ? String(payload.delivery_notes).trim() : 'Envíos en el día dentro del radio urbano de Chamical.',
   }
 
   try {

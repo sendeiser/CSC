@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck } from 'lucide-react';
 import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
 import AdminAboutPageEditor from './AdminAboutPageEditor';
 import { AdminWhatsAppEditor } from './AdminWhatsAppEditor';
 import { AdminOrdersSection } from './AdminOrdersSection';
+import { AdminShippingEditor } from './AdminShippingEditor';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { useModal } from '../context/ModalContext';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
@@ -641,6 +642,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     { id: 'about-page', label: 'Sobre Nosotros', icon: <FileText className="w-4.5 h-4.5" /> },
     { id: 'categories', label: 'Categorías', icon: <Layout className="w-4.5 h-4.5" /> },
     { id: 'whatsapp', label: 'Mensajes WhatsApp', icon: <MessageCircle className="w-4.5 h-4.5 text-emerald-400" /> },
+    { id: 'shipping', label: 'Envíos / Delivery', icon: <Truck className="w-4.5 h-4.5 text-pink-400" /> },
   ]
 
   return (
@@ -2025,6 +2027,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               {section === 'about-page' && <AdminAboutPageEditor />}
               {section === 'categories' && <AdminCategoriesScreen />}
               {section === 'whatsapp' && <AdminWhatsAppEditor />}
+              {section === 'shipping' && <AdminShippingEditor />}
             </>
           )}
         </div>

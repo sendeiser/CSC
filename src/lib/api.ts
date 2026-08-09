@@ -1,3 +1,5 @@
+import { StoreSettings } from '../types'
+
 const API_BASE = '/api'
 
 let authToken: string | null = null
@@ -208,7 +210,7 @@ export const admin = {
   getFinancialSettings: () => request<any>('/admin/financial-settings'),
   updateFinancialSettings: (data: any) =>
     request<any>('/admin/financial-settings', { method: 'PUT', body: JSON.stringify(data) }),
-  getStoreSettings: () => request<{ whatsapp_number_1: string; whatsapp_number_2: string; active_whatsapp_number: 'num1' | 'num2'; active_phone: string; msg_transfer?: string; msg_mercadopago?: string; msg_general_inquiry?: string; msg_order_status?: string; msg_preparing?: string; msg_ready?: string }>('/admin/store-settings'),
+  getStoreSettings: () => request<StoreSettings>('/admin/store-settings'),
   updateStoreSettings: (data: any) =>
     request<any>('/admin/store-settings', { method: 'PUT', body: JSON.stringify(data) }),
   saveStoreSettings: (data: any) =>
@@ -219,7 +221,7 @@ export const admin = {
 export const homepage = {
   get: () => request<any[]>('/homepage'),
   getAbout: () => request<any>('/homepage/about'),
-  getSettings: () => request<{ whatsapp_number_1: string; whatsapp_number_2: string; active_whatsapp_number: 'num1' | 'num2'; active_phone: string; msg_transfer?: string; msg_mercadopago?: string; msg_general_inquiry?: string; msg_order_status?: string; msg_preparing?: string; msg_ready?: string }>('/homepage/settings'),
+  getSettings: () => request<StoreSettings>('/homepage/settings'),
 }
 
 // Categories (public)

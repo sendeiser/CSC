@@ -34,7 +34,26 @@ export interface CartItem {
 
 export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros' | 'como-comprar' | 'mis-pedidos';
 
-export type AdminSection = 'dashboard' | 'analytics' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'about-page' | 'categories' | 'whatsapp';
+export type AdminSection = 'dashboard' | 'analytics' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'about-page' | 'categories' | 'whatsapp' | 'shipping';
+
+export interface StoreSettings {
+  whatsapp_number_1: string;
+  whatsapp_number_2: string;
+  active_whatsapp_number: 'num1' | 'num2';
+  active_phone: string;
+  msg_transfer?: string;
+  msg_mercadopago?: string;
+  msg_general_inquiry?: string;
+  msg_order_status?: string;
+  msg_preparing?: string;
+  msg_ready?: string;
+  fulfillment_type: 'both' | 'pickup_only' | 'delivery_only';
+  delivery_cost: number;
+  free_delivery_over: number;
+  pickup_address: string;
+  pickup_schedule: string;
+  delivery_notes: string;
+}
 
 export interface HomepageSection {
   id: string;

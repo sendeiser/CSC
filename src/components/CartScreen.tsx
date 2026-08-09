@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone, Store, Truck } from 'lucide-react';
 import { ActiveScreen, CartItem } from '../types';
 import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
@@ -32,21 +32,33 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [lastOrderItems, setLastOrderItems] = React.useState<CartItem[]>([]);
   const [lastOrderTotal, setLastOrderTotal] = React.useState<number>(0);
   const [activePhone, setActivePhone] = React.useState<string>(WHATSAPP_NUMERO_1);
+  const [storeSettings, setStoreSettings] = React.useState<any>(null);
+  const [deliveryMode, setDeliveryMode] = React.useState<'pickup' | 'delivery'>('pickup');
 
   React.useEffect(() => {
     homepageApi.getSettings().then((st) => {
       if (st) {
+        setStoreSettings(st);
         const phone = st.active_phone || st.whatsapp_number_1 || WHATSAPP_NUMERO_1;
         setActivePhone(phone);
         setWhatsAppNumbers(st.whatsapp_number_1, st.whatsapp_number_2);
         setWhatsAppTemplates(st);
+        if (st.fulfillment_type === 'delivery_only') {
+          setDeliveryMode('delivery');
+        } else if (st.fulfillment_type === 'pickup_only') {
+          setDeliveryMode('pickup');
+        }
       }
     }).catch(() => {});
   }, []);
 
   const subTotal = cart.reduce((acc, item) => acc + (item.itemPrice * item.quantity), 0);
   const discountAmount = activeDiscount ? subTotal * (activeDiscount.percent / 100) : 0;
-  const grandTotal = subTotal - discountAmount;
+  const baseGrandTotal = subTotal - discountAmount;
+
+  const isFreeDelivery = storeSettings?.free_delivery_over && storeSettings.free_delivery_over > 0 && baseGrandTotal >= storeSettings.free_delivery_over;
+  const deliveryFee = deliveryMode === 'delivery' ? (isFreeDelivery ? 0 : Number(storeSettings?.delivery_cost || 0)) : 0;
+  const grandTotal = baseGrandTotal + deliveryFee;
 
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +139,12 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
       setShippingError('Ingresa tu nombre completo para continuar.');
       return;
     }
+
+    if (deliveryMode === 'delivery' && !addressLine.trim()) {
+      setShippingError('Ingresa la dirección completa para el envío a domicilio.');
+      return;
+    }
+
     setShippingError('');
 
     const token = getAuthToken()
@@ -135,12 +153,20 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
       return
     }
 
+    let finalAddressNote = addressLine.trim();
+    if (deliveryMode === 'pickup') {
+      const locAddr = storeSettings?.pickup_address || 'Local Chamical Candy Shop';
+      finalAddressNote = `[Retiro en Tienda: ${locAddr}] ${addressLine}`.trim();
+    } else {
+      finalAddressNote = `[Envío a Domicilio] ${addressLine}`.trim();
+    }
+
     try {
       if (paymentMethod === 'transferencia') {
         const result = await ordersApi.create({
           shipping_name: fullName,
-          shipping_address: addressLine,
-          shipping_city: cityField,
+          shipping_address: finalAddressNote,
+          shipping_city: cityField || 'Chamical',
           promo_code: activeDiscount?.code,
         })
         const finalTotal = Number(result.total) || grandTotal
@@ -152,8 +178,8 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
       } else {
         const result = await paymentsApi.createPreference({
           shipping_name: fullName,
-          shipping_address: addressLine,
-          shipping_city: cityField,
+          shipping_address: finalAddressNote,
+          shipping_city: cityField || 'Chamical',
           promo_code: activeDiscount?.code,
         })
         window.location.href = result.init_point
@@ -446,24 +472,132 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
         {step === 'checkout' && (
           <div className="max-w-lg mx-auto space-y-6">
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-100 rounded-2xl p-6 sm:p-8 space-y-5">
-              <div className="flex items-center space-x-3">
-                <MapPin className="w-6 h-6 text-purple-600" />
-                <h3 className="font-headline font-bold text-gray-900">Datos del Cliente</h3>
+              
+              {/* Fulfillment Type / Mode Selector */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                  Modalidad de Entrega
+                </label>
+                
+                {storeSettings?.fulfillment_type === 'pickup_only' ? (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 space-y-1.5 text-xs">
+                    <div className="flex items-center space-x-2 text-indigo-900 font-bold text-sm">
+                      <Store className="w-4 h-4 text-indigo-600" />
+                      <span>Solo Retiro en Tienda / Local</span>
+                    </div>
+                    <p className="text-indigo-800">
+                      📍 <strong>Dirección:</strong> {storeSettings?.pickup_address || 'Local Chamical Candy Shop'}
+                    </p>
+                    {storeSettings?.pickup_schedule && (
+                      <p className="text-indigo-700 text-[11px]">
+                        🕒 <strong>Horarios:</strong> {storeSettings.pickup_schedule}
+                      </p>
+                    )}
+                  </div>
+                ) : storeSettings?.fulfillment_type === 'delivery_only' ? (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-1.5 text-xs">
+                    <div className="flex items-center space-x-2 text-emerald-900 font-bold text-sm">
+                      <Truck className="w-4 h-4 text-emerald-600" />
+                      <span>Envío a Domicilio / Delivery</span>
+                    </div>
+                    {deliveryFee > 0 ? (
+                      <p className="text-emerald-800">
+                        🚚 Costo de envío: <strong>${deliveryFee.toFixed(2)}</strong>
+                      </p>
+                    ) : (
+                      <p className="text-emerald-700 font-bold">
+                        🎉 ¡Envío a Domicilio GRATIS!
+                      </p>
+                    )}
+                    {storeSettings?.delivery_notes && (
+                      <p className="text-emerald-700 text-[11px] mt-1">
+                        ℹ️ {storeSettings.delivery_notes}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMode('pickup')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all ${
+                        deliveryMode === 'pickup'
+                          ? 'border-purple-600 bg-purple-600 text-white shadow-md'
+                          : 'border-pink-200 bg-white text-gray-700 hover:bg-pink-50'
+                      }`}
+                    >
+                      <Store className="w-5 h-5 mb-1" />
+                      <span>Retirar en Local</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeliveryMode('delivery')}
+                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-xs font-bold transition-all ${
+                        deliveryMode === 'delivery'
+                          ? 'border-purple-600 bg-purple-600 text-white shadow-md'
+                          : 'border-pink-200 bg-white text-gray-700 hover:bg-pink-50'
+                      }`}
+                    >
+                      <Truck className="w-5 h-5 mb-1" />
+                      <span>Envío a Domicilio</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Additional Info depending on choice in 'both' mode */}
+                {storeSettings?.fulfillment_type === 'both' && (
+                  <div className="mt-2 text-xs">
+                    {deliveryMode === 'pickup' ? (
+                      <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 space-y-1">
+                        <span className="font-bold text-indigo-950 block">📍 Dirección de Retiro:</span>
+                        <span className="text-indigo-800 text-[11px] block">{storeSettings?.pickup_address || 'Local Chamical Candy Shop - Av. Principal #123'}</span>
+                        {storeSettings?.pickup_schedule && (
+                          <span className="text-indigo-700 text-[10px] block">🕒 Horarios: {storeSettings.pickup_schedule}</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 space-y-1">
+                        <span className="font-bold text-emerald-950 block">🚚 Costo de Envío:</span>
+                        {deliveryFee > 0 ? (
+                          <span className="text-emerald-800 text-[11px] block">Costo fijo: <strong>${deliveryFee.toFixed(2)}</strong></span>
+                        ) : (
+                          <span className="text-emerald-700 text-[11px] font-bold block">🎉 ¡Envío a Domicilio GRATIS!</span>
+                        )}
+                        {storeSettings?.delivery_notes && (
+                          <span className="text-emerald-700 text-[10px] block">{storeSettings.delivery_notes}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center space-x-3 border-t border-pink-100 pt-3">
+                <MapPin className="w-5 h-5 text-purple-600" />
+                <h3 className="font-headline font-bold text-gray-900 text-sm">Datos del Cliente</h3>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Nombre Completo *</label>
                 <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre y apellido" className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Teléfono (WhatsApp)</label>
-                  <input type="tel" value={phoneField} onChange={(e) => setPhoneField(e.target.value)} placeholder="+54 9 ..." className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Notas / Referencia</label>
-                  <input type="text" value={addressLine} onChange={(e) => setAddressLine(e.target.value)} placeholder="Opcional" className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
-                </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Teléfono (WhatsApp) *</label>
+                <input type="tel" value={phoneField} onChange={(e) => setPhoneField(e.target.value)} placeholder="+54 9 ..." className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                  {deliveryMode === 'delivery' ? 'Dirección Completa de Envío *' : 'Notas del Pedido (Opcional)'}
+                </label>
+                <input
+                  type="text"
+                  value={addressLine}
+                  onChange={(e) => setAddressLine(e.target.value)}
+                  placeholder={deliveryMode === 'delivery' ? 'Calle, número, piso, depto...' : 'Instrucciones especiales'}
+                  className="w-full px-3.5 py-2.5 border border-pink-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white"
+                />
               </div>
 
               {shippingError && (
@@ -476,6 +610,12 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
               <div className="bg-purple-100/50 rounded-xl p-4 space-y-1.5 text-sm">
                 <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span className="font-semibold">${subTotal.toFixed(2)}</span></div>
                 {discountAmount > 0 && <div className="flex justify-between text-emerald-600"><span>Descuento</span><span>-${discountAmount.toFixed(2)}</span></div>}
+                {deliveryMode === 'delivery' && (
+                  <div className="flex justify-between text-purple-700">
+                    <span>Costo de Envío</span>
+                    <span className="font-semibold">{deliveryFee > 0 ? `$${deliveryFee.toFixed(2)}` : 'GRATIS'}</span>
+                  </div>
+                )}
                 <div className="border-t border-pink-300 pt-2 flex justify-between text-base"><span className="font-bold">Total</span><span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span></div>
               </div>
 
