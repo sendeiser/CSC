@@ -51,22 +51,47 @@ router.get('/search', async (req: any, res: Response) => {
     return
   }
 
-  const cleanId = String(order_id).trim()
-  let query = serviceClient.from('orders').select('*, order_items(*, products(*))')
+  const cleanId = String(order_id).trim().toLowerCase()
 
+  // 1. Si es un UUID completo de 36 caracteres
   if (cleanId.length === 36) {
-    query = query.eq('id', cleanId)
-  } else {
-    query = query.ilike('id', `${cleanId}%`)
+    const { data: exactOrder, error: exactErr } = await serviceClient
+      .from('orders')
+      .select('*, order_items(*, products(*))')
+      .eq('id', cleanId)
+      .maybeSingle()
+
+    if (!exactErr && exactOrder) {
+      res.json(normalizeOrderClient(exactOrder))
+      return
+    }
   }
 
-  const { data: orders, error } = await query
+  // 2. Buscar por prefijo o coincidentes en la lista de pedidos recientes
+  const { data: orders, error } = await serviceClient
+    .from('orders')
+    .select('*, order_items(*, products(*))')
+    .order('created_at', { ascending: false })
+    .limit(500)
+
   if (error || !orders || orders.length === 0) {
     res.status(404).json({ error: 'Pedido no encontrado' })
     return
   }
 
-  res.json(normalizeOrderClient(orders[0]))
+  const found = orders.find((o: any) => {
+    const fullId = (o.id || '').toLowerCase()
+    const cleanFullId = fullId.replace(/-/g, '')
+    const cleanSearch = cleanId.replace(/-/g, '')
+    return fullId.startsWith(cleanId) || cleanFullId.startsWith(cleanSearch) || fullId.includes(cleanId)
+  })
+
+  if (!found) {
+    res.status(404).json({ error: 'Pedido no encontrado' })
+    return
+  }
+
+  res.json(normalizeOrderClient(found))
 })
 
 router.post('/:id/receipt', async (req: any, res: Response) => {
