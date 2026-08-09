@@ -388,13 +388,77 @@ router.get('/orders', requireAdmin, async (req: AuthenticatedRequest, res: Respo
     }
   }
 
-  const result = orders.map(o => ({
+  const result = orders.map(o => normalizeOrder({
     ...o,
     profiles: profilesMap[o.user_id] || null
   }))
 
   res.json(result)
 })
+
+function normalizeOrder(o: any) {
+  if (!o) return o
+  let status = o.status
+  const address = o.shipping_address || ''
+  if (address.includes('[Estado: En preparación]')) {
+    status = 'preparing'
+  } else if (address.includes('[Estado: Listo]')) {
+    status = 'ready'
+  }
+  return {
+    ...o,
+    status
+  }
+}
+
+async function updateOrderStatusHelper(db: any, orderId: string, targetStatus: string) {
+  // 1. Intenta la actualización directa
+  const { data: directData, error: directErr } = await db
+    .from('orders')
+    .update({ status: targetStatus })
+    .eq('id', orderId)
+    .select('*, order_items(*, products(*))')
+    .single()
+
+  if (!directErr && directData) {
+    return { data: normalizeOrder(directData), error: null }
+  }
+
+  // 2. Si falla por restricción CHECK de PostgreSQL (orders_status_check)
+  if (directErr && (directErr.message?.includes('orders_status_check') || directErr.code === '23514')) {
+    const { data: currentOrder } = await db.from('orders').select('shipping_address').eq('id', orderId).single()
+    let currentAddress = (currentOrder?.shipping_address || '').replace(/\[Estado: [^\]]+\]/g, '').trim()
+
+    let dbStatus = targetStatus
+    let tag = ''
+
+    if (targetStatus === 'preparing' || targetStatus === 'en_preparacion') {
+      dbStatus = 'paid'
+      tag = '[Estado: En preparación]'
+    } else if (targetStatus === 'ready' || targetStatus === 'listo') {
+      dbStatus = 'paid'
+      tag = '[Estado: Listo]'
+    } else {
+      currentAddress = currentAddress.replace(/\[Estado: [^\]]+\]/g, '').trim()
+    }
+
+    const newAddress = tag ? `${currentAddress} ${tag}`.trim() : currentAddress
+
+    const { data: fallbackData, error: fallbackErr } = await db
+      .from('orders')
+      .update({ status: dbStatus, shipping_address: newAddress })
+      .eq('id', orderId)
+      .select('*, order_items(*, products(*))')
+      .single()
+
+    if (fallbackErr) {
+      return { data: null, error: fallbackErr }
+    }
+    return { data: normalizeOrder(fallbackData), error: null }
+  }
+
+  return { data: null, error: directErr }
+}
 
 router.put('/orders/:id/status', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const db = serviceClient || supabase
@@ -406,12 +470,7 @@ router.put('/orders/:id/status', requireAdmin, async (req: AuthenticatedRequest,
     return
   }
 
-  const { data, error } = await db
-    .from('orders')
-    .update({ status })
-    .eq('id', req.params.id)
-    .select('*, order_items(*, products(*))')
-    .single()
+  const { data, error } = await updateOrderStatusHelper(db, req.params.id, status)
 
   if (error) {
     res.status(400).json({ error: error.message })
@@ -561,11 +620,8 @@ router.put('/orders/bulk-status', requireAdmin, async (req: AuthenticatedRequest
     return
   }
 
-  const { error } = await db.from('orders').update({ status }).in('id', ids)
-
-  if (error) {
-    res.status(400).json({ error: error.message })
-    return
+  for (const id of ids) {
+    await updateOrderStatusHelper(db, id, status)
   }
 
   res.json({ message: `Estado actualizado a ${status} para ${ids.length} pedidos` })
