@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus, Clock } from 'lucide-react';
-import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo } from '../lib/whatsapp';
+import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo, extractCustomerPhone, waLink } from '../lib/whatsapp';
 import { admin as adminApi, products as productsApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 
@@ -884,37 +884,44 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                 <p className="text-2xl font-black text-purple-700">${Number(selectedOrder.total || 0).toFixed(2)}</p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
-                <a
-                  href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(
-                    buildMensajeEnPreparacion(
-                      selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
-                      selectedOrder.id
-                    )
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all hover:scale-105"
-                >
-                  <MessageCircle className="w-4 h-4 text-indigo-200" />
-                  <span>Avisar: En Preparación</span>
-                </a>
+              {(() => {
+                const targetCustomerPhone = extractCustomerPhone(selectedOrder) || WHATSAPP_NUMERO;
+                return (
+                  <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+                    <a
+                      href={waLink(
+                        buildMensajeEnPreparacion(
+                          selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
+                          selectedOrder.id
+                        ),
+                        targetCustomerPhone
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all hover:scale-105"
+                    >
+                      <MessageCircle className="w-4 h-4 text-indigo-200" />
+                      <span>Avisar: En Preparación</span>
+                    </a>
 
-                <a
-                  href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(
-                    buildMensajeListo(
-                      selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
-                      selectedOrder.id
-                    )
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all hover:scale-105"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                  <span>Avisar: Listo para Retirar</span>
-                </a>
-              </div>
+                    <a
+                      href={waLink(
+                        buildMensajeListo(
+                          selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
+                          selectedOrder.id
+                        ),
+                        targetCustomerPhone
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all hover:scale-105"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                      <span>Avisar: Listo para Retirar</span>
+                    </a>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

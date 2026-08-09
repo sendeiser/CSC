@@ -168,3 +168,43 @@ export function waLink(mensaje: string, targetPhone?: string): string {
   const phone = (targetPhone || WHATSAPP_NUMERO_1).replace(/[^0-9]/g, '');
   return `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
 }
+
+export function extractCustomerPhone(order: any): string {
+  if (!order) return '';
+
+  // 1. Perfil del usuario
+  if (order.profiles?.phone && String(order.profiles.phone).trim()) {
+    const raw = String(order.profiles.phone).trim().replace(/[^0-9]/g, '');
+    if (raw.length >= 8) {
+      if (raw.startsWith('549')) return raw;
+      if (raw.startsWith('54')) return `549${raw.slice(2)}`;
+      return `549${raw}`;
+    }
+  }
+
+  // 2. Parsear notas / dirección buscando [Tel: ...] o [Teléfono: ...]
+  const address = order.shipping_address || '';
+  const match = address.match(/\[Tel(?:éfono)?:?\s*([^\]]+)\]/i);
+
+  let phoneStr = '';
+  if (match && match[1]) {
+    phoneStr = match[1].trim();
+  } else {
+    const numberMatch = address.match(/(\+?54\s*9?\s*\d{8,11}|\b38\d{8,9}\b|\b15\d{7,8}\b|\b\d{10,12}\b)/);
+    if (numberMatch && numberMatch[1]) {
+      phoneStr = numberMatch[1].trim();
+    }
+  }
+
+  if (phoneStr) {
+    const cleanDigits = phoneStr.replace(/[^0-9]/g, '');
+    if (cleanDigits.length >= 8) {
+      if (cleanDigits.startsWith('549')) return cleanDigits;
+      if (cleanDigits.startsWith('54')) return `549${cleanDigits.slice(2)}`;
+      return `549${cleanDigits}`;
+    }
+    return cleanDigits;
+  }
+
+  return '';
+}
