@@ -141,6 +141,12 @@ export const orders = {
 
   confirm: (payment_id: string, preference_id: string) =>
     request<any>('/orders/confirm', { method: 'POST', body: JSON.stringify({ payment_id, preference_id }) }),
+
+  uploadReceipt: (id: string, receipt_url: string) =>
+    request<any>(`/orders/${id}/receipt`, { method: 'POST', body: JSON.stringify({ receipt_url }) }),
+
+  searchByCode: (orderId: string, email?: string) =>
+    request<any>(`/orders/search?order_id=${encodeURIComponent(orderId)}${email ? '&email=' + encodeURIComponent(email) : ''}`),
 }
 
 // Favorites

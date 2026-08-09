@@ -10,6 +10,7 @@ import { AuthScreens } from './components/AuthScreens';
 import { AdminPanel } from './components/AdminPanel';
 import { AboutUsScreen } from './components/AboutUsScreen';
 import { HowToBuyScreen } from './components/HowToBuyScreen';
+import { MyOrdersScreen } from './components/MyOrdersScreen';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { PRODUCTS } from './data';
 import { homepage as homepageApi, products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken, setOnAuthExpired } from './lib/api';
@@ -470,6 +471,12 @@ export default function App() {
           {activeScreen === 'como-comprar' && (
             <motion.div key="como-comprar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
               <HowToBuyScreen setActiveScreen={handleSetActiveScreen} />
+            </motion.div>
+          )}
+
+          {activeScreen === 'mis-pedidos' && (
+            <motion.div key="mis-pedidos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              <MyOrdersScreen setActiveScreen={handleSetActiveScreen} session={session} />
             </motion.div>
           )}
         </AnimatePresence>

@@ -55,6 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
   const navItems = [
     { label: 'Inicio', screen: 'inicio', Icon: Home },
     { label: 'Catálogo', screen: 'catalogo', Icon: Package },
+    { label: 'Mis Pedidos', screen: 'mis-pedidos', Icon: Package },
     { label: '¿Cómo comprar?', screen: 'como-comprar', Icon: HelpCircle },
     { label: 'Nosotros', screen: 'nosotros', Icon: Info },
   ];

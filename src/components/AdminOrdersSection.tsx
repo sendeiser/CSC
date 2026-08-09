@@ -611,6 +611,30 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     <span className="font-semibold text-slate-800">{selectedOrder.shipping_address}</span>
                   </div>
                 )}
+                {selectedOrder.receipt_url && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between col-span-2 mt-1">
+                    <div className="flex items-center space-x-3">
+                      <img
+                        src={selectedOrder.receipt_url}
+                        alt="Comprobante"
+                        className="w-12 h-12 rounded-lg object-cover bg-white border border-emerald-200 cursor-pointer"
+                        onClick={() => window.open(selectedOrder.receipt_url, '_blank')}
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-emerald-900 block">Comprobante de Pago Adjuntado 📑</span>
+                        <span className="text-[11px] text-emerald-700">Subido por el cliente desde su panel</span>
+                      </div>
+                    </div>
+                    <a
+                      href={selectedOrder.receipt_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow transition-colors inline-flex items-center space-x-1"
+                    >
+                      <span>Ver Original</span>
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 

@@ -407,15 +407,23 @@ router.get('/orders', requireAdmin, async (req: AuthenticatedRequest, res: Respo
 function normalizeOrder(o: any) {
   if (!o) return o
   let status = o.status
+  let receiptUrl = o.receipt_url || null
   const address = o.shipping_address || ''
   if (address.includes('[Estado: En preparación]')) {
     status = 'preparing'
   } else if (address.includes('[Estado: Listo]')) {
     status = 'ready'
   }
+
+  const receiptMatch = address.match(/\[Comprobante: (https?:\/\/[^\]]+)\]/)
+  if (receiptMatch) {
+    receiptUrl = receiptMatch[1]
+  }
+
   return {
     ...o,
-    status
+    status,
+    receipt_url: receiptUrl
   }
 }
 

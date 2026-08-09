@@ -5,10 +5,34 @@ import { getPayment } from '../lib/mercadopago'
 
 const router = Router()
 
+function normalizeOrderClient(o: any) {
+  if (!o) return o
+  let status = o.status
+  let receiptUrl = o.receipt_url || null
+  const address = o.shipping_address || ''
+  
+  if (address.includes('[Estado: En preparación]')) {
+    status = 'preparing'
+  } else if (address.includes('[Estado: Listo]')) {
+    status = 'ready'
+  }
+
+  const receiptMatch = address.match(/\[Comprobante: (https?:\/\/[^\]]+)\]/)
+  if (receiptMatch) {
+    receiptUrl = receiptMatch[1]
+  }
+
+  return {
+    ...o,
+    status,
+    receipt_url: receiptUrl
+  }
+}
+
 router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { data, error } = await serviceClient
     .from('orders')
-    .select('*, order_items(*)')
+    .select('*, order_items(*, products(*))')
     .eq('user_id', req.user!.id)
     .order('created_at', { ascending: false })
 
@@ -17,7 +41,90 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
     return
   }
 
-  res.json(data)
+  res.json((data || []).map(normalizeOrderClient))
+})
+
+router.get('/search', async (req: any, res: Response) => {
+  const { order_id } = req.query
+  if (!order_id) {
+    res.status(400).json({ error: 'order_id requerido' })
+    return
+  }
+
+  const cleanId = String(order_id).trim()
+  let query = serviceClient.from('orders').select('*, order_items(*, products(*))')
+
+  if (cleanId.length === 36) {
+    query = query.eq('id', cleanId)
+  } else {
+    query = query.ilike('id', `${cleanId}%`)
+  }
+
+  const { data: orders, error } = await query
+  if (error || !orders || orders.length === 0) {
+    res.status(404).json({ error: 'Pedido no encontrado' })
+    return
+  }
+
+  res.json(normalizeOrderClient(orders[0]))
+})
+
+router.post('/:id/receipt', async (req: any, res: Response) => {
+  const { receipt_url } = req.body
+  const orderId = req.params.id
+
+  if (!receipt_url) {
+    res.status(400).json({ error: 'receipt_url requerido' })
+    return
+  }
+
+  // 1. Intenta actualizar la columna receipt_url directamente
+  const { data: directData, error: directErr } = await serviceClient
+    .from('orders')
+    .update({ receipt_url })
+    .eq('id', orderId)
+    .select('*, order_items(*, products(*))')
+    .single()
+
+  if (!directErr && directData) {
+    res.json(normalizeOrderClient(directData))
+    return
+  }
+
+  // 2. Si la columna receipt_url no existe en Supabase, guarda la etiqueta en shipping_address
+  const { data: currentOrder } = await serviceClient.from('orders').select('shipping_address').eq('id', orderId).single()
+  let currentAddress = (currentOrder?.shipping_address || '').replace(/\[Comprobante: [^\]]+\]/g, '').trim()
+  const newAddress = `${currentAddress} [Comprobante: ${receipt_url}]`.trim()
+
+  const { data: fallbackData, error: fallbackErr } = await serviceClient
+    .from('orders')
+    .update({ shipping_address: newAddress })
+    .eq('id', orderId)
+    .select('*, order_items(*, products(*))')
+    .single()
+
+  if (fallbackErr) {
+    res.status(400).json({ error: fallbackErr.message })
+    return
+  }
+
+  res.json(normalizeOrderClient(fallbackData))
+})
+
+router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const { data, error } = await serviceClient
+    .from('orders')
+    .select('*, order_items(*, products(*))')
+    .eq('id', req.params.id)
+    .eq('user_id', req.user!.id)
+    .single()
+
+  if (error) {
+    res.status(404).json({ error: 'Orden no encontrada' })
+    return
+  }
+
+  res.json(normalizeOrderClient(data))
 })
 
 router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
