@@ -415,10 +415,24 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="font-mono text-xs font-black text-purple-700">#{o.id.slice(0, 8).toUpperCase()}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrder(o)}
+                        className="font-mono text-xs font-black text-purple-700 hover:text-purple-900 hover:underline cursor-pointer transition-colors text-left"
+                        title="Haz clic para ver el detalle del pedido"
+                      >
+                        #{o.id.slice(0, 8).toUpperCase()}
+                      </button>
                       {getStatusBadge(o.status)}
                     </div>
-                    <p className="font-bold text-slate-900 text-sm truncate">{customerName}</p>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedOrder(o)}
+                      className="font-bold text-slate-900 text-sm truncate hover:text-purple-700 hover:underline cursor-pointer text-left block w-full"
+                      title="Haz clic para ver el detalle del pedido"
+                    >
+                      {customerName}
+                    </button>
                     <p className="text-[11px] text-slate-400 truncate">{o.shipping_address || 'Retiro en tienda'}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="font-black text-slate-900 text-base">${Number(o.total || 0).toFixed(2)}</span>
@@ -505,11 +519,25 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                           className="rounded text-purple-600 focus:ring-purple-400 w-4 h-4 cursor-pointer"
                         />
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs font-bold text-purple-700">
-                        #{o.id.slice(0, 8).toUpperCase()}
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrder(o)}
+                          className="font-mono text-xs font-bold text-purple-700 hover:text-purple-900 hover:underline cursor-pointer transition-colors text-left"
+                          title="Haz clic para ver el detalle del pedido"
+                        >
+                          #{o.id.slice(0, 8).toUpperCase()}
+                        </button>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-slate-900">{customerName}</div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedOrder(o)}
+                          className="font-medium text-slate-900 hover:text-purple-700 hover:underline cursor-pointer text-left block"
+                          title="Haz clic para ver el detalle del pedido"
+                        >
+                          {customerName}
+                        </button>
                         <div className="text-[11px] text-slate-400 truncate max-w-[140px] sm:max-w-xs">
                           {o.shipping_address || 'Retiro en tienda'}
                         </div>
