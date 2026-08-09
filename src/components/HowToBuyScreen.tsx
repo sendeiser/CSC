@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, ShoppingBag, ArrowRight, HelpCircle, CheckCircle2, CreditCard, Truck, ShieldCheck, ChevronDown, Play, X } from 'lucide-react';
+import { Sparkles, ShoppingBag, ArrowRight, HelpCircle, CheckCircle2, CreditCard, Truck, ShieldCheck, ChevronDown, Play, X, ArrowLeft } from 'lucide-react';
 import { ActiveScreen } from '../types';
 
 interface HowToBuyScreenProps {
@@ -83,22 +83,34 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
   return (
     <div className="min-h-screen bg-slate-50 overflow-hidden pb-20">
       {/* Hero Banner Header */}
-      <section className="relative bg-slate-950 text-white py-20 sm:py-24 overflow-hidden">
+      <section className="relative bg-slate-950 text-white pt-10 pb-20 sm:pb-24 overflow-hidden">
         {/* Glow ambient background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,_rgba(236,72,153,0.25),transparent_50%),radial-gradient(circle_at_70%_70%,_rgba(168,85,247,0.25),transparent_50%)] pointer-events-none" />
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-4 max-w-3xl mx-auto"
-          >
-            <span className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 text-pink-300 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest">
-              <HelpCircle className="w-4 h-4 text-pink-400" />
-              <span>Guía Oficial de Compra</span>
-            </span>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Back button */}
+          <div className="mb-6">
+            <button
+              onClick={() => setActiveScreen('inicio')}
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:shadow hover:-translate-x-0.5"
+            >
+              <ArrowLeft className="w-4 h-4 text-pink-300" />
+              <span>Volver al inicio</span>
+            </button>
+          </div>
+
+          <div className="text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-4 max-w-3xl mx-auto"
+            >
+              <span className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 text-pink-300 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest">
+                <HelpCircle className="w-4 h-4 text-pink-400" />
+                <span>Guía Oficial de Compra</span>
+              </span>
 
             <h1 className="font-headline font-black text-4xl sm:text-6xl tracking-tight leading-tight">
               ¿Cómo comprar en <span className="candy-gradient-text">Chamical Candy Shop</span>?
@@ -120,6 +132,7 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
               </button>
             </div>
           </motion.div>
+          </div>
         </div>
       </section>
 
