@@ -19,8 +19,15 @@ import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
 import { waLink, setWhatsAppNumbers, setWhatsAppTemplates } from './lib/whatsapp';
 import { MessageCircle, Instagram } from 'lucide-react';
 
+const VALID_SCREENS: ActiveScreen[] = ['inicio', 'catalogo', 'detalle', 'carrito', 'login', 'registro', 'admin', 'nosotros', 'como-comprar', 'mis-pedidos'];
+
+const getInitialScreen = (): ActiveScreen => {
+  const hash = window.location.hash.replace('#', '') as ActiveScreen;
+  return VALID_SCREENS.includes(hash) ? hash : 'inicio';
+};
+
 export default function App() {
-  const [activeScreen, setActiveScreen] = useState<ActiveScreen>('inicio');
+  const [activeScreen, setActiveScreen] = useState<ActiveScreen>(getInitialScreen);
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
@@ -60,9 +67,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    const validScreens: ActiveScreen[] = ['inicio', 'catalogo', 'detalle', 'carrito', 'login', 'registro', 'admin', 'nosotros', 'como-comprar'];
-    const currentHash = window.location.hash.slice(1) as ActiveScreen;
-    const initialScreen = validScreens.includes(currentHash) ? currentHash : 'inicio';
+    const currentHash = window.location.hash.replace('#', '') as ActiveScreen;
+    const initialScreen = VALID_SCREENS.includes(currentHash) ? currentHash : 'inicio';
 
     if (!window.history.state) {
       window.history.replaceState(
@@ -79,8 +85,8 @@ export default function App() {
           setSelectedProductId(event.state.productId);
         }
       } else {
-        const hash = window.location.hash.slice(1) as ActiveScreen;
-        if (validScreens.includes(hash)) {
+        const hash = window.location.hash.replace('#', '') as ActiveScreen;
+        if (VALID_SCREENS.includes(hash)) {
           setActiveScreen(hash);
         } else {
           setActiveScreen('inicio');
