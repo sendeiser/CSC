@@ -448,6 +448,7 @@ export default function App() {
                 setCart={setCart}
                 setActiveScreen={handleSetActiveScreen}
                 isLoggedIn={session.isLoggedIn}
+                userSession={session}
               />
             </motion.div>
           )}

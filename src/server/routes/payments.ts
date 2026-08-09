@@ -1,25 +1,50 @@
 import { Router, Response } from 'express'
 import { serviceClient } from '../lib/supabase'
-import { requireAuth, AuthenticatedRequest } from '../lib/auth'
+import { requireAuth, optionalAuth, AuthenticatedRequest } from '../lib/auth'
 import { createPreference, getPayment } from '../lib/mercadopago'
 
 const router = Router()
 
-router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/create-preference', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { shipping_name, shipping_address, shipping_city, promo_code } = req.body
+    const { shipping_name, shipping_address, shipping_city, promo_code, items } = req.body
 
-    const { data: cartItems, error: cartError } = await serviceClient
-      .from('cart_items')
-      .select('*, products(*)')
-      .eq('user_id', req.user!.id)
+    let cartItemsToProcess: any[] = []
 
-    if (cartError || !cartItems?.length) {
+    if (req.user?.id) {
+      const { data: cartItems } = await serviceClient
+        .from('cart_items')
+        .select('*, products(*)')
+        .eq('user_id', req.user.id)
+
+      if (cartItems?.length) {
+        cartItemsToProcess = cartItems
+      }
+    }
+
+    if (!cartItemsToProcess.length && items && Array.isArray(items) && items.length > 0) {
+      const productIds = items.map((i: any) => i.product_id).filter(Boolean)
+      const { data: dbProducts } = await serviceClient.from('products').select('*').in('id', productIds)
+
+      cartItemsToProcess = items.map((item: any) => {
+        const prod = (dbProducts || []).find((p: any) => p.id === item.product_id) || { name: 'Producto' }
+        return {
+          product_id: item.product_id,
+          quantity: Number(item.quantity || 1),
+          selected_size: item.selected_size || 'Estándar',
+          item_price: Number(item.item_price || item.unit_price || 0),
+          weight_grams: item.weight_grams || null,
+          products: prod,
+        }
+      })
+    }
+
+    if (!cartItemsToProcess.length) {
       res.status(400).json({ error: 'El carrito está vacío' })
       return
     }
 
-    const subTotal = cartItems.reduce((sum: number, item: any) => sum + (item.item_price * item.quantity), 0)
+    const subTotal = cartItemsToProcess.reduce((sum: number, item: any) => sum + (item.item_price * item.quantity), 0)
     let discountAmount = 0
     let promoCodeId = null
 
@@ -43,9 +68,9 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
 
     const discountRatio = subTotal > 0 ? (subTotal - discountAmount) / subTotal : 1
 
-    const mpItems = cartItems.map((item: any) => ({
+    const mpItems = cartItemsToProcess.map((item: any) => ({
       id: item.product_id,
-      title: item.products.name,
+      title: item.products?.name || 'Golosinas CSC',
       quantity: item.weight_grams ? 1 : item.quantity,
       unit_price: Math.max(0.01, Number((item.item_price * discountRatio).toFixed(2))),
     }))
@@ -72,14 +97,14 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
     const { data: order, error: orderError } = await serviceClient
       .from('orders')
       .insert({
-        user_id: req.user!.id,
+        user_id: req.user?.id || null,
         total,
         promo_code_id: promoCodeId,
         discount_amount: discountAmount,
         shipping_cost: shippingCost,
-        shipping_name,
-        shipping_address,
-        shipping_city,
+        shipping_name: shipping_name || 'Cliente Invitado',
+        shipping_address: shipping_address || 'Retiro en Local',
+        shipping_city: shipping_city || 'Chamical',
         status: 'pending',
         preference_id: preference.id,
       })
@@ -92,7 +117,7 @@ router.post('/create-preference', requireAuth, async (req: AuthenticatedRequest,
     }
 
     // Save order_items immediately when preference is created
-    const orderItemsData = cartItems.map((item: any) => ({
+    const orderItemsData = cartItemsToProcess.map((item: any) => ({
       order_id: order.id,
       product_id: item.product_id,
       quantity: item.quantity,

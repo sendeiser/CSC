@@ -126,7 +126,7 @@ export const cart = {
 
 // Payments
 export const payments = {
-  createPreference: (data: { shipping_name: string; shipping_address?: string; shipping_city?: string; promo_code?: string }) =>
+  createPreference: (data: { shipping_name: string; shipping_address?: string; shipping_city?: string; promo_code?: string; items?: any[] }) =>
     request<{ init_point: string; preference_id: string }>('/payments/create-preference', { method: 'POST', body: JSON.stringify(data) }),
 }
 
@@ -135,7 +135,7 @@ export const orders = {
   list: () =>
     request<any[]>('/orders'),
 
-  create: (data: { shipping_name: string; shipping_address?: string; shipping_city?: string; promo_code?: string }) =>
+  create: (data: { shipping_name: string; shipping_address?: string; shipping_city?: string; promo_code?: string; items?: any[] }) =>
     request<any>('/orders', { method: 'POST', body: JSON.stringify(data) }),
 
   get: (id: string) =>

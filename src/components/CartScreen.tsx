@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone, Store, Truck } from 'lucide-react';
-import { ActiveScreen, CartItem } from '../types';
+import { ActiveScreen, CartItem, UserSession } from '../types';
 import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
+import { clearLocalCart } from '../lib/localCart';
 import { buildMensajePedido, waLink, DATOS_BANCO, WHATSAPP_NUMERO, WHATSAPP_NUMERO_1, WHATSAPP_NUMERO_2, setWhatsAppNumbers, setWhatsAppTemplates } from '../lib/whatsapp';
 
 interface CartScreenProps {
@@ -11,11 +12,12 @@ interface CartScreenProps {
   setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
   setActiveScreen: (screen: ActiveScreen) => void;
   isLoggedIn: boolean;
+  userSession?: UserSession;
 }
 
 type CheckoutStep = 'basket' | 'checkout' | 'success';
 
-export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActiveScreen, isLoggedIn }) => {
+export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActiveScreen, isLoggedIn, userSession }) => {
   const [step, setStep] = React.useState<CheckoutStep>('basket');
 
   const [promoCode, setPromoCode] = React.useState('');
@@ -34,6 +36,19 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [activePhone, setActivePhone] = React.useState<string>(WHATSAPP_NUMERO_1);
   const [storeSettings, setStoreSettings] = React.useState<any>(null);
   const [deliveryMode, setDeliveryMode] = React.useState<'pickup' | 'delivery'>('pickup');
+
+  // Auto-completado automático de Nombre y Celular para usuarios registrados o previos
+  React.useEffect(() => {
+    const savedName = userSession?.name || localStorage.getItem('csc_user_name') || '';
+    const savedPhone = localStorage.getItem('csc_user_phone') || '';
+
+    if (savedName && !fullName) {
+      setFullName(savedName);
+    }
+    if (savedPhone && !phoneField) {
+      setPhoneField(savedPhone);
+    }
+  }, [userSession, isLoggedIn]);
 
   React.useEffect(() => {
     homepageApi.getSettings().then((st) => {
@@ -147,19 +162,29 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
 
     setShippingError('');
 
-    const token = getAuthToken()
-    if (!token) {
-      setActiveScreen('login')
-      return
-    }
+    // Guardar nombre y teléfono para autocompletar rápidamente compras futuras
+    if (fullName.trim()) localStorage.setItem('csc_user_name', fullName.trim());
+    if (phoneField.trim()) localStorage.setItem('csc_user_phone', phoneField.trim());
 
     let finalAddressNote = addressLine.trim();
+    if (phoneField.trim()) {
+      finalAddressNote = `[Tel: ${phoneField.trim()}] ${finalAddressNote}`.trim();
+    }
+
     if (deliveryMode === 'pickup') {
       const locAddr = storeSettings?.pickup_address || 'Local Chamical Candy Shop';
-      finalAddressNote = `[Retiro en Tienda: ${locAddr}] ${addressLine}`.trim();
+      finalAddressNote = `[Retiro en Tienda: ${locAddr}] ${finalAddressNote}`.trim();
     } else {
-      finalAddressNote = `[Envío a Domicilio] ${addressLine}`.trim();
+      finalAddressNote = `[Envío a Domicilio] ${finalAddressNote}`.trim();
     }
+
+    const itemsPayload = cart.map((item) => ({
+      product_id: item.productId,
+      quantity: item.quantity,
+      selected_size: item.selectedSize || 'Estándar',
+      item_price: item.itemPrice,
+      weight_grams: item.weight_grams || null,
+    }));
 
     try {
       if (paymentMethod === 'transferencia') {
@@ -168,12 +193,14 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           shipping_address: finalAddressNote,
           shipping_city: cityField || 'Chamical',
           promo_code: activeDiscount?.code,
+          items: itemsPayload,
         })
         const finalTotal = Number(result.total) || grandTotal
         setLastOrderItems(cart)
         setLastOrderTotal(finalTotal)
         setOrderId(result.id)
         setCart([])
+        clearLocalCart()
         setStep('success')
       } else {
         const result = await paymentsApi.createPreference({
@@ -181,7 +208,9 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           shipping_address: finalAddressNote,
           shipping_city: cityField || 'Chamical',
           promo_code: activeDiscount?.code,
+          items: itemsPayload,
         })
+        clearLocalCart()
         window.location.href = result.init_point
       }
     } catch (err: any) {

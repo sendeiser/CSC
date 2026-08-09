@@ -1,6 +1,6 @@
 import { Router, Response } from 'express'
 import { serviceClient } from '../lib/supabase'
-import { requireAuth, AuthenticatedRequest } from '../lib/auth'
+import { requireAuth, optionalAuth, AuthenticatedRequest } from '../lib/auth'
 import { getPayment } from '../lib/mercadopago'
 
 const router = Router()
@@ -238,20 +238,45 @@ router.post('/confirm', requireAuth, async (req: AuthenticatedRequest, res: Resp
   }
 })
 
-router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { shipping_name, shipping_address, shipping_city, promo_code } = req.body
+router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const { shipping_name, shipping_address, shipping_city, promo_code, items } = req.body
 
-  const { data: cartItems, error: cartError } = await serviceClient
-    .from('cart_items')
-    .select('*, products(*)')
-    .eq('user_id', req.user!.id)
+  let orderItemsToProcess: any[] = []
 
-  if (cartError || !cartItems?.length) {
+  if (req.user?.id) {
+    const { data: cartItems } = await serviceClient
+      .from('cart_items')
+      .select('*, products(*)')
+      .eq('user_id', req.user.id)
+
+    if (cartItems?.length) {
+      orderItemsToProcess = cartItems.map((item: any) => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        selected_size: item.selected_size,
+        item_price: item.item_price,
+        weight_grams: item.weight_grams,
+      }))
+    }
+  }
+
+  // Fallback / Guest: use items passed in request body
+  if (!orderItemsToProcess.length && items && Array.isArray(items) && items.length > 0) {
+    orderItemsToProcess = items.map((item: any) => ({
+      product_id: item.product_id,
+      quantity: Number(item.quantity || 1),
+      selected_size: item.selected_size || 'Estándar',
+      item_price: Number(item.item_price || item.unit_price || 0),
+      weight_grams: item.weight_grams || null,
+    }))
+  }
+
+  if (!orderItemsToProcess.length) {
     res.status(400).json({ error: 'El carrito está vacío' })
     return
   }
 
-  const subTotal = cartItems.reduce((sum, item) => sum + (item.item_price * item.quantity), 0)
+  const subTotal = orderItemsToProcess.reduce((sum, item) => sum + (item.item_price * item.quantity), 0)
   let discountAmount = 0
   let promoCodeId = null
 
@@ -276,14 +301,14 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
   const { data: order, error: orderError } = await serviceClient
     .from('orders')
     .insert({
-      user_id: req.user!.id,
+      user_id: req.user?.id || null,
       total,
       promo_code_id: promoCodeId,
       discount_amount: discountAmount,
       shipping_cost: shippingCost,
-      shipping_name,
-      shipping_address,
-      shipping_city,
+      shipping_name: shipping_name || (req.user ? 'Cliente Registrado' : 'Cliente Invitado'),
+      shipping_address: shipping_address || 'Retiro en Local',
+      shipping_city: shipping_city || 'Chamical',
       status: 'pending'
     })
     .select()
@@ -294,7 +319,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     return
   }
 
-  const orderItems = cartItems.map(item => ({
+  const orderItems = orderItemsToProcess.map(item => ({
     order_id: order.id,
     product_id: item.product_id,
     quantity: item.quantity,
@@ -311,7 +336,7 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
   }
 
   // Subtract stock for each item
-  for (const item of cartItems) {
+  for (const item of orderItemsToProcess) {
     const stockToSubtract = item.weight_grams || item.quantity
     const { data: product } = await serviceClient
       .from('products')
@@ -326,7 +351,9 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     }
   }
 
-  await serviceClient.from('cart_items').delete().eq('user_id', req.user!.id)
+  if (req.user?.id) {
+    await serviceClient.from('cart_items').delete().eq('user_id', req.user.id)
+  }
 
   res.status(201).json({ ...order, items: orderItems })
 })

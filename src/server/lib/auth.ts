@@ -91,3 +91,35 @@ export async function requireAdmin(req: AuthenticatedRequest, res: Response, nex
 
   next()
 }
+
+export async function optionalAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const token = req.headers.authorization?.replace('Bearer ', '')
+  if (!token) {
+    next()
+    return
+  }
+
+  try {
+    const { data, error } = await supabase.auth.getUser(token)
+    if (!error && data.user) {
+      const db = serviceClient || supabase
+      const { data: profile } = await db
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .maybeSingle()
+
+      const userEmail = data.user.email || ''
+      const isAdmin = isEmailAdmin(userEmail) || profile?.role === 'admin'
+      const resolvedRole = isAdmin ? 'admin' : (profile?.role || 'customer')
+
+      req.user = {
+        id: data.user.id,
+        email: userEmail,
+        role: resolvedRole
+      }
+    }
+  } catch (_e) {}
+
+  next()
+}
