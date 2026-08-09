@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, ShoppingBag, ArrowRight, HelpCircle, CheckCircle2, CreditCard, Truck, ShieldCheck, ChevronDown, Play, X, ArrowLeft } from 'lucide-react';
-import { ActiveScreen } from '../types';
+import { Sparkles, ShoppingBag, ArrowRight, HelpCircle, CheckCircle2, CreditCard, Truck, ShieldCheck, ChevronDown, Play, X, ArrowLeft, Store } from 'lucide-react';
+import { ActiveScreen, StoreSettings } from '../types';
+import { homepage as homepageApi } from '../lib/api';
 
 interface HowToBuyScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
@@ -11,6 +12,69 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
   const [activeStep, setActiveStep] = useState(1);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [showVideoModal, setShowVideoModal] = useState(false);
+  const [settings, setSettings] = useState<Partial<StoreSettings>>({
+    fulfillment_type: 'both',
+    delivery_cost: 0,
+    free_delivery_over: 0,
+    pickup_address: 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
+    pickup_schedule: 'Lunes a Sábado de 09:00 a 20:00 hs',
+    delivery_notes: 'Envíos en el día dentro del radio urbano de Chamical.',
+  });
+
+  useEffect(() => {
+    homepageApi.getSettings().then((st) => {
+      if (st) setSettings(st);
+    }).catch(() => {});
+  }, []);
+
+  const fulfillmentType = settings.fulfillment_type || 'both';
+  const pickupAddress = settings.pickup_address || 'Local Chamical Candy Shop';
+  const pickupSchedule = settings.pickup_schedule || 'Lunes a Sábado de 09:00 a 20:00 hs';
+  const deliveryNotes = settings.delivery_notes || 'Envíos dentro de la ciudad.';
+  const deliveryCost = Number(settings.delivery_cost || 0);
+  const freeDeliveryOver = Number(settings.free_delivery_over || 0);
+
+  const getStep3Data = () => {
+    if (fulfillmentType === 'pickup_only') {
+      return {
+        title: '3. Pagá y Retirá en Local',
+        badge: 'Solo Retiro en Tienda',
+        subtitle: 'Ingresá tu nombre y elegí pagar online con Mercado Pago, Transferencia o abonar en efectivo al retirar.',
+        detailText: `📍 Retiro exclusivo en tienda física (${pickupAddress}). Horarios de atención: ${pickupSchedule}.`,
+        highlights: [
+          'Retiro directo en tienda: ' + pickupAddress,
+          'Aceptamos Mercado Pago, Transferencia y Efectivo',
+          'Sin gastos de envío adicionales',
+        ],
+      };
+    }
+    if (fulfillmentType === 'delivery_only') {
+      return {
+        title: '3. Datos de Envío y Pago',
+        badge: 'Envío a Domicilio',
+        subtitle: 'Ingresá tu dirección de entrega y aboná con Mercado Pago o Transferencia Bancaria.',
+        detailText: `🚚 Envío directo a tu casa. Costo de envío: ${deliveryCost > 0 ? `$${deliveryCost.toFixed(2)}` : 'GRATIS'}${freeDeliveryOver > 0 ? ` (Envío GRATIS en compras superiores a $${freeDeliveryOver.toFixed(2)})` : ''}. ${deliveryNotes}`,
+        highlights: [
+          'Despacho a tu domicilio en Chamical',
+          'Aceptamos Mercado Pago, QR y Transferencia',
+          deliveryCost === 0 ? 'Envío GRATIS incluido' : `Costo de envío: $${deliveryCost}`,
+        ],
+      };
+    }
+    return {
+      title: '3. Elegí Retiro o Delivery',
+      badge: 'Retiro o Delivery',
+      subtitle: 'Al abrir tu carrito elegís la modalidad que prefieras: retirar gratis por el local o envío a domicilio.',
+      detailText: `📍 Podés retirar gratis por nuestro local (${pickupAddress}) o solicitar envío directo a tu casa en Chamical.`,
+      highlights: [
+        'Opción 1: Retiro en tienda (' + pickupAddress + ')',
+        'Opción 2: Envío a domicilio (' + (deliveryCost === 0 ? 'Envío GRATIS' : `$${deliveryCost}`) + ')',
+        'Checkout rápido con Mercado Pago, QR o Transferencia',
+      ],
+    };
+  };
+
+  const step3Data = getStep3Data();
 
   const steps = [
     {
@@ -37,46 +101,70 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
     },
     {
       num: 3,
-      title: '3. Elegí como Pagar o Retirar',
-      badge: 'Mercado Pago o Efectivo',
-      subtitle: 'Ingresá tu nombre y elegí pagar online con Mercado Pago (tarjetas/transferencia) o abonar en efectivo al retirar.',
+      title: step3Data.title,
+      badge: step3Data.badge,
+      subtitle: step3Data.subtitle,
       image: '/guide/step3.png',
-      detailText: 'Al abrir tu carrito elegís la modalidad de entrega en Chamical (retiro por la tienda física o envío directo). Contamos con checkout seguro protegido por Mercado Pago y pagos directos.',
+      detailText: step3Data.detailText,
       accent: 'from-emerald-500 to-teal-600',
       tagBg: 'bg-emerald-100 text-emerald-700',
-      highlights: ['Aceptamos Mercado Pago, QR y tarjetas', 'Pago en efectivo al retirar', 'Ingreso súper veloz de datos']
+      highlights: step3Data.highlights
     },
     {
       num: 4,
       title: '4. ¡Listo! Recibí tu Pedido',
       badge: 'Disfrutá tus Dulces',
-      subtitle: 'Recibirás la confirmación de tu pedido al instante y podrás retirarlo o recibirlo sin demoras en Chamical.',
+      subtitle: fulfillmentType === 'pickup_only'
+        ? `Recibirás la confirmación de tu pedido al instante para pasar a retirarlo por ${pickupAddress}.`
+        : fulfillmentType === 'delivery_only'
+        ? 'Recibirás la confirmación de tu pedido al instante y lo despacharemos directo a tu domicilio.'
+        : 'Recibirás la confirmación al instante y podrás retirarlo en la tienda o recibirlo en tu domicilio.',
       image: '/guide/step4.png',
-      detailText: 'Tu pedido queda registrado automáticamente en nuestro sistema. Podés hacer clic en el botón flotante de WhatsApp para consultar cualquier duda o coordinar el horario de retiro.',
+      detailText: 'Tu pedido queda registrado automáticamente en nuestro sistema. Podés hacer clic en el botón flotante de WhatsApp para consultar cualquier duda.',
       accent: 'from-amber-500 to-orange-600',
       tagBg: 'bg-amber-100 text-amber-700',
-      highlights: ['Código de pedido único de seguimiento', 'Contacto directo con la tienda por WhatsApp', 'Atención personalizada en Chamical']
+      highlights: [
+        'Código de pedido único de seguimiento',
+        'Contacto directo con la tienda por WhatsApp',
+        fulfillmentType === 'pickup_only' ? 'Retiro exprés en local' : 'Atención y despacho personalizado'
+      ]
     },
   ];
 
-  const faqs = [
-    {
-      q: '¿Cómo funciona la compra a granel por gramos?',
-      a: 'En las golosinas vendidas por peso podés seleccionar los gramos que quieras (ej: 250g, 500g, 750g, 1000g). El sistema calcula el valor exacto proporcional al precio por kilogramo en tiempo real.'
-    },
-    {
-      q: '¿Tengo que crear una cuenta obligatoriamente para comprar?',
-      a: '¡No! Podés hacer tu compra como cliente invitado sin necesidad de registrarte. Si te registrás o iniciás sesión, podrás guardar tus favoritos y ver tu historial de compras anteriores.'
-    },
-    {
-      q: '¿Cuáles son los medios de pago aceptados?',
-      a: 'Aceptamos pagos online con Mercado Pago (tarjetas de crédito, débito, transferencia bancaria, dinero en cuenta, saldo QR) y también opción de pago en efectivo al momento de retirar en el local.'
-    },
-    {
-      q: '¿Cómo coordino el retiro o envío en Chamical?',
-      a: 'Una vez finalizada tu compra online, el sistema genera tu comprobante con el número de pedido. Podés dirigirte directamente a nuestro local o presionar el botón de WhatsApp para acordar la entrega.'
-    }
-  ];
+  const getFaqs = () => {
+    const deliveryFaq = fulfillmentType === 'pickup_only'
+      ? {
+          q: '¿Tienen servicio de envío a domicilio o delivery?',
+          a: `Actualmente nuestra tienda opera únicamente bajo la modalidad de Solo Retiro en Local. Podés hacer tu compra online y pasar a retirarla por nuestra tienda en ${pickupAddress}. Horarios de atención: ${pickupSchedule}.`
+        }
+      : fulfillmentType === 'delivery_only'
+      ? {
+          q: '¿Cómo funciona el envío a domicilio / delivery?',
+          a: `Todos los pedidos se despachan a la dirección que ingreses al comprar. ${deliveryCost === 0 ? '¡El envío es GRATIS!' : `El costo de envío es de $${deliveryCost.toFixed(2)}.`} ${freeDeliveryOver > 0 ? `Comprando más de $${freeDeliveryOver.toFixed(2)} tenés envío GRATIS.` : ''} ${deliveryNotes}`
+        }
+      : {
+          q: '¿Cómo coordino el retiro o envío en Chamical?',
+          a: `Al momento de hacer tu pedido podés elegir entre retirar gratis por nuestro local (${pickupAddress}) o recibirlo por delivery en tu casa. ${deliveryCost === 0 ? '¡El envío a domicilio es gratis!' : `El envío a domicilio tiene un costo fijo de $${deliveryCost.toFixed(2)}.`}`
+        };
+
+    return [
+      {
+        q: '¿Cómo funciona la compra a granel por gramos?',
+        a: 'En las golosinas vendidas por peso podés seleccionar los gramos que quieras (ej: 250g, 500g, 750g, 1000g). El sistema calcula el valor exacto proporcional al precio por kilogramo en tiempo real.'
+      },
+      {
+        q: '¿Tengo que crear una cuenta obligatoriamente para comprar?',
+        a: '¡No! Podés hacer tu compra como cliente invitado sin necesidad de registrarte. Si te registrás o iniciás sesión, podrás guardar tus favoritos y ver tu historial de compras anteriores.'
+      },
+      {
+        q: '¿Cuáles son los medios de pago aceptados?',
+        a: 'Aceptamos pagos online con Mercado Pago (tarjetas de crédito, débito, transferencia bancaria, dinero en cuenta, saldo QR) y también opción de pago en efectivo' + (fulfillmentType !== 'delivery_only' ? ' al retirar en el local.' : '.')
+      },
+      deliveryFaq
+    ];
+  };
+
+  const faqs = getFaqs();
 
   const current = steps.find(s => s.num === activeStep) || steps[0];
 
@@ -299,11 +387,19 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-start space-x-4 shadow-sm">
             <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-              <Truck className="w-6 h-6" />
+              {fulfillmentType === 'pickup_only' ? <Store className="w-6 h-6" /> : <Truck className="w-6 h-6" />}
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm mb-1">Retiro o Envío Rápido</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">Preparación exprés de tu pedido para retirar en nuestro local de Chamical.</p>
+              <h4 className="font-bold text-slate-900 text-sm mb-1">
+                {fulfillmentType === 'pickup_only' ? 'Retiro en Tienda' : fulfillmentType === 'delivery_only' ? 'Envío a Domicilio' : 'Retiro o Envío Rápido'}
+              </h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {fulfillmentType === 'pickup_only'
+                  ? `Retirá tu compra personalmente en ${pickupAddress}. Horarios: ${pickupSchedule}.`
+                  : fulfillmentType === 'delivery_only'
+                  ? `Despacho directo a tu puerta en Chamical. ${deliveryNotes}`
+                  : 'Elegí retirar en nuestra tienda física o recibir por delivery directo a tu casa.'}
+              </p>
             </div>
           </div>
         </div>
