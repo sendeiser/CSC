@@ -179,7 +179,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
     }
 
     const itemsPayload = cart.map((item) => ({
-      product_id: item.productId,
+      product_id: item.product?.id || (item as any).product_id || (item as any).id,
       quantity: item.quantity,
       selected_size: item.selectedSize || 'Estándar',
       item_price: item.itemPrice,

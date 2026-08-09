@@ -262,13 +262,16 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
 
   // Fallback / Guest: use items passed in request body
   if (!orderItemsToProcess.length && items && Array.isArray(items) && items.length > 0) {
-    orderItemsToProcess = items.map((item: any) => ({
-      product_id: item.product_id,
-      quantity: Number(item.quantity || 1),
-      selected_size: item.selected_size || 'Estándar',
-      item_price: Number(item.item_price || item.unit_price || 0),
-      weight_grams: item.weight_grams || null,
-    }))
+    orderItemsToProcess = items.map((item: any) => {
+      const pid = item.product_id || item.productId || item.id || item.product?.id
+      return {
+        product_id: pid,
+        quantity: Number(item.quantity || 1),
+        selected_size: item.selected_size || item.selectedSize || 'Estándar',
+        item_price: Number(item.item_price || item.unit_price || item.itemPrice || 0),
+        weight_grams: item.weight_grams || null,
+      }
+    }).filter((i: any) => Boolean(i.product_id))
   }
 
   if (!orderItemsToProcess.length) {

@@ -23,20 +23,21 @@ router.post('/create-preference', optionalAuth, async (req: AuthenticatedRequest
     }
 
     if (!cartItemsToProcess.length && items && Array.isArray(items) && items.length > 0) {
-      const productIds = items.map((i: any) => i.product_id).filter(Boolean)
+      const productIds = items.map((i: any) => i.product_id || i.productId || i.id || i.product?.id).filter(Boolean)
       const { data: dbProducts } = await serviceClient.from('products').select('*').in('id', productIds)
 
       cartItemsToProcess = items.map((item: any) => {
-        const prod = (dbProducts || []).find((p: any) => p.id === item.product_id) || { name: 'Producto' }
+        const pid = item.product_id || item.productId || item.id || item.product?.id
+        const prod = (dbProducts || []).find((p: any) => p.id === pid) || item.product || { name: 'Producto' }
         return {
-          product_id: item.product_id,
+          product_id: pid,
           quantity: Number(item.quantity || 1),
-          selected_size: item.selected_size || 'Estándar',
-          item_price: Number(item.item_price || item.unit_price || 0),
+          selected_size: item.selected_size || item.selectedSize || 'Estándar',
+          item_price: Number(item.item_price || item.unit_price || item.itemPrice || 0),
           weight_grams: item.weight_grams || null,
           products: prod,
         }
-      })
+      }).filter((i: any) => Boolean(i.product_id))
     }
 
     if (!cartItemsToProcess.length) {
