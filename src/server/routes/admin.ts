@@ -400,7 +400,7 @@ router.put('/orders/:id/status', requireAdmin, async (req: AuthenticatedRequest,
   const db = serviceClient || supabase
   const { status } = req.body
 
-  const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled']
+  const validStatuses = ['pending', 'paid', 'preparing', 'ready', 'en_preparacion', 'listo', 'shipped', 'delivered', 'cancelled']
   if (!validStatuses.includes(status)) {
     res.status(400).json({ error: 'Estado inválido' })
     return
@@ -555,7 +555,7 @@ router.put('/orders/bulk-status', requireAdmin, async (req: AuthenticatedRequest
   const db = serviceClient || supabase
   const { ids, status } = req.body
 
-  const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled']
+  const validStatuses = ['pending', 'paid', 'preparing', 'ready', 'en_preparacion', 'listo', 'shipped', 'delivered', 'cancelled']
   if (!Array.isArray(ids) || !ids.length || !validStatuses.includes(status)) {
     res.status(400).json({ error: 'IDs y estado válido requeridos' })
     return
