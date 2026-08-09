@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus } from 'lucide-react';
+import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus, Clock } from 'lucide-react';
 import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo } from '../lib/whatsapp';
 import { admin as adminApi, products as productsApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
@@ -231,6 +231,26 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
         return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">Cancelado</span>;
       default:
         return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">Pendiente</span>;
+    }
+  };
+
+  const getStepProgress = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return 1;
+      case 'preparing':
+      case 'en_preparacion':
+        return 2;
+      case 'ready':
+      case 'listo':
+      case 'shipped':
+        return 3;
+      case 'delivered':
+        return 4;
+      case 'cancelled':
+        return 0;
+      default:
+        return 1;
     }
   };
 
@@ -636,6 +656,126 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Interactive Admin Progress Stepper */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider flex items-center space-x-1.5">
+                  <Clock className="w-4 h-4 text-purple-600" />
+                  <span>Cambiar Estado del Pedido (Un clic)</span>
+                </h4>
+                <span className="text-[10px] font-semibold text-slate-400">Toca cualquier etapa para actualizar el estado</span>
+              </div>
+
+              {(() => {
+                const currentStep = getStepProgress(selectedOrder.status);
+                return (
+                  <div className="grid grid-cols-4 gap-2 text-center relative pt-2">
+                    {/* Connector Line */}
+                    <div className="absolute top-5 left-[12.5%] right-[12.5%] h-1 bg-slate-200 -z-0">
+                      <div 
+                        className="h-full candy-gradient-bg transition-all duration-300 rounded-full"
+                        style={{ width: `${Math.max(0, (currentStep - 1) * 33.33)}%` }}
+                      />
+                    </div>
+
+                    {/* Step 1: Pagado */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await onUpdateStatus(selectedOrder.id, 'paid');
+                        setSelectedOrder((prev: any) => prev ? { ...prev, status: 'paid' } : null);
+                      }}
+                      className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
+                      title="Marcar como Pagado / Confirmado"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                        selectedOrder.status === 'paid' || selectedOrder.status === 'pending'
+                          ? 'candy-gradient-bg text-white shadow-md shadow-purple-300 ring-4 ring-purple-100 scale-110'
+                          : currentStep > 1
+                          ? 'candy-gradient-bg text-white'
+                          : 'bg-slate-200 text-slate-500 group-hover:bg-purple-200'
+                      }`}>
+                        {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
+                      </div>
+                      <span className={`text-[11px] font-bold ${currentStep >= 1 ? 'text-purple-900' : 'text-slate-400'}`}>
+                        Pagado
+                      </span>
+                    </button>
+
+                    {/* Step 2: En Preparación */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await onUpdateStatus(selectedOrder.id, 'preparing');
+                        setSelectedOrder((prev: any) => prev ? { ...prev, status: 'preparing' } : null);
+                      }}
+                      className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
+                      title="Marcar como En Preparación"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                        selectedOrder.status === 'preparing' || selectedOrder.status === 'en_preparacion'
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-300 ring-4 ring-indigo-100 scale-110'
+                          : currentStep > 2
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-200 text-slate-500 group-hover:bg-indigo-200'
+                      }`}>
+                        {currentStep > 2 ? <Check className="w-4 h-4" /> : '2'}
+                      </div>
+                      <span className={`text-[11px] font-bold ${currentStep >= 2 ? 'text-indigo-900' : 'text-slate-400'}`}>
+                        En Preparación
+                      </span>
+                    </button>
+
+                    {/* Step 3: Listo para Retirar */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await onUpdateStatus(selectedOrder.id, 'ready');
+                        setSelectedOrder((prev: any) => prev ? { ...prev, status: 'ready' } : null);
+                      }}
+                      className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
+                      title="Marcar como Listo para Retirar"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                        selectedOrder.status === 'ready' || selectedOrder.status === 'listo' || selectedOrder.status === 'shipped'
+                          ? 'bg-cyan-600 text-white shadow-md shadow-cyan-300 ring-4 ring-cyan-100 scale-110'
+                          : currentStep > 3
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-slate-200 text-slate-500 group-hover:bg-cyan-200'
+                      }`}>
+                        {currentStep > 3 ? <Check className="w-4 h-4" /> : '3'}
+                      </div>
+                      <span className={`text-[11px] font-bold ${currentStep >= 3 ? 'text-cyan-900' : 'text-slate-400'}`}>
+                        Listo / Camino
+                      </span>
+                    </button>
+
+                    {/* Step 4: Entregado */}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await onUpdateStatus(selectedOrder.id, 'delivered');
+                        setSelectedOrder((prev: any) => prev ? { ...prev, status: 'delivered' } : null);
+                      }}
+                      className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
+                      title="Marcar como Entregado"
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                        selectedOrder.status === 'delivered'
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-300 ring-4 ring-emerald-100 scale-110'
+                          : 'bg-slate-200 text-slate-500 group-hover:bg-emerald-200'
+                      }`}>
+                        {currentStep >= 4 ? <Check className="w-4 h-4" /> : '4'}
+                      </div>
+                      <span className={`text-[11px] font-bold ${currentStep >= 4 ? 'text-emerald-900' : 'text-slate-400'}`}>
+                        Entregado
+                      </span>
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Purchased Items */}
