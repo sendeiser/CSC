@@ -217,6 +217,12 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
     switch (status) {
       case 'paid':
         return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">Pagado</span>;
+      case 'preparing':
+      case 'en_preparacion':
+        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800">En preparación</span>;
+      case 'ready':
+      case 'listo':
+        return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-cyan-100 text-cyan-800">Listo</span>;
       case 'shipped':
         return <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">Enviado</span>;
       case 'delivered':
@@ -295,6 +301,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
             { id: 'all', label: 'Todos los Estados' },
             { id: 'pending', label: 'Pendientes' },
             { id: 'paid', label: 'Pagados' },
+            { id: 'preparing', label: 'En preparación' },
+            { id: 'ready', label: 'Listos' },
             { id: 'shipped', label: 'Enviados' },
             { id: 'delivered', label: 'Entregados' },
             { id: 'cancelled', label: 'Cancelados' },
@@ -338,6 +346,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                 <option value="" disabled>Seleccionar estado</option>
                 <option value="pending">Pendiente</option>
                 <option value="paid">Pagado</option>
+                <option value="preparing">En preparación</option>
+                <option value="ready">Listo</option>
                 <option value="shipped">Enviado</option>
                 <option value="delivered">Entregado</option>
                 <option value="cancelled">Cancelado</option>
@@ -411,6 +421,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                   >
                     <option value="pending">Pendiente</option>
                     <option value="paid">Pagado</option>
+                    <option value="preparing">En preparación</option>
+                    <option value="ready">Listo</option>
                     <option value="shipped">Enviado</option>
                     <option value="delivered">Entregado</option>
                     <option value="cancelled">Cancelado</option>
@@ -518,6 +530,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                           >
                             <option value="pending">Pendiente</option>
                             <option value="paid">Pagado</option>
+                            <option value="preparing">En preparación</option>
+                            <option value="ready">Listo</option>
                             <option value="shipped">Enviado</option>
                             <option value="delivered">Entregado</option>
                             <option value="cancelled">Cancelado</option>
@@ -737,6 +751,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg font-semibold outline-none bg-white text-emerald-800"
                   >
                     <option value="paid">Pagado (Ingreso Confirmado)</option>
+                    <option value="preparing">En preparación</option>
+                    <option value="ready">Listo para retirar</option>
                     <option value="delivered">Entregado</option>
                     <option value="pending">Pendiente de Pago</option>
                   </select>

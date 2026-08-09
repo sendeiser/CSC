@@ -654,15 +654,17 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
     .select('*, order_items(*, products(*))')
     .order('created_at', { ascending: false })
 
-  const statusCounts = {
+  const statusCounts: Record<string, number> = {
     pending: 0,
     paid: 0,
+    preparing: 0,
+    ready: 0,
     shipped: 0,
     delivered: 0,
     cancelled: 0,
   }
 
-  const PAID_STATUSES = ['paid', 'shipped', 'delivered', 'completed']
+  const PAID_STATUSES = ['paid', 'preparing', 'ready', 'en_preparacion', 'listo', 'shipped', 'delivered', 'completed']
 
   let totalRevenue = 0
   let todaySales = 0
