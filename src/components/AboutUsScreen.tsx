@@ -80,9 +80,9 @@ export const AboutUsScreen: React.FC<AboutUsScreenProps> = ({ setActiveScreen })
       {content.stats?.length > 0 && (
         <section className="py-12 bg-gradient-to-r from-pink-500 to-purple-600">
           <div className="max-w-4xl mx-auto px-4 sm:px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-white">
+            <div className="flex flex-wrap items-center justify-center gap-8 sm:gap-12 md:gap-16 text-center text-white">
               {content.stats.map((stat: any, i: number) => (
-                <div key={i}>
+                <div key={i} className="min-w-[120px] sm:min-w-[140px]">
                   <div className="text-3xl sm:text-4xl font-black">{stat.value}</div>
                   <div className="text-sm text-pink-100 mt-1 font-medium">{stat.label}</div>
                 </div>
