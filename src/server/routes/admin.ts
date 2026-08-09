@@ -863,6 +863,28 @@ router.get('/homepage', requireAdmin, wrap(async (req: AuthenticatedRequest, res
   res.json(data)
 }))
 
+router.post('/homepage/sections', requireAdmin, wrap(async (req: AuthenticatedRequest, res: Response) => {
+  const { section_type, title, subtitle, content, order_index, visible } = req.body
+  const db = adminDb(res)
+  if (!db) return
+
+  const { data, error } = await db
+    .from('homepage_sections')
+    .insert({
+      section_type: section_type || 'hero',
+      title: title || 'Chamical',
+      subtitle: subtitle || 'Candy Shop',
+      content: content || {},
+      order_index: order_index || 1,
+      visible: visible !== undefined ? visible : true
+    })
+    .select()
+    .single()
+
+  if (error) { res.status(400).json({ error: error.message }); return }
+  res.status(201).json(data)
+}))
+
 router.put('/homepage/sections/reorder', requireAdmin, wrap(async (req: AuthenticatedRequest, res: Response) => {
   const { sections } = req.body
   if (!Array.isArray(sections)) { res.status(400).json({ error: 'Se requiere un array de secciones' }); return }

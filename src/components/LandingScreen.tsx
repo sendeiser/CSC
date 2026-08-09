@@ -51,7 +51,17 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
     <div className="bg-white overflow-hidden">
       {sections.map(section => {
         switch (section.section_type) {
-          case 'hero':
+          case 'hero': {
+            if (section.visible === false) return null
+            const heroContent = section.content || {}
+            const title = section.title || 'Chamical'
+            const subtitle = section.subtitle || 'Candy Shop'
+            const badge = heroContent.badge || 'Tienda física y online'
+            const description = heroContent.description || 'Gomitas, chocolates, caramelos y mucho más — todo por granel y al mejor precio. Visitanos o pedí por WhatsApp.'
+            const btnPrimaryText = heroContent.btn_primary_text || 'Ver Catálogo'
+            const btnSecondaryText = heroContent.btn_secondary_text || 'Consultar por WhatsApp'
+            const displayImage = heroContent.image_url || heroProduct.image_url
+
             return (
               <section key={section.id} className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
                   {/* Lightweight radial gradient ambient background */}
@@ -71,7 +81,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                           className="inline-flex items-center space-x-2 bg-white/10 border border-white/20 text-pink-300 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest"
                         >
                           <Store className="w-3.5 h-3.5" />
-                          <span>Tienda física y online</span>
+                          <span>{badge}</span>
                         </motion.div>
 
                         <motion.h1
@@ -80,9 +90,9 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                           transition={{ duration: 0.6, delay: 0.15 }}
                           className="font-headline font-extrabold text-5xl sm:text-6xl lg:text-7xl tracking-tight text-white leading-[1.05]"
                         >
-                          <span className="candy-gradient-text">Chamical</span>
+                          <span className="candy-gradient-text">{title}</span>
                           <br />
-                          <span className="text-white/90">Candy Shop</span>
+                          <span className="text-white/90">{subtitle}</span>
                         </motion.h1>
 
                         <motion.p
@@ -91,8 +101,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                           transition={{ duration: 0.6, delay: 0.3 }}
                           className="text-base sm:text-lg text-white/60 leading-relaxed max-w-lg"
                         >
-                          Gomitas, chocolates, caramelos y mucho más — todo por granel y al mejor precio.
-                          Visitanos o pedí por WhatsApp.
+                          {description}
                         </motion.p>
 
                         <motion.div
@@ -105,7 +114,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                             onClick={() => setActiveScreen('catalogo')}
                             className="group inline-flex items-center justify-center px-8 py-4 rounded-2xl font-bold text-white candy-gradient-bg shadow-xl shadow-purple-500/30 hover:shadow-purple-500/50 hover:opacity-95 transition-all duration-300 transform hover:-translate-y-0.5"
                           >
-                            Ver Catálogo
+                            {btnPrimaryText}
                             <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                           </button>
                           <a
@@ -115,7 +124,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                             className="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-white border border-white/20 bg-white/10 hover:bg-white/20 backdrop-blur-sm transition-all"
                           >
                             <Phone className="mr-2 w-4 h-4" />
-                            Consultar por WhatsApp
+                            {btnSecondaryText}
                           </a>
                         </motion.div>
 
@@ -152,18 +161,18 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
 
                           <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-white/10">
                             <img
-                              src={heroProduct.image_url}
-                              alt={heroProduct.name}
+                              src={displayImage}
+                              alt={heroProduct.name || title}
                               referrerPolicy="no-referrer"
                               loading="eager"
                               decoding="async"
-                              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700"
+                              className="w-full h-auto object-cover hover:scale-105 transition-transform duration-700 max-h-[480px]"
                             />
                             {/* Gradient overlay at bottom */}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                             <div className="absolute bottom-4 left-4 right-4">
-                              <p className="text-white text-xs font-semibold uppercase tracking-widest opacity-70">{heroProduct.category}</p>
-                              <p className="text-white font-headline font-bold text-lg">{heroProduct.name}</p>
+                              <p className="text-white text-xs font-semibold uppercase tracking-widest opacity-70">{heroProduct.category || 'Golosinas'}</p>
+                              <p className="text-white font-headline font-bold text-lg">{heroProduct.name || `${title} ${subtitle}`}</p>
                             </div>
                           </div>
 
@@ -205,6 +214,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                   </div>
               </section>
             )
+          }
 
           case 'about': {
             const about = getSection('about')

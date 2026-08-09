@@ -3,7 +3,59 @@ import { Eye, EyeOff, Trash2, Plus, X, Save, AlertCircle, ArrowUp, ArrowDown } f
 import { admin as adminApi } from '../lib/api'
 import { useModal } from '../context/ModalContext'
 
-type SectionType = 'about' | 'categories' | 'store' | 'gallery' | 'contact'
+type SectionType = 'hero' | 'about' | 'categories' | 'store' | 'gallery' | 'contact'
+
+function HeroContentEditor({ content, onChange }: { content: any; onChange: (c: any) => void }) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-xs font-medium text-slate-500 mb-1">Insignia Superior (Badge)</label>
+        <input
+          type="text"
+          value={content.badge || ''}
+          onChange={e => onChange({ ...content, badge: e.target.value })}
+          placeholder="Ej: Tienda física y online"
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-slate-500 mb-1">Descripción / Texto de Bienvenida</label>
+        <textarea
+          value={content.description || ''}
+          onChange={e => onChange({ ...content, description: e.target.value })}
+          rows={3}
+          placeholder="Ej: Gomitas, chocolates, caramelos y mucho más — todo por granel y al mejor precio..."
+          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Texto Botón Principal</label>
+          <input
+            type="text"
+            value={content.btn_primary_text || ''}
+            onChange={e => onChange({ ...content, btn_primary_text: e.target.value })}
+            placeholder="Ej: Ver Catálogo"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-500 mb-1">Texto Botón Secundario</label>
+          <input
+            type="text"
+            value={content.btn_secondary_text || ''}
+            onChange={e => onChange({ ...content, btn_secondary_text: e.target.value })}
+            placeholder="Ej: Consultar por WhatsApp"
+            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function AboutContentEditor({ content, onChange }: { content: any; onChange: (c: any) => void }) {
   const paragraphs: string[] = content.paragraphs || []
@@ -166,6 +218,7 @@ function ContactContentEditor({ content, onChange }: { content: any; onChange: (
 }
 
 const SECTION_EDITORS: Record<string, React.FC<{ content: any; onChange: (c: any) => void }>> = {
+  hero: HeroContentEditor,
   about: AboutContentEditor,
   categories: CategoriesContentEditor,
   store: StoreContentEditor,
@@ -174,6 +227,7 @@ const SECTION_EDITORS: Record<string, React.FC<{ content: any; onChange: (c: any
 }
 
 const SECTION_LABELS: Record<string, string> = {
+  hero: 'Bienvenida / Hero',
   about: 'Sobre Nosotros',
   categories: 'Categorías',
   store: 'Tienda',
@@ -456,6 +510,54 @@ export default function AdminHomepageEditor() {
     reorderAndSave(updated)
   }
 
+  const addSection = async (type: SectionType) => {
+    try {
+      let defaultTitle = 'Sección'
+      let defaultSubtitle = ''
+      let defaultContent = {}
+
+      if (type === 'hero') {
+        defaultTitle = 'Chamical'
+        defaultSubtitle = 'Candy Shop'
+        defaultContent = {
+          badge: 'Tienda física y online',
+          description: 'Gomitas, chocolates, caramelos y mucho más — todo por granel y al mejor precio. Visitanos o pedí por WhatsApp.',
+          btn_primary_text: 'Ver Catálogo',
+          btn_secondary_text: 'Consultar por WhatsApp'
+        }
+      } else if (type === 'about') {
+        defaultTitle = 'Sobre Nosotros'
+        defaultSubtitle = 'El dulce sabor de Chamical'
+        defaultContent = { paragraphs: ['En Chamical Candy Shop nos apasiona endulzar tu día.'], tags: ['Atención personalizada'] }
+      } else if (type === 'categories') {
+        defaultTitle = 'Nuestros Productos'
+        defaultSubtitle = '¿Qué antojo tenés hoy?'
+      } else if (type === 'store') {
+        defaultTitle = 'Visitanos'
+        defaultSubtitle = 'Nuestra Tienda'
+      } else if (type === 'gallery') {
+        defaultTitle = 'Galería'
+        defaultSubtitle = 'Nuestros Dulces'
+        defaultContent = { limit: 6 }
+      } else if (type === 'contact') {
+        defaultTitle = '¿Tenés antojo?'
+        defaultSubtitle = '¿Listo para pedir?'
+      }
+
+      await adminApi.createHomepageSection({
+        section_type: type,
+        title: defaultTitle,
+        subtitle: defaultSubtitle,
+        content: defaultContent,
+        order_index: sections.length + 1,
+        visible: true
+      })
+      await load()
+    } catch (e: any) {
+      console.error(e)
+    }
+  }
+
   if (loading)
     return (
       <div className="animate-pulse space-y-3">
@@ -467,14 +569,33 @@ export default function AdminHomepageEditor() {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-headline font-bold text-xl text-slate-800">Editor de Homepage</h2>
-          <p className="text-xs text-slate-400">Usá los botones ⬆️ / ⬇️ o el selector de posición para reordenar secciones</p>
+          <p className="text-xs text-slate-400">Usá los botones ⬆️ / ⬇️ o el selector para reordenar y personalizar secciones</p>
         </div>
-        <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-          {sections.length} secciones
-        </span>
+        <div className="flex items-center gap-2">
+          <select
+            onChange={(e) => {
+              if (e.target.value) {
+                addSection(e.target.value as SectionType)
+                e.target.value = ''
+              }
+            }}
+            className="px-3 py-1.5 bg-purple-600 text-white text-xs font-semibold rounded-lg hover:bg-purple-700 outline-none cursor-pointer"
+            defaultValue=""
+          >
+            <option value="" disabled>+ Agregar sección...</option>
+            {Object.entries(SECTION_LABELS).map(([type, label]) => (
+              <option key={type} value={type} className="bg-white text-slate-800">
+                {label}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+            {sections.length} secciones
+          </span>
+        </div>
       </div>
 
       {error && (

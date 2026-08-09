@@ -181,6 +181,8 @@ export const admin = {
   createPromoCode: (data: any) =>
     request<any>('/admin/promo-codes', { method: 'POST', body: JSON.stringify(data) }),
   getHomepageSections: () => request<any[]>('/admin/homepage'),
+  createHomepageSection: (data: any) =>
+    request<any>('/admin/homepage/sections', { method: 'POST', body: JSON.stringify(data) }),
   updateHomepageSection: (id: string, data: any) =>
     request<any>(`/admin/homepage/sections/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   reorderHomepageSections: (sections: { id: string; order_index: number; visible: boolean }[]) =>
