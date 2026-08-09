@@ -373,66 +373,70 @@ export const MyOrdersScreen: React.FC<MyOrdersScreenProps> = ({
                           </div>
                         </div>
 
-                        {/* 2. WhatsApp Transfer Receipt Box */}
-                        <div className="bg-gradient-to-r from-emerald-50 to-teal-50/60 p-5 rounded-2xl border border-emerald-200 space-y-4">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-md">
-                                <MessageCircle className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <h4 className="font-headline font-bold text-sm text-emerald-950">
-                                  Envío de Comprobante de Pago por Transferencia
-                                </h4>
-                                <p className="text-xs text-emerald-800/80 mt-0.5">
-                                  El comprobante de pago se envía directamente al chat de WhatsApp de la tienda.
-                                </p>
+                        {/* 2. WhatsApp Transfer Receipt Box & Bank Details (Only visible when order status is pending) */}
+                        {order.status === 'pending' && (
+                          <>
+                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50/60 p-5 rounded-2xl border border-emerald-200 space-y-4">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                <div className="flex items-center space-x-3">
+                                  <div className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-md">
+                                    <MessageCircle className="w-6 h-6" />
+                                  </div>
+                                  <div>
+                                    <h4 className="font-headline font-bold text-sm text-emerald-950">
+                                      Envío de Comprobante de Pago por Transferencia
+                                    </h4>
+                                    <p className="text-xs text-emerald-800/80 mt-0.5">
+                                      El comprobante de pago se envía directamente al chat de WhatsApp de la tienda.
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <a
+                                  href={waLink(`Hola! Adjunto el comprobante de transferencia bancaria para mi pedido #${order.id.slice(0, 8).toUpperCase()} por el monto total de $${Number(order.total || 0).toFixed(2)}.`)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+                                >
+                                  <MessageCircle className="w-4.5 h-4.5" />
+                                  <span>Enviar Comprobante por WhatsApp</span>
+                                </a>
                               </div>
                             </div>
 
-                            <a
-                              href={waLink(`Hola! Adjunto el comprobante de transferencia bancaria para mi pedido #${order.id.slice(0, 8).toUpperCase()} por el monto total de $${Number(order.total || 0).toFixed(2)}.`)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
-                            >
-                              <MessageCircle className="w-4.5 h-4.5" />
-                              <span>Enviar Comprobante por WhatsApp</span>
-                            </a>
-                          </div>
-                        </div>
+                            {/* 3. Bank Transfer Info */}
+                            <div className="bg-purple-50/60 p-5 rounded-2xl border border-purple-100 space-y-3">
+                              <h4 className="font-headline font-bold text-xs uppercase text-purple-900 tracking-wider flex items-center space-x-1.5">
+                                <Building2 className="w-4 h-4 text-purple-700" />
+                                <span>Datos Bancarios para la Transferencia</span>
+                              </h4>
 
-                        {/* 3. Bank Transfer Info (if applicable) */}
-                        <div className="bg-purple-50/60 p-5 rounded-2xl border border-purple-100 space-y-3">
-                          <h4 className="font-headline font-bold text-xs uppercase text-purple-900 tracking-wider flex items-center space-x-1.5">
-                            <Building2 className="w-4 h-4 text-purple-700" />
-                            <span>Datos Bancarios para la Transferencia</span>
-                          </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                <div className="bg-white p-3 rounded-xl border border-purple-100 flex items-center justify-between">
+                                  <div>
+                                    <span className="text-slate-400 block text-[10px]">Alias CBU:</span>
+                                    <span className="font-extrabold text-purple-900 text-sm font-mono">{DATOS_BANCO.alias}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => copyToClipboard(DATOS_BANCO.alias, 'alias')}
+                                    className="p-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors cursor-pointer"
+                                    title="Copiar Alias"
+                                  >
+                                    {copiedField === 'alias' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                                  </button>
+                                </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                            <div className="bg-white p-3 rounded-xl border border-purple-100 flex items-center justify-between">
-                              <div>
-                                <span className="text-slate-400 block text-[10px]">Alias CBU:</span>
-                                <span className="font-extrabold text-purple-900 text-sm font-mono">{DATOS_BANCO.alias}</span>
+                                <div className="bg-white p-3 rounded-xl border border-purple-100 flex items-center justify-between">
+                                  <div>
+                                    <span className="text-slate-400 block text-[10px]">Titular:</span>
+                                    <span className="font-extrabold text-slate-800">{DATOS_BANCO.titular}</span>
+                                  </div>
+                                  <span className="text-[10px] font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">{DATOS_BANCO.banco}</span>
+                                </div>
                               </div>
-                              <button
-                                onClick={() => copyToClipboard(DATOS_BANCO.alias, 'alias')}
-                                className="p-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors cursor-pointer"
-                                title="Copiar Alias"
-                              >
-                                {copiedField === 'alias' ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                              </button>
                             </div>
-
-                            <div className="bg-white p-3 rounded-xl border border-purple-100 flex items-center justify-between">
-                              <div>
-                                <span className="text-slate-400 block text-[10px]">Titular:</span>
-                                <span className="font-extrabold text-slate-800">{DATOS_BANCO.titular}</span>
-                              </div>
-                              <span className="text-[10px] font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">{DATOS_BANCO.banco}</span>
-                            </div>
-                          </div>
-                        </div>
+                          </>
+                        )}
 
                         {/* 4. Products List */}
                         <div className="space-y-3">
