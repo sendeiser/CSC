@@ -433,21 +433,51 @@ router.post('/orders/manual', requireAdmin, async (req: AuthenticatedRequest, re
       })
     }
 
-    const { data: newOrder, error: orderError } = await db
+    const orderPayload: any = {
+      user_id: req.user?.id || null,
+      shipping_name: shipping_name || 'Venta Presencial / Manual',
+      shipping_address: shipping_address || 'Venta en Local (Efectivo / Posnet)',
+      total: calculatedTotal,
+      status: status || 'paid',
+    }
+
+    let newOrder: any = null
+    let orderError: any = null
+
+    // Intenta primero guardar con payment_method
+    const { data: tryOrder, error: tryErr } = await db
       .from('orders')
       .insert({
-        user_id: req.user?.id || null,
-        shipping_name: shipping_name || 'Venta Presencial / Manual',
-        shipping_address: shipping_address || 'Venta en Local (Efectivo / Posnet)',
-        total: calculatedTotal,
-        status: status || 'paid',
+        ...orderPayload,
         payment_method: payment_method || 'manual',
       })
       .select()
       .single()
 
-    if (orderError) {
-      res.status(400).json({ error: orderError.message })
+    if (tryErr) {
+      // Si la columna payment_method no existe en la BD de Supabase, hace fallback sin esa columna
+      if (tryErr.message?.includes('payment_method') || (tryErr as any).code === 'PGRST204') {
+        const methodLabel = payment_method === 'efectivo' ? 'Efectivo' : payment_method === 'transferencia' ? 'Transferencia' : payment_method === 'posnet' ? 'Posnet/Tarjeta' : payment_method || 'Manual'
+        const { data: fallbackOrder, error: fallbackErr } = await db
+          .from('orders')
+          .insert({
+            ...orderPayload,
+            shipping_address: `${orderPayload.shipping_address} [Método: ${methodLabel}]`,
+          })
+          .select()
+          .single()
+
+        newOrder = fallbackOrder
+        orderError = fallbackErr
+      } else {
+        orderError = tryErr
+      }
+    } else {
+      newOrder = tryOrder
+    }
+
+    if (orderError || !newOrder) {
+      res.status(400).json({ error: orderError?.message || 'Error al crear la orden' })
       return
     }
 
