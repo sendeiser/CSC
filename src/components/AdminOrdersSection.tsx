@@ -658,22 +658,59 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
               </div>
             </div>
 
-            {/* Interactive Admin Progress Stepper */}
+            {/* Interactive Admin Progress Stepper & All-State Switcher */}
             <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider flex items-center space-x-1.5">
                   <Clock className="w-4 h-4 text-purple-600" />
-                  <span>Cambiar Estado del Pedido (Un clic)</span>
+                  <span>Cambiar Estado del Pedido (1 Clic - Avanzar o Retroceder)</span>
                 </h4>
-                <span className="text-[10px] font-semibold text-slate-400">Toca cualquier etapa para actualizar el estado</span>
+                <span className="text-[10px] font-semibold text-slate-400">Toca cualquier estado para aplicarlo</span>
               </div>
 
+              {/* All 7 Status Quick Action Buttons */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { id: 'pending', label: 'Pendiente', badge: 'bg-amber-100 text-amber-900 border-amber-300', active: 'bg-amber-500 text-white ring-2 ring-amber-300 shadow-md' },
+                  { id: 'paid', label: 'Pagado', badge: 'bg-emerald-100 text-emerald-900 border-emerald-300', active: 'bg-emerald-600 text-white ring-2 ring-emerald-300 shadow-md' },
+                  { id: 'preparing', label: 'En preparación', badge: 'bg-indigo-100 text-indigo-900 border-indigo-300', active: 'bg-indigo-600 text-white ring-2 ring-indigo-300 shadow-md' },
+                  { id: 'ready', label: 'Listo para retirar', badge: 'bg-cyan-100 text-cyan-900 border-cyan-300', active: 'bg-cyan-600 text-white ring-2 ring-cyan-300 shadow-md' },
+                  { id: 'shipped', label: 'En camino / Enviado', badge: 'bg-blue-100 text-blue-900 border-blue-300', active: 'bg-blue-600 text-white ring-2 ring-blue-300 shadow-md' },
+                  { id: 'delivered', label: 'Entregado', badge: 'bg-purple-100 text-purple-900 border-purple-300', active: 'bg-purple-600 text-white ring-2 ring-purple-300 shadow-md' },
+                  { id: 'cancelled', label: 'Cancelado', badge: 'bg-red-100 text-red-900 border-red-300', active: 'bg-red-600 text-white ring-2 ring-red-300 shadow-md' },
+                ].map((st) => {
+                  const isCurrent = selectedOrder.status === st.id || 
+                    (st.id === 'preparing' && selectedOrder.status === 'en_preparacion') ||
+                    (st.id === 'ready' && selectedOrder.status === 'listo');
+                  
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={async () => {
+                        await onUpdateStatus(selectedOrder.id, st.id);
+                        setSelectedOrder((prev: any) => prev ? { ...prev, status: st.id } : null);
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center space-x-1.5 ${
+                        isCurrent
+                          ? `${st.active} scale-105`
+                          : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      {isCurrent && <Check className="w-3.5 h-3.5" />}
+                      <span>{st.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Visual Progress Stepper Line */}
               {(() => {
                 const currentStep = getStepProgress(selectedOrder.status);
                 return (
-                  <div className="grid grid-cols-4 gap-2 text-center relative pt-2">
+                  <div className="grid grid-cols-4 gap-2 text-center relative pt-3 border-t border-slate-200/60 mt-2">
                     {/* Connector Line */}
-                    <div className="absolute top-5 left-[12.5%] right-[12.5%] h-1 bg-slate-200 -z-0">
+                    <div className="absolute top-6 left-[12.5%] right-[12.5%] h-1 bg-slate-200 -z-0">
                       <div 
                         className="h-full candy-gradient-bg transition-all duration-300 rounded-full"
                         style={{ width: `${Math.max(0, (currentStep - 1) * 33.33)}%` }}
@@ -690,16 +727,16 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                       className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
                       title="Marcar como Pagado / Confirmado"
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                         selectedOrder.status === 'paid' || selectedOrder.status === 'pending'
-                          ? 'candy-gradient-bg text-white shadow-md shadow-purple-300 ring-4 ring-purple-100 scale-110'
+                          ? 'candy-gradient-bg text-white shadow-md shadow-purple-300 ring-4 ring-purple-100'
                           : currentStep > 1
                           ? 'candy-gradient-bg text-white'
                           : 'bg-slate-200 text-slate-500 group-hover:bg-purple-200'
                       }`}>
-                        {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
+                        {currentStep > 1 ? <Check className="w-3.5 h-3.5" /> : '1'}
                       </div>
-                      <span className={`text-[11px] font-bold ${currentStep >= 1 ? 'text-purple-900' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-bold ${currentStep >= 1 ? 'text-purple-900' : 'text-slate-400'}`}>
                         Pagado
                       </span>
                     </button>
@@ -714,16 +751,16 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                       className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
                       title="Marcar como En Preparación"
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                         selectedOrder.status === 'preparing' || selectedOrder.status === 'en_preparacion'
-                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-300 ring-4 ring-indigo-100 scale-110'
+                          ? 'bg-indigo-600 text-white shadow-md shadow-indigo-300 ring-4 ring-indigo-100'
                           : currentStep > 2
                           ? 'bg-indigo-600 text-white'
                           : 'bg-slate-200 text-slate-500 group-hover:bg-indigo-200'
                       }`}>
-                        {currentStep > 2 ? <Check className="w-4 h-4" /> : '2'}
+                        {currentStep > 2 ? <Check className="w-3.5 h-3.5" /> : '2'}
                       </div>
-                      <span className={`text-[11px] font-bold ${currentStep >= 2 ? 'text-indigo-900' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-bold ${currentStep >= 2 ? 'text-indigo-900' : 'text-slate-400'}`}>
                         En Preparación
                       </span>
                     </button>
@@ -738,16 +775,16 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                       className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
                       title="Marcar como Listo para Retirar"
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                         selectedOrder.status === 'ready' || selectedOrder.status === 'listo' || selectedOrder.status === 'shipped'
-                          ? 'bg-cyan-600 text-white shadow-md shadow-cyan-300 ring-4 ring-cyan-100 scale-110'
+                          ? 'bg-cyan-600 text-white shadow-md shadow-cyan-300 ring-4 ring-cyan-100'
                           : currentStep > 3
                           ? 'bg-cyan-600 text-white'
                           : 'bg-slate-200 text-slate-500 group-hover:bg-cyan-200'
                       }`}>
-                        {currentStep > 3 ? <Check className="w-4 h-4" /> : '3'}
+                        {currentStep > 3 ? <Check className="w-3.5 h-3.5" /> : '3'}
                       </div>
-                      <span className={`text-[11px] font-bold ${currentStep >= 3 ? 'text-cyan-900' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-bold ${currentStep >= 3 ? 'text-cyan-900' : 'text-slate-400'}`}>
                         Listo / Camino
                       </span>
                     </button>
@@ -762,14 +799,14 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                       className="flex flex-col items-center space-y-1.5 relative z-10 group cursor-pointer"
                       title="Marcar como Entregado"
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                         selectedOrder.status === 'delivered'
-                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-300 ring-4 ring-emerald-100 scale-110'
+                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-300 ring-4 ring-emerald-100'
                           : 'bg-slate-200 text-slate-500 group-hover:bg-emerald-200'
                       }`}>
-                        {currentStep >= 4 ? <Check className="w-4 h-4" /> : '4'}
+                        {currentStep >= 4 ? <Check className="w-3.5 h-3.5" /> : '4'}
                       </div>
-                      <span className={`text-[11px] font-bold ${currentStep >= 4 ? 'text-emerald-900' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-bold ${currentStep >= 4 ? 'text-emerald-900' : 'text-slate-400'}`}>
                         Entregado
                       </span>
                     </button>
