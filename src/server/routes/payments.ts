@@ -164,50 +164,53 @@ router.post('/create-preference', optionalAuth, async (req: AuthenticatedRequest
 
 router.post('/webhook', async (req, res) => {
   try {
-    const { type, data } = req.body
+    const paymentId = req.body?.data?.id || req.body?.id || req.query?.['data.id'] || req.query?.id
 
-    if (type === 'payment' && data?.id) {
-      const payment = await getPayment(String(data.id))
+    if (paymentId) {
+      try {
+        const payment = await getPayment(String(paymentId))
 
-      if (payment.status === 'approved' && payment.preference_id) {
-        const { data: order } = await serviceClient
-          .from('orders')
-          .select('*')
-          .eq('preference_id', payment.preference_id)
-          .eq('status', 'pending')
-          .single()
-
-        if (order) {
-          const { data: orderItems } = await serviceClient
-            .from('order_items')
+        if ((payment?.status === 'approved' || payment?.status === 'accredited') && payment?.preference_id) {
+          const { data: order } = await serviceClient
+            .from('orders')
             .select('*')
-            .eq('order_id', order.id)
+            .eq('preference_id', payment.preference_id)
+            .maybeSingle()
 
-          if (orderItems) {
-            for (const item of orderItems) {
-              const stockToSubtract = item.weight_grams || item.quantity
-              const { data: product } = await serviceClient
-                .from('products')
-                .select('stock')
-                .eq('id', item.product_id)
-                .single()
-              if (product) {
-                await serviceClient
+          if (order && order.status !== 'paid') {
+            const { data: orderItems } = await serviceClient
+              .from('order_items')
+              .select('*')
+              .eq('order_id', order.id)
+
+            if (orderItems) {
+              for (const item of orderItems) {
+                const stockToSubtract = item.weight_grams || item.quantity
+                const { data: product } = await serviceClient
                   .from('products')
-                  .update({ stock: Math.max(0, product.stock - stockToSubtract) })
+                  .select('stock')
                   .eq('id', item.product_id)
+                  .single()
+                if (product) {
+                  await serviceClient
+                    .from('products')
+                    .update({ stock: Math.max(0, product.stock - stockToSubtract) })
+                    .eq('id', item.product_id)
+                }
               }
             }
+
+            await serviceClient
+              .from('orders')
+              .update({ status: 'paid', payment_id: String(paymentId) })
+              .eq('id', order.id)
+
+            if (order.user_id) {
+              await serviceClient.from('cart_items').delete().eq('user_id', order.user_id)
+            }
           }
-
-          await serviceClient
-            .from('orders')
-            .update({ status: 'paid', payment_id: String(data.id) })
-            .eq('id', order.id)
-
-          await serviceClient.from('cart_items').delete().eq('user_id', order.user_id)
         }
-      }
+      } catch (_e) {}
     }
 
     res.sendStatus(200)

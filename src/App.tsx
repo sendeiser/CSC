@@ -67,8 +67,15 @@ export default function App() {
   };
 
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const isPaymentReturn = searchParams.get('payment_success') || searchParams.get('payment_id') || searchParams.get('collection_id') || searchParams.get('status');
+
     const currentHash = window.location.hash.replace('#', '') as ActiveScreen;
-    const initialScreen = VALID_SCREENS.includes(currentHash) ? currentHash : 'inicio';
+    const initialScreen = isPaymentReturn ? 'carrito' : (VALID_SCREENS.includes(currentHash) ? currentHash : 'inicio');
+
+    if (isPaymentReturn && activeScreen !== 'carrito') {
+      setActiveScreen('carrito');
+    }
 
     if (!window.history.state) {
       window.history.replaceState(
@@ -124,7 +131,7 @@ export default function App() {
     // Registrar callback para logout automático en 401 del backend
     setOnAuthExpired(forceLogout)
     return () => setOnAuthExpired(null)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -204,7 +211,7 @@ export default function App() {
     })
 
     return () => subscription.unsubscribe()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -212,14 +219,14 @@ export default function App() {
       const localCart = getLocalCart()
       const migrateLocal = localCart.length > 0
         ? Promise.all(localCart.map(item =>
-            cartApi.add({
-              product_id: item.product.id,
-              quantity: item.quantity,
-              selected_size: item.selectedSize,
-              item_price: item.itemPrice,
-              weight_grams: item.weight_grams
-            }).catch(() => {})
-          )).then(() => clearLocalCart())
+          cartApi.add({
+            product_id: item.product.id,
+            quantity: item.quantity,
+            selected_size: item.selectedSize,
+            item_price: item.itemPrice,
+            weight_grams: item.weight_grams
+          }).catch(() => { })
+        )).then(() => clearLocalCart())
         : Promise.resolve()
 
       migrateLocal.then(() => {
@@ -558,7 +565,7 @@ export default function App() {
 
               <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
                 <p>&copy; {new Date().getFullYear()} Chamical Candy Shop. Todos los derechos reservados.</p>
-                <p className="text-slate-700">Hecho con 🍬 en Chamical, La Rioja</p>
+                <p className="text-slate-700">Hecho por <a href={waLink('Hola! Quiero hacer una consulta.')} target="_blank" rel="noopener noreferrer">Martin Gustavo Gonzalez</a></p>
               </div>
             </div>
           </footer>
