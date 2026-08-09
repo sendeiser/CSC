@@ -5,6 +5,7 @@ import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
 import AdminAboutPageEditor from './AdminAboutPageEditor';
+import { AdminWhatsAppEditor } from './AdminWhatsAppEditor';
 import { AdminOrdersSection } from './AdminOrdersSection';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { useModal } from '../context/ModalContext';
@@ -637,6 +638,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     { id: 'homepage', label: 'Homepage', icon: <Layout className="w-4.5 h-4.5" /> },
     { id: 'about-page', label: 'Sobre Nosotros', icon: <FileText className="w-4.5 h-4.5" /> },
     { id: 'categories', label: 'Categorías', icon: <Layout className="w-4.5 h-4.5" /> },
+    { id: 'whatsapp', label: 'Mensajes WhatsApp', icon: <MessageCircle className="w-4.5 h-4.5 text-emerald-400" /> },
   ]
 
   return (
@@ -2020,6 +2022,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               {section === 'homepage' && <AdminHomepageEditor />}
               {section === 'about-page' && <AdminAboutPageEditor />}
               {section === 'categories' && <AdminCategoriesScreen />}
+              {section === 'whatsapp' && <AdminWhatsAppEditor />}
             </>
           )}
         </div>

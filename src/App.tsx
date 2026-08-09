@@ -12,10 +12,10 @@ import { AboutUsScreen } from './components/AboutUsScreen';
 import { HowToBuyScreen } from './components/HowToBuyScreen';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { PRODUCTS } from './data';
-import { products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken, setOnAuthExpired } from './lib/api';
+import { homepage as homepageApi, products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken, setOnAuthExpired } from './lib/api';
 import { supabase } from './lib/supabase';
 import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
-import { waLink } from './lib/whatsapp';
+import { waLink, setWhatsAppNumbers, setWhatsAppTemplates } from './lib/whatsapp';
 import { MessageCircle, Instagram } from 'lucide-react';
 
 export default function App() {
@@ -96,8 +96,14 @@ export default function App() {
   }
 
   useEffect(() => {
-    refreshProducts()
-  }, [])
+    refreshProducts();
+    homepageApi.getSettings().then((st) => {
+      if (st) {
+        setWhatsAppNumbers(st.whatsapp_number_1, st.whatsapp_number_2);
+        setWhatsAppTemplates(st);
+      }
+    }).catch(console.error);
+  }, []);
 
   // Función para forzar logout limpio (usada desde API 401 y Supabase listener)
   const forceLogout = () => {

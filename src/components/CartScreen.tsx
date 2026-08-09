@@ -4,7 +4,7 @@ import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, Party
 import { ActiveScreen, CartItem } from '../types';
 import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
-import { buildMensajePedido, waLink, DATOS_BANCO, WHATSAPP_NUMERO, WHATSAPP_NUMERO_1, WHATSAPP_NUMERO_2, setWhatsAppNumbers } from '../lib/whatsapp';
+import { buildMensajePedido, waLink, DATOS_BANCO, WHATSAPP_NUMERO, WHATSAPP_NUMERO_1, WHATSAPP_NUMERO_2, setWhatsAppNumbers, setWhatsAppTemplates } from '../lib/whatsapp';
 
 interface CartScreenProps {
   cart: CartItem[];
@@ -39,6 +39,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
         const phone = st.active_phone || st.whatsapp_number_1 || WHATSAPP_NUMERO_1;
         setActivePhone(phone);
         setWhatsAppNumbers(st.whatsapp_number_1, st.whatsapp_number_2);
+        setWhatsAppTemplates(st);
       }
     }).catch(() => {});
   }, []);

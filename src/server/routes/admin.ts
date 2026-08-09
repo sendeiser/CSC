@@ -13,6 +13,10 @@ export async function getStoreSettingsHelper() {
     whatsapp_number_1: '543826432180',
     whatsapp_number_2: '5493826432180',
     active_whatsapp_number: 'num1',
+    msg_transfer: '',
+    msg_mercadopago: '',
+    msg_general_inquiry: '',
+    msg_order_status: '',
   }
 
   try {
@@ -27,6 +31,10 @@ export async function getStoreSettingsHelper() {
         whatsapp_number_1: data.content.whatsapp_number_1 || '543826432180',
         whatsapp_number_2: data.content.whatsapp_number_2 || '5493826432180',
         active_whatsapp_number: data.content.active_whatsapp_number || 'num1',
+        msg_transfer: data.content.msg_transfer || '',
+        msg_mercadopago: data.content.msg_mercadopago || '',
+        msg_general_inquiry: data.content.msg_general_inquiry || '',
+        msg_order_status: data.content.msg_order_status || '',
       }
     } else if (fs.existsSync(STORE_SETTINGS_FILE)) {
       const raw = fs.readFileSync(STORE_SETTINGS_FILE, 'utf-8')
@@ -35,6 +43,10 @@ export async function getStoreSettingsHelper() {
         whatsapp_number_1: parsed.whatsapp_number_1 || '543826432180',
         whatsapp_number_2: parsed.whatsapp_number_2 || '5493826432180',
         active_whatsapp_number: parsed.active_whatsapp_number || 'num1',
+        msg_transfer: parsed.msg_transfer || '',
+        msg_mercadopago: parsed.msg_mercadopago || '',
+        msg_general_inquiry: parsed.msg_general_inquiry || '',
+        msg_order_status: parsed.msg_order_status || '',
       }
     }
   } catch (_e) {}
@@ -55,6 +67,10 @@ export async function saveStoreSettingsHelper(payload: any) {
     whatsapp_number_1: String(payload.whatsapp_number_1 || '543826432180').trim(),
     whatsapp_number_2: String(payload.whatsapp_number_2 || '5493826432180').trim(),
     active_whatsapp_number: payload.active_whatsapp_number === 'num2' ? 'num2' : 'num1',
+    msg_transfer: payload.msg_transfer !== undefined ? String(payload.msg_transfer) : '',
+    msg_mercadopago: payload.msg_mercadopago !== undefined ? String(payload.msg_mercadopago) : '',
+    msg_general_inquiry: payload.msg_general_inquiry !== undefined ? String(payload.msg_general_inquiry) : '',
+    msg_order_status: payload.msg_order_status !== undefined ? String(payload.msg_order_status) : '',
   }
 
   try {

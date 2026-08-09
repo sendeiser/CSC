@@ -202,16 +202,18 @@ export const admin = {
   getFinancialSettings: () => request<any>('/admin/financial-settings'),
   updateFinancialSettings: (data: any) =>
     request<any>('/admin/financial-settings', { method: 'PUT', body: JSON.stringify(data) }),
-  getStoreSettings: () => request<{ whatsapp_number_1: string; whatsapp_number_2: string; active_whatsapp_number: 'num1' | 'num2'; active_phone: string }>('/admin/store-settings'),
-  updateStoreSettings: (data: { whatsapp_number_1: string; whatsapp_number_2: string; active_whatsapp_number?: 'num1' | 'num2' }) =>
-    request<{ whatsapp_number_1: string; whatsapp_number_2: string; active_whatsapp_number: 'num1' | 'num2'; active_phone: string }>('/admin/store-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  getStoreSettings: () => request<{ whatsapp_number_1: string; whatsapp_number_2: string; active_whatsapp_number: 'num1' | 'num2'; active_phone: string; msg_transfer?: string; msg_mercadopago?: string; msg_general_inquiry?: string; msg_order_status?: string }>('/admin/store-settings'),
+  updateStoreSettings: (data: any) =>
+    request<any>('/admin/store-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  saveStoreSettings: (data: any) =>
+    request<any>('/admin/store-settings', { method: 'PUT', body: JSON.stringify(data) }),
 }
 
 // Homepage (public)
 export const homepage = {
   get: () => request<any[]>('/homepage'),
   getAbout: () => request<any>('/homepage/about'),
-  getSettings: () => request<{ whatsapp_number_1: string; whatsapp_number_2: string; active_whatsapp_number: 'num1' | 'num2'; active_phone: string }>('/homepage/settings'),
+  getSettings: () => request<{ whatsapp_number_1: string; whatsapp_number_2: string; active_whatsapp_number: 'num1' | 'num2'; active_phone: string; msg_transfer?: string; msg_mercadopago?: string; msg_general_inquiry?: string; msg_order_status?: string }>('/homepage/settings'),
 }
 
 // Categories (public)

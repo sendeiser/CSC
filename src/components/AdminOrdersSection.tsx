@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus } from 'lucide-react';
-import { WHATSAPP_NUMERO } from '../lib/whatsapp';
+import { WHATSAPP_NUMERO, buildMensajeEstadoPedido } from '../lib/whatsapp';
 import { admin as adminApi, products as productsApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 
@@ -642,7 +642,11 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
               <div className="flex items-center space-x-3 w-full sm:w-auto">
                 <a
                   href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(
-                    `Hola! Te contactamos desde Chamical Candy Shop sobre tu pedido #${selectedOrder.id.slice(0, 8).toUpperCase()}`
+                    buildMensajeEstadoPedido(
+                      selectedOrder.shipping_name || 'Cliente',
+                      selectedOrder.id,
+                      selectedOrder.status === 'paid' ? 'Pagado' : selectedOrder.status === 'pending' ? 'Pendiente' : selectedOrder.status
+                    )
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
