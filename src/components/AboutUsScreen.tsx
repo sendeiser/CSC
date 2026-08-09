@@ -35,11 +35,11 @@ export const AboutUsScreen: React.FC<AboutUsScreenProps> = ({ setActiveScreen })
       <section className="relative bg-gradient-to-b from-pink-50 via-purple-50/40 to-white pt-6 pb-16 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_20%_20%,_rgba(236,72,153,0.1),transparent_50%)]" />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 relative">
-          {/* Back button */}
-          <div className="mb-6">
+          {/* Back button (solo mobile) */}
+          <div className="mb-6 sm:hidden">
             <button
               onClick={() => setActiveScreen('inicio')}
-              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-600 hover:text-purple-700 bg-white/80 hover:bg-white border border-slate-200/80 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:shadow hover:-translate-x-0.5"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-purple-700 bg-white/80 hover:bg-white border border-slate-200/80 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:shadow hover:-translate-x-0.5"
             >
               <ArrowLeft className="w-4 h-4 text-purple-600" />
               <span>Volver al inicio</span>

@@ -89,11 +89,11 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Back button */}
-          <div className="mb-6">
+          {/* Back button (solo mobile) */}
+          <div className="mb-6 sm:hidden">
             <button
               onClick={() => setActiveScreen('inicio')}
-              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:shadow hover:-translate-x-0.5"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/80 hover:text-white bg-white/10 hover:bg-white/20 border border-white/20 px-3.5 py-1.5 rounded-full shadow-sm backdrop-blur-sm transition-all duration-200 cursor-pointer hover:shadow hover:-translate-x-0.5"
             >
               <ArrowLeft className="w-4 h-4 text-pink-300" />
               <span>Volver al inicio</span>
