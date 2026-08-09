@@ -9,7 +9,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
   const { showAlert } = useModal();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'transfer' | 'mercadopago' | 'general' | 'status' | 'numbers'>('transfer');
+  const [activeTab, setActiveTab] = useState<'transfer' | 'mercadopago' | 'preparing' | 'ready' | 'general' | 'numbers'>('transfer');
 
   const [form, setForm] = useState({
     whatsapp_number_1: '543826432180',
@@ -19,6 +19,8 @@ export const AdminWhatsAppEditor: React.FC = () => {
     msg_mercadopago: DEFAULT_WHATSAPP_TEMPLATES.msg_mercadopago,
     msg_general_inquiry: DEFAULT_WHATSAPP_TEMPLATES.msg_general_inquiry,
     msg_order_status: DEFAULT_WHATSAPP_TEMPLATES.msg_order_status,
+    msg_preparing: DEFAULT_WHATSAPP_TEMPLATES.msg_preparing,
+    msg_ready: DEFAULT_WHATSAPP_TEMPLATES.msg_ready,
   });
 
   const [copiedTag, setCopiedTag] = useState<string | null>(null);
@@ -40,6 +42,8 @@ export const AdminWhatsAppEditor: React.FC = () => {
           msg_mercadopago: data.msg_mercadopago || DEFAULT_WHATSAPP_TEMPLATES.msg_mercadopago,
           msg_general_inquiry: data.msg_general_inquiry || DEFAULT_WHATSAPP_TEMPLATES.msg_general_inquiry,
           msg_order_status: data.msg_order_status || DEFAULT_WHATSAPP_TEMPLATES.msg_order_status,
+          msg_preparing: data.msg_preparing || DEFAULT_WHATSAPP_TEMPLATES.msg_preparing,
+          msg_ready: data.msg_ready || DEFAULT_WHATSAPP_TEMPLATES.msg_ready,
         });
       }
     } catch (err: any) {
@@ -226,15 +230,27 @@ export const AdminWhatsAppEditor: React.FC = () => {
         </button>
 
         <button
-          onClick={() => setActiveTab('status')}
+          onClick={() => setActiveTab('preparing')}
           className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === 'status'
+            activeTab === 'preparing'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <MessageCircle className="w-4 h-4 text-indigo-300" />
+          <span>Aviso: En Preparación</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ready')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'ready'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
               : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
           }`}
         >
-          <Info className="w-4 h-4" />
-          <span>Notificación de Estado</span>
+          <Check className="w-4 h-4 text-emerald-300" />
+          <span>Aviso: Listo para Retirar</span>
         </button>
 
         <button
@@ -366,17 +382,17 @@ export const AdminWhatsAppEditor: React.FC = () => {
             </motion.div>
           )}
 
-          {/* TAB 3: Notificación de Estado */}
-          {activeTab === 'status' && (
+          {/* TAB 3: Aviso En Preparación */}
+          {activeTab === 'preparing' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                 <div>
-                  <h3 className="font-headline font-bold text-base text-slate-900">Mensaje de Notificación de Estado al Cliente</h3>
-                  <p className="text-xs text-slate-500">Se usa desde el panel de órdenes cuando hacés clic en "Contactar por WhatsApp" para informar el avance del pedido.</p>
+                  <h3 className="font-headline font-bold text-base text-slate-900">Mensaje: Aviso "En Preparación"</h3>
+                  <p className="text-xs text-slate-500">Se envía al presionar el botón "Avisar: En Preparación" en el detalle de un pedido.</p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleResetTemplate('msg_order_status')}
+                  onClick={() => handleResetTemplate('msg_preparing')}
                   className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-emerald-700 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -385,16 +401,13 @@ export const AdminWhatsAppEditor: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-700 block">Etiquetas disponibles:</span>
+                <span className="text-xs font-bold text-slate-700 block">Etiquetas dinámicas:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  <button type="button" onClick={() => insertTag('msg_order_status', '{nombre_cliente}')} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 text-xs font-mono font-bold rounded-lg">
+                  <button type="button" onClick={() => insertTag('msg_preparing', '{nombre_cliente}')} className="px-2.5 py-1 bg-indigo-50 text-indigo-800 text-xs font-mono font-bold rounded-lg cursor-pointer">
                     {'{nombre_cliente}'}
                   </button>
-                  <button type="button" onClick={() => insertTag('msg_order_status', '{numero_pedido}')} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 text-xs font-mono font-bold rounded-lg">
+                  <button type="button" onClick={() => insertTag('msg_preparing', '{numero_pedido}')} className="px-2.5 py-1 bg-indigo-50 text-indigo-800 text-xs font-mono font-bold rounded-lg cursor-pointer">
                     {'{numero_pedido}'}
-                  </button>
-                  <button type="button" onClick={() => insertTag('msg_order_status', '{estado_pedido}')} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 text-xs font-mono font-bold rounded-lg">
-                    {'{estado_pedido}'}
                   </button>
                 </div>
               </div>
@@ -402,8 +415,49 @@ export const AdminWhatsAppEditor: React.FC = () => {
               <div className="space-y-2">
                 <textarea
                   rows={6}
-                  value={form.msg_order_status}
-                  onChange={(e) => setForm({ ...form, msg_order_status: e.target.value })}
+                  value={form.msg_preparing}
+                  onChange={(e) => setForm({ ...form, msg_preparing: e.target.value })}
+                  className="w-full p-4 rounded-2xl border-2 border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-xs sm:text-sm font-mono leading-relaxed text-slate-800 bg-slate-50/50 transition-all"
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {/* TAB 4: Aviso Listo para Retirar */}
+          {activeTab === 'ready' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="font-headline font-bold text-base text-slate-900">Mensaje: Aviso "Listo para Retirar"</h3>
+                  <p className="text-xs text-slate-500">Se envía al presionar el botón "Avisar: Listo para Retirar" en el detalle de un pedido.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleResetTemplate('msg_ready')}
+                  className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-emerald-700 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Restablecer</span>
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-slate-700 block">Etiquetas dinámicas:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={() => insertTag('msg_ready', '{nombre_cliente}')} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 text-xs font-mono font-bold rounded-lg cursor-pointer">
+                    {'{nombre_cliente}'}
+                  </button>
+                  <button type="button" onClick={() => insertTag('msg_ready', '{numero_pedido}')} className="px-2.5 py-1 bg-emerald-50 text-emerald-800 text-xs font-mono font-bold rounded-lg cursor-pointer">
+                    {'{numero_pedido}'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <textarea
+                  rows={6}
+                  value={form.msg_ready}
+                  onChange={(e) => setForm({ ...form, msg_ready: e.target.value })}
                   className="w-full p-4 rounded-2xl border-2 border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none text-xs sm:text-sm font-mono leading-relaxed text-slate-800 bg-slate-50/50 transition-all"
                 />
               </div>
@@ -500,7 +554,8 @@ export const AdminWhatsAppEditor: React.FC = () => {
             
             {activeTab === 'transfer' && renderWhatsAppPreview(form.msg_transfer)}
             {activeTab === 'mercadopago' && renderWhatsAppPreview(form.msg_mercadopago)}
-            {activeTab === 'status' && renderWhatsAppPreview(form.msg_order_status)}
+            {activeTab === 'preparing' && renderWhatsAppPreview(form.msg_preparing)}
+            {activeTab === 'ready' && renderWhatsAppPreview(form.msg_ready)}
             {activeTab === 'general' && renderWhatsAppPreview(form.msg_general_inquiry)}
             {activeTab === 'numbers' && renderWhatsAppPreview('Hola! Me comunico a este número para hacer un pedido en Chamical Candy Shop.')}
           </div>

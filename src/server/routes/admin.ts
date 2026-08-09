@@ -17,6 +17,8 @@ export async function getStoreSettingsHelper() {
     msg_mercadopago: '',
     msg_general_inquiry: '',
     msg_order_status: '',
+    msg_preparing: '',
+    msg_ready: '',
   }
 
   try {
@@ -35,6 +37,8 @@ export async function getStoreSettingsHelper() {
         msg_mercadopago: data.content.msg_mercadopago || '',
         msg_general_inquiry: data.content.msg_general_inquiry || '',
         msg_order_status: data.content.msg_order_status || '',
+        msg_preparing: data.content.msg_preparing || '',
+        msg_ready: data.content.msg_ready || '',
       }
     } else if (fs.existsSync(STORE_SETTINGS_FILE)) {
       const raw = fs.readFileSync(STORE_SETTINGS_FILE, 'utf-8')
@@ -47,6 +51,8 @@ export async function getStoreSettingsHelper() {
         msg_mercadopago: parsed.msg_mercadopago || '',
         msg_general_inquiry: parsed.msg_general_inquiry || '',
         msg_order_status: parsed.msg_order_status || '',
+        msg_preparing: parsed.msg_preparing || '',
+        msg_ready: parsed.msg_ready || '',
       }
     }
   } catch (_e) {}
@@ -71,6 +77,8 @@ export async function saveStoreSettingsHelper(payload: any) {
     msg_mercadopago: payload.msg_mercadopago !== undefined ? String(payload.msg_mercadopago) : '',
     msg_general_inquiry: payload.msg_general_inquiry !== undefined ? String(payload.msg_general_inquiry) : '',
     msg_order_status: payload.msg_order_status !== undefined ? String(payload.msg_order_status) : '',
+    msg_preparing: payload.msg_preparing !== undefined ? String(payload.msg_preparing) : '',
+    msg_ready: payload.msg_ready !== undefined ? String(payload.msg_ready) : '',
   }
 
   try {

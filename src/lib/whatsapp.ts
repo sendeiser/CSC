@@ -9,6 +9,8 @@ export interface WhatsAppTemplates {
   msg_mercadopago: string;
   msg_general_inquiry: string;
   msg_order_status: string;
+  msg_preparing: string;
+  msg_ready: string;
 }
 
 export const DEFAULT_WHATSAPP_TEMPLATES: WhatsAppTemplates = {
@@ -49,7 +51,11 @@ Gracias!`,
 
   msg_general_inquiry: `Hola! Quiero hacer una consulta sobre la tienda.`,
 
-  msg_order_status: `Hola {nombre_cliente}! Te escribimos de Chamical Candy Shop sobre tu pedido #{numero_pedido}: tu pedido se encuentra en {estado_pedido}. ¡Muchas gracias por tu compra!`
+  msg_order_status: `Hola {nombre_cliente}! Te escribimos de Chamical Candy Shop sobre tu pedido #{numero_pedido}: tu pedido se encuentra en {estado_pedido}. ¡Muchas gracias por tu compra!`,
+
+  msg_preparing: `¡Hola {nombre_cliente}! 🍬 Te informamos que tu pedido #{numero_pedido} se encuentra EN PREPARACIÓN. ¡Muchas gracias por tu compra en Chamical Candy Shop!`,
+
+  msg_ready: `¡Hola {nombre_cliente}! 🎉 ¡Buenas noticias! Tu pedido #{numero_pedido} ya se encuentra LISTO para retirar o recibir. ¡Te esperamos!`
 };
 
 let currentTemplates: WhatsAppTemplates = { ...DEFAULT_WHATSAPP_TEMPLATES };
@@ -66,6 +72,8 @@ export function setWhatsAppTemplates(templates?: Partial<WhatsAppTemplates>) {
     msg_mercadopago: templates.msg_mercadopago || DEFAULT_WHATSAPP_TEMPLATES.msg_mercadopago,
     msg_general_inquiry: templates.msg_general_inquiry || DEFAULT_WHATSAPP_TEMPLATES.msg_general_inquiry,
     msg_order_status: templates.msg_order_status || DEFAULT_WHATSAPP_TEMPLATES.msg_order_status,
+    msg_preparing: templates.msg_preparing || DEFAULT_WHATSAPP_TEMPLATES.msg_preparing,
+    msg_ready: templates.msg_ready || DEFAULT_WHATSAPP_TEMPLATES.msg_ready,
   };
 }
 
@@ -137,6 +145,22 @@ export function buildMensajeEstadoPedido(nombreCliente: string, numeroPedido: st
     .replace(/\{nombre_cliente\}/g, nombreCliente || 'Cliente')
     .replace(/\{numero_pedido\}/g, (numeroPedido || '').slice(0, 8).toUpperCase())
     .replace(/\{estado_pedido\}/g, estadoPedido)
+    .trim();
+}
+
+export function buildMensajeEnPreparacion(nombreCliente: string, numeroPedido: string): string {
+  const tpl = currentTemplates.msg_preparing || DEFAULT_WHATSAPP_TEMPLATES.msg_preparing;
+  return tpl
+    .replace(/\{nombre_cliente\}/g, nombreCliente || 'Cliente')
+    .replace(/\{numero_pedido\}/g, (numeroPedido || '').slice(0, 8).toUpperCase())
+    .trim();
+}
+
+export function buildMensajeListo(nombreCliente: string, numeroPedido: string): string {
+  const tpl = currentTemplates.msg_ready || DEFAULT_WHATSAPP_TEMPLATES.msg_ready;
+  return tpl
+    .replace(/\{nombre_cliente\}/g, nombreCliente || 'Cliente')
+    .replace(/\{numero_pedido\}/g, (numeroPedido || '').slice(0, 8).toUpperCase())
     .trim();
 }
 

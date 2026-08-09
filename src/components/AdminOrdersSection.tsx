@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus } from 'lucide-react';
-import { WHATSAPP_NUMERO, buildMensajeEstadoPedido } from '../lib/whatsapp';
+import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo } from '../lib/whatsapp';
 import { admin as adminApi, products as productsApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 
@@ -592,8 +592,18 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500">Estado del Pago: </span>
-                  <span className="font-bold text-purple-700 capitalize">{selectedOrder.status}</span>
+                  <span className="text-slate-500">Estado del Pedido: </span>
+                  <span className="font-bold text-purple-700">
+                    {selectedOrder.status === 'preparing' || selectedOrder.status === 'en_preparacion'
+                      ? 'En preparación'
+                      : selectedOrder.status === 'ready' || selectedOrder.status === 'listo'
+                      ? 'Listo para retirar'
+                      : selectedOrder.status === 'paid'
+                      ? 'Pagado'
+                      : selectedOrder.status === 'pending'
+                      ? 'Pendiente de pago'
+                      : selectedOrder.status}
+                  </span>
                 </div>
                 {selectedOrder.shipping_address && (
                   <div className="col-span-2">
@@ -646,28 +656,42 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
               </div>
             </div>
 
-            {/* Total + Actions */}
+            {/* Total + 2 WhatsApp Action Buttons */}
             <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-xs text-slate-500">Monto Total</span>
                 <p className="text-2xl font-black text-purple-700">${Number(selectedOrder.total || 0).toFixed(2)}</p>
               </div>
 
-              <div className="flex items-center space-x-3 w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
                 <a
                   href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(
-                    buildMensajeEstadoPedido(
-                      selectedOrder.shipping_name || 'Cliente',
-                      selectedOrder.id,
-                      selectedOrder.status === 'paid' ? 'Pagado' : selectedOrder.status === 'pending' ? 'Pendiente' : selectedOrder.status
+                    buildMensajeEnPreparacion(
+                      selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
+                      selectedOrder.id
                     )
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl text-xs shadow transition-colors"
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all hover:scale-105"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Contactar por WhatsApp</span>
+                  <MessageCircle className="w-4 h-4 text-indigo-200" />
+                  <span>Avisar: En Preparación</span>
+                </a>
+
+                <a
+                  href={`https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(
+                    buildMensajeListo(
+                      selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
+                      selectedOrder.id
+                    )
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all hover:scale-105"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-200" />
+                  <span>Avisar: Listo para Retirar</span>
                 </a>
               </div>
             </div>
