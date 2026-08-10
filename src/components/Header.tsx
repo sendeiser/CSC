@@ -61,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   const handleLogout = async () => {
-    await Promise.all([authApi.logout().catch(() => {}), supabase.auth.signOut().catch(() => {})]);
+    await Promise.all([authApi.logout().catch(() => { }), supabase.auth.signOut().catch(() => { })]);
     setAuthToken(null);
     setSession({ isLoggedIn: false, email: null, name: null, role: undefined });
     setMobileMenuOpen(false);
@@ -70,11 +70,10 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
       <header
-        className={`sticky top-0 z-50 transition-all duration-200 ${
-          scrolled
+        className={`sticky top-0 z-50 transition-all duration-200 ${scrolled
             ? 'bg-white/98 sm:bg-white/90 sm:backdrop-blur-md shadow-md shadow-purple-100/40 border-b border-pink-100/60'
             : 'bg-white/95 sm:bg-white/80 sm:backdrop-blur-sm border-b border-pink-100/40'
-        }`}
+          }`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className={`flex items-center justify-between transition-all duration-300 ${scrolled ? 'h-14 sm:h-16' : 'h-16 sm:h-20'}`}>
@@ -90,10 +89,10 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <div className="flex flex-col leading-none">
                 <span className="font-headline font-extrabold text-lg sm:text-xl tracking-tight candy-gradient-text">
-                  Chamical
+                  Candy Shop
                 </span>
                 <span className="font-sans text-[10px] font-semibold text-purple-400 tracking-widest uppercase -mt-0.5 hidden sm:block">
-                  Candy Shop
+                  Chamical
                 </span>
               </div>
             </motion.div>
@@ -107,11 +106,10 @@ export const Header: React.FC<HeaderProps> = ({
                     key={item.screen}
                     id={`nav-link-${item.screen}`}
                     onClick={() => handleNavClick(item.screen)}
-                    className={`relative px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                      isActive
+                    className={`relative px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${isActive
                         ? 'text-purple-700 bg-purple-50'
                         : 'text-gray-500 hover:text-purple-600 hover:bg-purple-50/50'
-                    }`}
+                      }`}
                   >
                     {isActive && (
                       <motion.span
@@ -131,11 +129,10 @@ export const Header: React.FC<HeaderProps> = ({
               {session.isLoggedIn && session.role === 'admin' && (
                 <button
                   onClick={() => setActiveScreen('admin')}
-                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                    activeScreen === 'admin'
+                  className={`flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all ${activeScreen === 'admin'
                       ? 'bg-purple-600 text-white shadow-md'
                       : 'text-purple-700 bg-purple-100/80 hover:bg-purple-200/80 border border-purple-300'
-                  }`}
+                    }`}
                 >
                   <Settings className="w-3.5 h-3.5" />
                   <span>Panel Admin</span>
@@ -186,11 +183,10 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 id="header-cart-btn"
                 onClick={() => setActiveScreen('carrito')}
-                className={`relative p-2.5 rounded-xl border transition-all duration-200 ${
-                  activeScreen === 'carrito'
+                className={`relative p-2.5 rounded-xl border transition-all duration-200 ${activeScreen === 'carrito'
                     ? 'candy-gradient-bg text-white border-transparent shadow-md'
                     : 'bg-white hover:bg-purple-50 text-purple-700 border-purple-100 hover:border-purple-200'
-                }`}
+                  }`}
               >
                 <ShoppingBag className="w-5 h-5" />
                 <AnimatePresence>
@@ -243,15 +239,16 @@ export const Header: React.FC<HeaderProps> = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.12 }}
               onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-[60] bg-black/45 md:hidden"
             />
             {/* Drawer */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 350, damping: 35 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
               className="fixed top-0 right-0 bottom-0 z-[70] w-72 bg-white shadow-2xl md:hidden flex flex-col"
             >
               {/* Drawer header */}
@@ -281,11 +278,10 @@ export const Header: React.FC<HeaderProps> = ({
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.05 }}
                       onClick={() => { handleNavClick(item.screen); setMobileMenuOpen(false); }}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                        isActive
+                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${isActive
                           ? 'bg-purple-50 text-purple-700 border border-purple-100'
                           : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       <item.Icon className={`w-4.5 h-4.5 ${isActive ? 'text-purple-600' : 'text-gray-400'}`} />
                       <span>{item.label}</span>

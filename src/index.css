@@ -285,3 +285,36 @@
   }
 }
 
+/* ─── Mobile Performance Optimizations ───────────────────────── */
+@media (max-width: 640px) {
+  /* Eliminar backdrop-blur pesado en móviles para navegación ultra rápida */
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg,
+  .backdrop-blur-xl,
+  .backdrop-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Desactivar animaciones continuas en bucle en móviles para liberar GPU/CPU */
+  .animate-bounce,
+  .animate-pulse,
+  .animate-ping,
+  .animate-ping-slow,
+  .animate-float,
+  .animate-float-delayed {
+    animation: none !important;
+  }
+
+  /* Respuesta al toque táctil instantánea de 0ms */
+  button, a, input, select {
+    touch-action: manipulation !important;
+  }
+
+  /* Optimizar renderizado de cuadrículas de tarjetas de productos */
+  .grid > div {
+    contain: layout style paint;
+  }
+}
+

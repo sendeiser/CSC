@@ -410,90 +410,88 @@ export default function App() {
       )}
 
       <main className={activeScreen === 'admin' ? 'min-h-screen bg-slate-100' : 'flex-1'}>
-        <AnimatePresence mode="wait">
-          {activeScreen === 'inicio' && (
-            <motion.div key="inicio" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <LandingScreen
-                setActiveScreen={handleSetActiveScreen}
-                setSelectedProductById={handleSetSelectedProductId}
-                heroProduct={allProducts[0] || PRODUCTS[0]}
-                allProducts={allProducts}
-              />
-            </motion.div>
-          )}
+        {activeScreen === 'inicio' && (
+          <div key="inicio">
+            <LandingScreen
+              setActiveScreen={handleSetActiveScreen}
+              setSelectedProductById={handleSetSelectedProductId}
+              heroProduct={allProducts[0] || PRODUCTS[0]}
+              allProducts={allProducts}
+            />
+          </div>
+        )}
 
-          {activeScreen === 'catalogo' && (
-            <motion.div key="catalogo" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <CatalogScreen
-                setActiveScreen={handleSetActiveScreen}
-                setSelectedProductById={handleSetSelectedProductId}
-                addToCart={addToCart}
-                favorites={favorites}
-                toggleFavorite={toggleFavorite}
-              />
-            </motion.div>
-          )}
+        {activeScreen === 'catalogo' && (
+          <div key="catalogo">
+            <CatalogScreen
+              setActiveScreen={handleSetActiveScreen}
+              setSelectedProductById={handleSetSelectedProductId}
+              addToCart={addToCart}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+            />
+          </div>
+        )}
 
-          {activeScreen === 'detalle' && activeProduct && (
-            <motion.div key="detalle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <ProductDetailScreen
-                product={activeProduct}
-                allProducts={allProducts}
-                setActiveScreen={handleSetActiveScreen}
-                setSelectedProductById={handleSetSelectedProductId}
-                addToCart={addToCart}
-                favorites={favorites}
-                toggleFavorite={toggleFavorite}
-              />
-            </motion.div>
-          )}
+        {activeScreen === 'detalle' && activeProduct && (
+          <div key="detalle">
+            <ProductDetailScreen
+              product={activeProduct}
+              allProducts={allProducts}
+              setActiveScreen={handleSetActiveScreen}
+              setSelectedProductById={handleSetSelectedProductId}
+              addToCart={addToCart}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+            />
+          </div>
+        )}
 
-          {activeScreen === 'carrito' && (
-            <motion.div key="carrito" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <CartScreen
-                cart={cart}
-                setCart={setCart}
-                setActiveScreen={handleSetActiveScreen}
-                isLoggedIn={session.isLoggedIn}
-                userSession={session}
-              />
-            </motion.div>
-          )}
+        {activeScreen === 'carrito' && (
+          <div key="carrito">
+            <CartScreen
+              cart={cart}
+              setCart={setCart}
+              setActiveScreen={handleSetActiveScreen}
+              isLoggedIn={session.isLoggedIn}
+              userSession={session}
+            />
+          </div>
+        )}
 
-          {activeScreen === 'login' && (
-            <motion.div key="login" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <AuthScreens type="login" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
-            </motion.div>
-          )}
+        {activeScreen === 'login' && (
+          <div key="login">
+            <AuthScreens type="login" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
+          </div>
+        )}
 
-          {activeScreen === 'registro' && (
-            <motion.div key="registro" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <AuthScreens type="register" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
-            </motion.div>
-          )}
+        {activeScreen === 'registro' && (
+          <div key="registro">
+            <AuthScreens type="register" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
+          </div>
+        )}
 
-          {activeScreen === 'admin' && session.role === 'admin' && (
-            <AdminPanel setActiveScreen={handleSetActiveScreen} setSession={setSession} onProductsUpdated={refreshProducts} />
-          )}
+        {activeScreen === 'admin' && session.role === 'admin' && (
+          <AdminPanel setActiveScreen={handleSetActiveScreen} setSession={setSession} onProductsUpdated={refreshProducts} />
+        )}
 
-          {activeScreen === 'nosotros' && (
-            <motion.div key="nosotros" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <AboutUsScreen setActiveScreen={handleSetActiveScreen} />
-            </motion.div>
-          )}
+        {activeScreen === 'nosotros' && (
+          <div key="nosotros">
+            <AboutUsScreen setActiveScreen={handleSetActiveScreen} />
+          </div>
+        )}
 
-          {activeScreen === 'como-comprar' && (
-            <motion.div key="como-comprar" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <HowToBuyScreen setActiveScreen={handleSetActiveScreen} />
-            </motion.div>
-          )}
+        {activeScreen === 'como-comprar' && (
+          <div key="como-comprar">
+            <HowToBuyScreen setActiveScreen={handleSetActiveScreen} />
+          </div>
+        )}
 
-          {activeScreen === 'mis-pedidos' && (
-            <motion.div key="mis-pedidos" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-              <MyOrdersScreen setActiveScreen={handleSetActiveScreen} session={session} />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {activeScreen === 'mis-pedidos' && (
+          <div key="mis-pedidos">
+            <MyOrdersScreen setActiveScreen={handleSetActiveScreen} session={session} />
+          </div>
+        )}
       </main>
 
       {activeScreen !== 'admin' && (
@@ -508,8 +506,8 @@ export default function App() {
                       <img src="/logo.png" alt="Chamical Candy Shop" className="w-full h-full object-contain rounded-full bg-white p-0.5" />
                     </div>
                     <div>
-                      <span className="font-headline font-extrabold text-lg text-white tracking-tight">Chamical</span>
-                      <span className="text-purple-400 font-semibold text-lg"> Candy Shop</span>
+                      <span className="font-headline font-extrabold text-lg text-white tracking-tight">Candy Shop</span>
+                      <span className="text-purple-400 font-semibold text-lg"> Chamical</span>
                     </div>
                   </div>
                   <p className="text-sm text-slate-400 leading-relaxed max-w-xs">
@@ -518,7 +516,7 @@ export default function App() {
                   <div className="flex items-center space-x-2">
                     <span className="inline-flex items-center space-x-1.5 bg-emerald-500/20 text-emerald-400 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-500/30">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Tienda física y online</span>
+                      <span>Tienda online</span>
                     </span>
                   </div>
                 </div>
