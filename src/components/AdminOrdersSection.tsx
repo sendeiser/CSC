@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus, Clock, Zap, Send } from 'lucide-react';
-import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo, extractCustomerPhone, waLink, DEFAULT_CUSTOM_WHATSAPP_MESSAGES, CustomWhatsAppMessage, buildCustomMensajeWhatsApp } from '../lib/whatsapp';
+import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus, Clock, Sparkles } from 'lucide-react';
+import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo, extractCustomerPhone, waLink, DEFAULT_CUSTOM_QUICK_MESSAGES, buildMensajePersonalizado, CustomQuickMessage } from '../lib/whatsapp';
 import { admin as adminApi, products as productsApi, homepage as homepageApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 
@@ -27,14 +27,11 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
-  // Custom WhatsApp Quick Responses
-  const [customMessages, setCustomMessages] = useState<CustomWhatsAppMessage[]>(DEFAULT_CUSTOM_WHATSAPP_MESSAGES);
+  const [storeSettings, setStoreSettings] = useState<any>(null);
 
   useEffect(() => {
-    homepageApi.getSettings().then((data) => {
-      if (data && Array.isArray(data.custom_whatsapp_messages) && data.custom_whatsapp_messages.length > 0) {
-        setCustomMessages(data.custom_whatsapp_messages);
-      }
+    homepageApi.getSettings().then(data => {
+      if (data) setStoreSettings(data);
     }).catch(console.error);
   }, []);
 
@@ -916,46 +913,6 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
               </div>
             </div>
 
-            {/* Quick Responses Section */}
-            {customMessages.length > 0 && (
-              <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs uppercase text-amber-900 tracking-wider flex items-center space-x-1.5">
-                    <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
-                    <span>Respuestas Rápidas de Vendedor (1 Clic a WhatsApp)</span>
-                  </h4>
-                  <span className="text-[10px] text-amber-700 font-semibold">Mensajes automáticos</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {customMessages.map((msg) => {
-                    const targetCustomerPhone = extractCustomerPhone(selectedOrder) || WHATSAPP_NUMERO;
-                    const builtMsg = buildCustomMensajeWhatsApp(msg.content, {
-                      nombreCliente: selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
-                      numeroPedido: selectedOrder.id,
-                      montoTotal: selectedOrder.total,
-                      direccionCliente: selectedOrder.shipping_address || '',
-                      estadoPedido: selectedOrder.status,
-                    });
-
-                    return (
-                      <a
-                        key={msg.id}
-                        href={waLink(builtMsg, targetCustomerPhone)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-between p-2.5 bg-white hover:bg-emerald-50 text-slate-800 hover:text-emerald-900 border border-amber-200/60 hover:border-emerald-300 font-bold rounded-xl text-xs shadow-sm transition-all hover:scale-[1.01]"
-                        title={`Enviar a WhatsApp: ${msg.title}`}
-                      >
-                        <span className="truncate text-[11px]">{msg.title}</span>
-                        <Send className="w-3.5 h-3.5 text-emerald-600 ml-1.5 flex-shrink-0" />
-                      </a>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* Total + 2 WhatsApp Action Buttons */}
             <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
@@ -965,6 +922,10 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
 
               {(() => {
                 const targetCustomerPhone = extractCustomerPhone(selectedOrder) || WHATSAPP_NUMERO;
+                const quickMsgs: CustomQuickMessage[] = (storeSettings?.custom_messages && Array.isArray(storeSettings.custom_messages) && storeSettings.custom_messages.length > 0)
+                  ? storeSettings.custom_messages
+                  : DEFAULT_CUSTOM_QUICK_MESSAGES;
+
                 return (
                   <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
                     <a
@@ -998,6 +959,32 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                       <CheckCircle2 className="w-4 h-4 text-emerald-200" />
                       <span>Avisar: Listo para Retirar</span>
                     </a>
+
+                    {/* Quick Responses Selector */}
+                    <div className="relative w-full sm:w-auto">
+                      <select
+                        defaultValue=""
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          if (!selectedId) return;
+                          const found = quickMsgs.find(m => m.id === selectedId);
+                          if (found) {
+                            const msgText = buildMensajePersonalizado(found.content, selectedOrder, storeSettings);
+                            window.open(waLink(msgText, targetCustomerPhone), '_blank', 'noopener,noreferrer');
+                          }
+                          e.target.value = '';
+                        }}
+                        className="w-full sm:w-auto px-4 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs shadow-md outline-none cursor-pointer border border-purple-600 appearance-none pr-8 transition-all hover:scale-105"
+                      >
+                        <option value="" disabled>💬 Respuestas Rápidas...</option>
+                        {quickMsgs.map((m) => (
+                          <option key={m.id} value={m.id} className="bg-slate-900 text-white py-1">
+                            {m.title} {m.category ? `(${m.category})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <Sparkles className="w-3.5 h-3.5 text-purple-200 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
                 );
               })()}

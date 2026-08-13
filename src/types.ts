@@ -1,3 +1,5 @@
+import { CustomQuickMessage } from './lib/whatsapp';
+
 export interface Product {
   id: string;
   slug: string;
@@ -36,12 +38,6 @@ export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'regist
 
 export type AdminSection = 'dashboard' | 'analytics' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'about-page' | 'categories' | 'whatsapp' | 'shipping';
 
-export interface CustomWhatsAppMessage {
-  id: string;
-  title: string;
-  content: string;
-}
-
 export interface StoreSettings {
   whatsapp_number_1: string;
   whatsapp_number_2: string;
@@ -53,7 +49,7 @@ export interface StoreSettings {
   msg_order_status?: string;
   msg_preparing?: string;
   msg_ready?: string;
-  custom_whatsapp_messages?: CustomWhatsAppMessage[];
+  custom_messages?: CustomQuickMessage[];
   fulfillment_type: 'both' | 'pickup_only' | 'delivery_only';
   delivery_cost: number;
   free_delivery_over: number;

@@ -13,32 +13,43 @@ export interface WhatsAppTemplates {
   msg_ready: string;
 }
 
-export interface CustomWhatsAppMessage {
+export interface CustomQuickMessage {
   id: string;
   title: string;
+  category?: string;
   content: string;
 }
 
-export const DEFAULT_CUSTOM_WHATSAPP_MESSAGES: CustomWhatsAppMessage[] = [
+export const DEFAULT_CUSTOM_QUICK_MESSAGES: CustomQuickMessage[] = [
   {
-    id: 'demora_delivery',
-    title: '🚚 Retraso / Demora en Delivery',
-    content: '¡Hola {nombre_cliente}! 🚚 Te avisamos que tu pedido #{numero_pedido} se encuentra demorado unos minutos por alta demanda. ¡El repartidor ya está en camino!'
+    id: 'msg_location',
+    title: '🏬 Ubicación y Horario del Local',
+    category: 'Información',
+    content: '¡Hola {nombre_cliente}! 🏬 Nos encontramos en {direccion_local}. Nuestro horario de atención es {horarios}. ¡Te esperamos!'
   },
   {
-    id: 'recordatorio_pago',
-    title: '💳 Recordatorio de Pago Pendiente',
-    content: '¡Hola {nombre_cliente}! 👋 Te recordamos que tu pedido #{numero_pedido} por {monto_total} sigue reservado y pendiente de pago. ¡Avisanos cuando realices la transferencia!'
+    id: 'msg_cbu',
+    title: '💳 Datos CBU / Transferencia',
+    category: 'Pagos',
+    content: '¡Hola {nombre_cliente}! 💳 Podés transferir a nuestra cuenta:\n• Banco: {banco}\n• Alias: {alias}\n• Titular: {titular}\n\nUna vez realizada, envianos el comprobante por este chat para confirmar tu compra. ¡Gracias!'
   },
   {
-    id: 'ubicacion_local',
-    title: '📍 Ubicación y Dirección del Local',
-    content: '¡Hola {nombre_cliente}! 📍 Nuestro local está ubicado en Av. Presidente Perón N°145 (Frente del Super X Día), Chamical. ¡Te esperamos!'
+    id: 'msg_delivery_info',
+    title: '🚚 Información de Envíos',
+    category: 'Envíos',
+    content: '¡Hola {nombre_cliente}! 🚚 Realizamos envíos a domicilio en Chamical. {notas_envio}. Costo de envío: {costo_envio} (Envío GRATIS en compras superiores a {envio_gratis}).'
   },
   {
-    id: 'horarios_atencion',
-    title: '⏰ Horarios de Atención',
-    content: '¡Hola {nombre_cliente}! 🕒 Abrimos de Lunes a Sábado de 09:00 a 13:00 hs y de 17:00 a 21:00 hs. ¡Cualquier duda nos avisás!'
+    id: 'msg_promo_day',
+    title: '🎁 Promoción del Día',
+    category: 'Promociones',
+    content: '¡Hola {nombre_cliente}! 🍬 Te contamos que hoy tenemos promociones exclusivas en combos y gomitas a granel. ¡Consultanos o mirá nuestro catálogo online en la web!'
+  },
+  {
+    id: 'msg_reminder',
+    title: '⏳ Recordatorio de Confirmación',
+    category: 'Seguimiento',
+    content: '¡Hola {nombre_cliente}! ⏳ Queríamos consultarte si vas a confirmar tu pedido #{numero_pedido} por {monto_total}. Guardamos tu reserva por 24hs. ¡Avisanos si tenés alguna duda!'
   }
 ];
 
@@ -198,6 +209,30 @@ export function waLink(mensaje: string, targetPhone?: string): string {
   return `https://wa.me/${phone}?text=${encodeURIComponent(mensaje)}`;
 }
 
+export function buildMensajePersonalizado(templateContent: string, order?: any, extraVars?: Record<string, any>): string {
+  if (!templateContent) return '';
+
+  const nombreCliente = order ? (order.shipping_name || order.profiles?.name || 'Cliente') : 'Cliente';
+  const numeroPedido = order?.id ? order.id.slice(0, 8).toUpperCase() : 'N/A';
+  const montoTotal = order?.total ? `$${Number(order.total).toFixed(2)}` : '$0.00';
+
+  let result = templateContent
+    .replace(/\{nombre_cliente\}/g, nombreCliente)
+    .replace(/\{numero_pedido\}/g, numeroPedido)
+    .replace(/\{monto_total\}/g, montoTotal)
+    .replace(/\{banco\}/g, DATOS_BANCO.banco)
+    .replace(/\{alias\}/g, DATOS_BANCO.alias)
+    .replace(/\{titular\}/g, DATOS_BANCO.titular)
+    .replace(/\{cbu\}/g, DATOS_BANCO.cbu || 'N/A')
+    .replace(/\{direccion_local\}/g, extraVars?.pickup_address || 'Av. Presidente Perón N°145 (Frente del Super X Día), Chamical')
+    .replace(/\{horarios\}/g, extraVars?.pickup_schedule || 'Lunes a Sábado de 09:00 a 20:00 hs')
+    .replace(/\{notas_envio\}/g, extraVars?.delivery_notes || 'Envíos en el día dentro del radio urbano.')
+    .replace(/\{costo_envio\}/g, extraVars?.delivery_cost !== undefined ? `$${Number(extraVars.delivery_cost).toFixed(2)}` : '$0.00')
+    .replace(/\{envio_gratis\}/g, extraVars?.free_delivery_over !== undefined ? `$${Number(extraVars.free_delivery_over).toFixed(2)}` : '$0.00');
+
+  return result.trim();
+}
+
 export function extractCustomerPhone(order: any): string {
   if (!order) return '';
 
@@ -236,34 +271,4 @@ export function extractCustomerPhone(order: any): string {
   }
 
   return '';
-}
-
-export function buildCustomMensajeWhatsApp(
-  rawContent: string,
-  vars: {
-    nombreCliente?: string;
-    numeroPedido?: string;
-    montoTotal?: number | string;
-    direccionCliente?: string;
-    estadoPedido?: string;
-  }
-): string {
-  if (!rawContent) return '';
-
-  const nombre = vars.nombreCliente || 'Cliente';
-  const pedido = (vars.numeroPedido || '').slice(0, 8).toUpperCase();
-  const total = vars.montoTotal !== undefined ? (typeof vars.montoTotal === 'number' ? `$${vars.montoTotal.toFixed(2)}` : String(vars.montoTotal)) : '';
-  const direccion = vars.direccionCliente || '';
-  const estado = vars.estadoPedido || '';
-
-  return rawContent
-    .replace(/\{nombre_cliente\}/g, nombre)
-    .replace(/\{numero_pedido\}/g, pedido)
-    .replace(/\{monto_total\}/g, total)
-    .replace(/\{direccion_cliente\}/g, direccion)
-    .replace(/\{estado_pedido\}/g, estado)
-    .replace(/\{banco\}/g, DATOS_BANCO.banco)
-    .replace(/\{alias\}/g, DATOS_BANCO.alias)
-    .replace(/\{titular\}/g, DATOS_BANCO.titular)
-    .trim();
 }

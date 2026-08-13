@@ -1,17 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Save, RefreshCw, HelpCircle, Check, Info, Phone, MessageCircle, RotateCcw, Copy, Sparkles, Smartphone, Plus, Trash2, Edit3, Send, Zap } from 'lucide-react';
+import { MessageSquare, Save, RefreshCw, HelpCircle, Check, Info, Phone, MessageCircle, RotateCcw, Copy, Sparkles, Smartphone, Plus, Trash2, Edit3, X } from 'lucide-react';
 import { admin as adminApi, homepage as homepageApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
-import { DEFAULT_WHATSAPP_TEMPLATES, DEFAULT_CUSTOM_WHATSAPP_MESSAGES, CustomWhatsAppMessage, setWhatsAppNumbers, setWhatsAppTemplates, buildCustomMensajeWhatsApp, waLink } from '../lib/whatsapp';
+import { DEFAULT_WHATSAPP_TEMPLATES, DEFAULT_CUSTOM_QUICK_MESSAGES, CustomQuickMessage, setWhatsAppNumbers, setWhatsAppTemplates, waLink } from '../lib/whatsapp';
 
 export const AdminWhatsAppEditor: React.FC = () => {
   const { showAlert } = useModal();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'transfer' | 'mercadopago' | 'preparing' | 'ready' | 'general' | 'numbers' | 'custom'>('custom');
+  const [activeTab, setActiveTab] = useState<'transfer' | 'mercadopago' | 'preparing' | 'ready' | 'general' | 'numbers' | 'custom_quick'>('transfer');
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    whatsapp_number_1: string;
+    whatsapp_number_2: string;
+    active_whatsapp_number: 'num1' | 'num2';
+    msg_transfer: string;
+    msg_mercadopago: string;
+    msg_general_inquiry: string;
+    msg_order_status: string;
+    msg_preparing: string;
+    msg_ready: string;
+    custom_messages: CustomQuickMessage[];
+  }>({
     whatsapp_number_1: '543826432180',
     whatsapp_number_2: '5493826432180',
     active_whatsapp_number: 'num1',
@@ -21,16 +32,20 @@ export const AdminWhatsAppEditor: React.FC = () => {
     msg_order_status: DEFAULT_WHATSAPP_TEMPLATES.msg_order_status,
     msg_preparing: DEFAULT_WHATSAPP_TEMPLATES.msg_preparing,
     msg_ready: DEFAULT_WHATSAPP_TEMPLATES.msg_ready,
-    custom_whatsapp_messages: DEFAULT_CUSTOM_WHATSAPP_MESSAGES as CustomWhatsAppMessage[],
+    custom_messages: DEFAULT_CUSTOM_QUICK_MESSAGES,
   });
 
-  const [editingCustomId, setEditingCustomId] = useState<string | null>(null);
-  const [customFormTitle, setCustomFormTitle] = useState('');
-  const [customFormContent, setCustomFormContent] = useState('');
-  const [showAddCustomCard, setShowAddCustomCard] = useState(false);
-  const [selectedCustomPreviewId, setSelectedCustomPreviewId] = useState<string | null>(null);
-
   const [copiedTag, setCopiedTag] = useState<string | null>(null);
+
+  // Quick custom message modal state
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [editingMsg, setEditingMsg] = useState<CustomQuickMessage | null>(null);
+  const [customMsgForm, setCustomMsgForm] = useState<{ title: string; category: string; content: string }>({
+    title: '',
+    category: 'General',
+    content: ''
+  });
+  const [selectedCustomId, setSelectedCustomId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -51,9 +66,9 @@ export const AdminWhatsAppEditor: React.FC = () => {
           msg_order_status: data.msg_order_status || DEFAULT_WHATSAPP_TEMPLATES.msg_order_status,
           msg_preparing: data.msg_preparing || DEFAULT_WHATSAPP_TEMPLATES.msg_preparing,
           msg_ready: data.msg_ready || DEFAULT_WHATSAPP_TEMPLATES.msg_ready,
-          custom_whatsapp_messages: Array.isArray(data.custom_whatsapp_messages) && data.custom_whatsapp_messages.length > 0
-            ? data.custom_whatsapp_messages
-            : DEFAULT_CUSTOM_WHATSAPP_MESSAGES,
+          custom_messages: (Array.isArray(data.custom_messages) && data.custom_messages.length > 0)
+            ? data.custom_messages
+            : DEFAULT_CUSTOM_QUICK_MESSAGES,
         });
       }
     } catch (err: any) {
@@ -93,56 +108,63 @@ export const AdminWhatsAppEditor: React.FC = () => {
     }));
   };
 
-  const handleSaveCustomMessage = () => {
-    if (!customFormTitle.trim() || !customFormContent.trim()) {
+  const handleOpenAddCustomModal = () => {
+    setEditingMsg(null);
+    setCustomMsgForm({ title: '', category: 'General', content: '' });
+    setShowCustomModal(true);
+  };
+
+  const handleOpenEditCustomModal = (msg: CustomQuickMessage) => {
+    setEditingMsg(msg);
+    setCustomMsgForm({ title: msg.title, category: msg.category || 'General', content: msg.content });
+    setShowCustomModal(true);
+  };
+
+  const handleSaveCustomMessageModal = () => {
+    if (!customMsgForm.title.trim() || !customMsgForm.content.trim()) {
       showAlert({
-        title: 'Campos requeridos',
-        message: 'Por favor ingresá un título y el contenido de la respuesta rápida.',
-        type: 'error',
+        title: 'Campos incompletos',
+        message: 'Por favor asigná un título y el contenido del mensaje.',
+        type: 'warning',
       });
       return;
     }
 
-    if (editingCustomId) {
-      setForm((prev) => ({
-        ...prev,
-        custom_whatsapp_messages: prev.custom_whatsapp_messages.map((m) =>
-          m.id === editingCustomId
-            ? { ...m, title: customFormTitle.trim(), content: customFormContent.trim() }
+    setForm((prev) => {
+      let updated: CustomQuickMessage[];
+      if (editingMsg) {
+        updated = prev.custom_messages.map((m) =>
+          m.id === editingMsg.id
+            ? { ...m, title: customMsgForm.title.trim(), category: customMsgForm.category, content: customMsgForm.content.trim() }
             : m
-        ),
-      }));
-      setEditingCustomId(null);
-    } else {
-      const newMsg: CustomWhatsAppMessage = {
-        id: 'msg_' + Date.now() + Math.random().toString(36).slice(2, 6),
-        title: customFormTitle.trim(),
-        content: customFormContent.trim(),
-      };
-      setForm((prev) => ({
-        ...prev,
-        custom_whatsapp_messages: [...prev.custom_whatsapp_messages, newMsg],
-      }));
-    }
+        );
+      } else {
+        const newMsg: CustomQuickMessage = {
+          id: 'custom_' + Date.now(),
+          title: customMsgForm.title.trim(),
+          category: customMsgForm.category || 'General',
+          content: customMsgForm.content.trim(),
+        };
+        updated = [...prev.custom_messages, newMsg];
+      }
+      return { ...prev, custom_messages: updated };
+    });
 
-    setCustomFormTitle('');
-    setCustomFormContent('');
-    setShowAddCustomCard(false);
+    setShowCustomModal(false);
   };
 
   const handleDeleteCustomMessage = (id: string) => {
     setForm((prev) => ({
       ...prev,
-      custom_whatsapp_messages: prev.custom_whatsapp_messages.filter((m) => m.id !== id),
+      custom_messages: prev.custom_messages.filter((m) => m.id !== id),
     }));
-    if (selectedCustomPreviewId === id) setSelectedCustomPreviewId(null);
   };
 
-  const handleStartEditCustom = (msg: CustomWhatsAppMessage) => {
-    setEditingCustomId(msg.id);
-    setCustomFormTitle(msg.title);
-    setCustomFormContent(msg.content);
-    setShowAddCustomCard(true);
+  const handleRestoreDefaultCustomMessages = () => {
+    setForm((prev) => ({
+      ...prev,
+      custom_messages: DEFAULT_CUSTOM_QUICK_MESSAGES,
+    }));
   };
 
   const insertTag = (field: keyof typeof form, tag: string) => {
@@ -268,18 +290,6 @@ export const AdminWhatsAppEditor: React.FC = () => {
       {/* Tabs Navigation */}
       <div className="flex items-center space-x-2 border-b border-slate-200 pb-2 overflow-x-auto scrollbar-none">
         <button
-          onClick={() => setActiveTab('custom')}
-          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 whitespace-nowrap transition-all cursor-pointer ${
-            activeTab === 'custom'
-              ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20 ring-2 ring-amber-300'
-              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-          }`}
-        >
-          <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
-          <span>⚡ Respuestas Rápidas ({form.custom_whatsapp_messages.length})</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('transfer')}
           className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'transfer'
@@ -340,6 +350,18 @@ export const AdminWhatsAppEditor: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('custom_quick')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'custom_quick'
+              ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-purple-300" />
+          <span>Respuestas Rápidas ({form.custom_messages.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('numbers')}
           className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center space-x-2 whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'numbers'
@@ -358,194 +380,6 @@ export const AdminWhatsAppEditor: React.FC = () => {
         {/* Left / Main Editor Column */}
         <div className="lg:col-span-7 space-y-6">
           
-          {/* TAB 0: Respuestas Rápidas Personalizadas */}
-          {activeTab === 'custom' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                  <div>
-                    <h3 className="font-headline font-bold text-base text-slate-900 flex items-center space-x-2">
-                      <Zap className="w-5 h-5 text-amber-500 fill-amber-500" />
-                      <span>Respuestas Rápidas Predeterminadas</span>
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Creá y personalizá mensajes para enviarle a los clientes en 1 clic desde el Panel de Pedidos.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingCustomId(null);
-                      setCustomFormTitle('');
-                      setCustomFormContent('');
-                      setShowAddCustomCard(true);
-                    }}
-                    className="inline-flex items-center space-x-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer flex-shrink-0"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Crear Respuesta</span>
-                  </button>
-                </div>
-
-                {/* Form to add / edit custom message */}
-                {showAddCustomCard && (
-                  <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 sm:p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-bold text-xs uppercase text-amber-900 tracking-wider">
-                        {editingCustomId ? '✏️ Editar Respuesta Rápida' : '➕ Nueva Respuesta Rápida'}
-                      </h4>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCustomCard(false)}
-                        className="text-xs font-semibold text-amber-800 hover:text-amber-950 underline"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs font-bold text-slate-700 block mb-1">Título corto (ej: 🚚 Retraso en Delivery):</label>
-                        <input
-                          type="text"
-                          value={customFormTitle}
-                          onChange={(e) => setCustomFormTitle(e.target.value)}
-                          placeholder="Ej: 🚚 Demora de Reparto en Delivery"
-                          className="w-full px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-slate-700 block mb-1">Mensaje de WhatsApp:</label>
-                        <textarea
-                          rows={4}
-                          value={customFormContent}
-                          onChange={(e) => setCustomFormContent(e.target.value)}
-                          placeholder="¡Hola {nombre_cliente}! 🚚 Te informamos que tu pedido #{numero_pedido} se encuentra demorado unos minutos..."
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans outline-none focus:ring-2 focus:ring-amber-500 bg-white leading-relaxed"
-                        />
-                      </div>
-
-                      {/* Quick variable inserting buttons */}
-                      <div className="space-y-1.5 pt-1">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Insertar Variable Dinámica:</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {['{nombre_cliente}', '{numero_pedido}', '{monto_total}', '{direccion_cliente}', '{estado_pedido}'].map((tg) => (
-                            <button
-                              key={tg}
-                              type="button"
-                              onClick={() => setCustomFormContent((prev) => prev + ' ' + tg)}
-                              className="px-2.5 py-1 bg-white hover:bg-amber-100 text-slate-700 font-mono text-[11px] font-bold rounded-lg border border-slate-200 hover:border-amber-300 transition-colors cursor-pointer"
-                            >
-                              + {tg}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end pt-2">
-                        <button
-                          type="button"
-                          onClick={handleSaveCustomMessage}
-                          className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl shadow transition-all cursor-pointer flex items-center space-x-1.5"
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>{editingCustomId ? 'Guardar Cambios' : 'Agregar a la Lista'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* List of Custom Quick Messages */}
-                <div className="space-y-3 pt-2">
-                  {form.custom_whatsapp_messages.length === 0 ? (
-                    <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
-                      No tenés respuestas rápidas creadas. ¡Hacé clic en "Crear Respuesta" para agregar tu primer mensaje predeterminado!
-                    </div>
-                  ) : (
-                    form.custom_whatsapp_messages.map((msg) => {
-                      const isSelectedPreview = selectedCustomPreviewId === msg.id;
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`p-4 rounded-2xl border transition-all ${
-                            isSelectedPreview
-                              ? 'bg-amber-50/80 border-amber-300 shadow-md ring-1 ring-amber-300'
-                              : 'bg-slate-50/70 hover:bg-slate-100/80 border-slate-200/90'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="flex items-center space-x-2">
-                              <span className="font-bold text-xs sm:text-sm text-slate-900">{msg.title}</span>
-                              <span className="text-[10px] font-semibold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">Predeterminado</span>
-                            </div>
-
-                            <div className="flex items-center space-x-1">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedCustomPreviewId(msg.id)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer ${
-                                  isSelectedPreview
-                                    ? 'bg-amber-600 text-white shadow'
-                                    : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
-                                }`}
-                              >
-                                <Sparkles className="w-3 h-3" />
-                                <span>Ver Previa</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleStartEditCustom(msg)}
-                                className="p-1.5 text-slate-500 hover:text-amber-700 hover:bg-white rounded-lg transition-colors cursor-pointer"
-                                title="Editar respuesta"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCustomMessage(msg.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                title="Eliminar respuesta"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-
-                          <p className="text-xs text-slate-700 font-sans whitespace-pre-wrap leading-relaxed bg-white p-3 rounded-xl border border-slate-200/60">
-                            {msg.content}
-                          </p>
-
-                          <div className="mt-2.5 flex items-center justify-between pt-2 border-t border-slate-200/50 text-[11px]">
-                            <span className="text-slate-400">Mensaje automático listo para vendedores</span>
-                            <a
-                              href={waLink(
-                                buildCustomMensajeWhatsApp(msg.content, {
-                                  nombreCliente: 'Juan Pérez',
-                                  numeroPedido: 'F74A49D7',
-                                  montoTotal: '$4,500.00',
-                                  direccionCliente: 'Av. San Martín 123',
-                                })
-                              )}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center space-x-1 font-bold text-emerald-700 hover:text-emerald-900 hover:underline"
-                            >
-                              <span>Probar en WhatsApp</span>
-                              <Send className="w-3 h-3" />
-                            </a>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
           {/* TAB 1: Transferencia */}
           {activeTab === 'transfer' && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
@@ -802,6 +636,148 @@ export const AdminWhatsAppEditor: React.FC = () => {
             </motion.div>
           )}
 
+          {/* TAB 6: Respuestas Rápidas Prediseñadas */}
+          {activeTab === 'custom_quick' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <h3 className="font-headline font-bold text-base text-slate-900 flex items-center space-x-2">
+                    <Sparkles className="w-4 h-4 text-purple-600" />
+                    <span>Respuestas Rápidas Prediseñadas</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Creá mensajes predeterminados reutilizables para responder a tus clientes al instante desde la lista de pedidos o por WhatsApp.
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultCustomMessages}
+                    className="px-3 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5"
+                    title="Restablecer ejemplos prediseñados sugeridos"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Restablecer Ejemplos</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenAddCustomModal}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Nueva Respuesta Rápida</span>
+                  </button>
+                </div>
+              </div>
+
+              {form.custom_messages.length === 0 ? (
+                <div className="text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-6 space-y-3">
+                  <MessageCircle className="w-10 h-10 text-slate-400 mx-auto" />
+                  <p className="text-sm font-bold text-slate-700">No tenés respuestas rápidas creadas</p>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Podés crear respuestas automáticas personalizadas o cargar nuestros ejemplos prediseñados sugeridos.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleRestoreDefaultCustomMessages}
+                    className="px-4 py-2 bg-purple-100 text-purple-700 font-bold text-xs rounded-xl hover:bg-purple-200 transition-colors"
+                  >
+                    Cargar Ejemplos Sugeridos
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {form.custom_messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      onClick={() => setSelectedCustomId(msg.id)}
+                      className={`border rounded-2xl p-4 space-y-3 transition-all cursor-pointer ${
+                        selectedCustomId === msg.id
+                          ? 'border-purple-500 bg-purple-50/30 shadow-md ring-2 ring-purple-200'
+                          : 'border-slate-200 bg-slate-50/50 hover:border-purple-300 hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-bold text-slate-900">{msg.title}</span>
+                          {msg.category && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                              {msg.category}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center space-x-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditCustomModal(msg);
+                            }}
+                            className="p-1.5 text-slate-500 hover:text-purple-700 hover:bg-purple-100 rounded-lg transition-colors"
+                            title="Editar mensaje"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCustomMessage(msg.id);
+                            }}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar mensaje"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-slate-600 bg-white p-3 rounded-xl border border-slate-200 font-mono whitespace-pre-wrap leading-relaxed max-h-36 overflow-y-auto">
+                        {msg.content}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(msg.content);
+                            setCopiedTag(msg.id);
+                            setTimeout(() => setCopiedTag(null), 1500);
+                          }}
+                          className="text-[11px] font-bold text-slate-600 hover:text-purple-700 flex items-center space-x-1"
+                        >
+                          {copiedTag === msg.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedTag === msg.id ? '¡Copiado!' : 'Copiar Texto'}</span>
+                        </button>
+
+                        <a
+                          href={waLink(
+                            msg.content
+                              .replace(/\{nombre_cliente\}/g, 'Cliente')
+                              .replace(/\{numero_pedido\}/g, 'DEMO1234')
+                              .replace(/\{monto_total\}/g, '$4,500.00'),
+                            form.whatsapp_number_1
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[11px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center space-x-1 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Probar Enviar</span>
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
+
         </div>
 
         {/* Right Column: Interactive WhatsApp Live Preview & Tag Guide */}
@@ -814,18 +790,16 @@ export const AdminWhatsAppEditor: React.FC = () => {
               <span>Simulación en Vivo de Mensaje</span>
             </div>
             
-            {activeTab === 'custom' &&
-              renderWhatsAppPreview(
-                form.custom_whatsapp_messages.find((m) => m.id === selectedCustomPreviewId)?.content ||
-                customFormContent ||
-                form.custom_whatsapp_messages[0]?.content ||
-                '¡Hola {nombre_cliente}! Esta es una respuesta rápida predeterminada de prueba.'
-              )}
             {activeTab === 'transfer' && renderWhatsAppPreview(form.msg_transfer)}
             {activeTab === 'mercadopago' && renderWhatsAppPreview(form.msg_mercadopago)}
             {activeTab === 'preparing' && renderWhatsAppPreview(form.msg_preparing)}
             {activeTab === 'ready' && renderWhatsAppPreview(form.msg_ready)}
             {activeTab === 'general' && renderWhatsAppPreview(form.msg_general_inquiry)}
+            {activeTab === 'custom_quick' && (
+              selectedCustomId
+                ? renderWhatsAppPreview((form.custom_messages.find(m => m.id === selectedCustomId)?.content || ''))
+                : renderWhatsAppPreview(form.custom_messages[0]?.content || 'Seleccioná una respuesta rápida para ver la simulación.')
+            )}
             {activeTab === 'numbers' && renderWhatsAppPreview('Hola! Me comunico a este número para hacer un pedido en Chamical Candy Shop.')}
           </div>
 
@@ -889,6 +863,105 @@ export const AdminWhatsAppEditor: React.FC = () => {
           <span>{saving ? 'Guardando...' : 'Guardar Mensajes'}</span>
         </button>
       </div>
+
+      {/* Modal para Crear / Editar Respuesta Rápida */}
+      {showCustomModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-6 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="p-2 bg-purple-100 text-purple-700 rounded-xl">
+                  <Sparkles className="w-5 h-5" />
+                </span>
+                <h3 className="font-headline font-bold text-base text-slate-900">
+                  {editingMsg ? 'Editar Respuesta Rápida' : 'Nueva Respuesta Rápida'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCustomModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Título del Mensaje:</label>
+                <input
+                  type="text"
+                  placeholder="Ej: 🏬 Ubicación del Local, 💳 Datos CBU..."
+                  value={customMsgForm.title}
+                  onChange={(e) => setCustomMsgForm({ ...customMsgForm, title: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-400"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Categoría / Etiqueta:</label>
+                <select
+                  value={customMsgForm.category}
+                  onChange={(e) => setCustomMsgForm({ ...customMsgForm, category: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-purple-400"
+                >
+                  <option value="Información">Información</option>
+                  <option value="Pagos">Pagos</option>
+                  <option value="Envíos">Envíos</option>
+                  <option value="Promociones">Promociones</option>
+                  <option value="Seguimiento">Seguimiento</option>
+                  <option value="General">General</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Contenido del Mensaje:</label>
+                <textarea
+                  rows={5}
+                  placeholder="Escribí el texto con etiquetas como {nombre_cliente}, {numero_pedido}, {monto_total}..."
+                  value={customMsgForm.content}
+                  onChange={(e) => setCustomMsgForm({ ...customMsgForm, content: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 font-mono text-xs text-slate-800 outline-none focus:ring-2 focus:ring-purple-400 leading-relaxed"
+                />
+              </div>
+
+              {/* Tag Quick Insert Bar */}
+              <div>
+                <span className="text-[11px] font-bold text-slate-500 block mb-1.5">Insertar Variable Dinámica:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {tagList.map((t) => (
+                    <button
+                      key={t.tag}
+                      type="button"
+                      onClick={() => setCustomMsgForm({ ...customMsgForm, content: customMsgForm.content + ' ' + t.tag })}
+                      className="px-2 py-1 bg-slate-100 hover:bg-purple-100 text-slate-700 hover:text-purple-700 rounded-lg text-[10px] font-mono font-bold transition-colors cursor-pointer border border-slate-200"
+                    >
+                      {t.tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowCustomModal(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveCustomMessageModal}
+                className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow transition-colors cursor-pointer"
+              >
+                {editingMsg ? 'Guardar Cambios' : 'Crear Respuesta'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

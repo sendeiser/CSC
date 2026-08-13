@@ -9,7 +9,7 @@ const STORE_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'store
 
 export async function getStoreSettingsHelper() {
   const db = serviceClient || supabase
-  let settings = {
+  let settings: any = {
     whatsapp_number_1: '543826432180',
     whatsapp_number_2: '5493826432180',
     active_whatsapp_number: 'num1',
@@ -19,7 +19,7 @@ export async function getStoreSettingsHelper() {
     msg_order_status: '',
     msg_preparing: '',
     msg_ready: '',
-    custom_whatsapp_messages: undefined as any[] | undefined,
+    custom_messages: [],
     fulfillment_type: 'both',
     delivery_cost: 0,
     free_delivery_over: 0,
@@ -46,7 +46,7 @@ export async function getStoreSettingsHelper() {
         msg_order_status: data.content.msg_order_status || '',
         msg_preparing: data.content.msg_preparing || '',
         msg_ready: data.content.msg_ready || '',
-        custom_whatsapp_messages: Array.isArray(data.content.custom_whatsapp_messages) ? data.content.custom_whatsapp_messages : undefined,
+        custom_messages: Array.isArray(data.content.custom_messages) ? data.content.custom_messages : [],
         fulfillment_type: data.content.fulfillment_type || 'both',
         delivery_cost: Number(data.content.delivery_cost || 0),
         free_delivery_over: Number(data.content.free_delivery_over || 0),
@@ -67,7 +67,7 @@ export async function getStoreSettingsHelper() {
         msg_order_status: parsed.msg_order_status || '',
         msg_preparing: parsed.msg_preparing || '',
         msg_ready: parsed.msg_ready || '',
-        custom_whatsapp_messages: Array.isArray(parsed.custom_whatsapp_messages) ? parsed.custom_whatsapp_messages : undefined,
+        custom_messages: Array.isArray(parsed.custom_messages) ? parsed.custom_messages : [],
         fulfillment_type: parsed.fulfillment_type || 'both',
         delivery_cost: Number(parsed.delivery_cost || 0),
         free_delivery_over: Number(parsed.free_delivery_over || 0),
@@ -100,13 +100,7 @@ export async function saveStoreSettingsHelper(payload: any) {
     msg_order_status: payload.msg_order_status !== undefined ? String(payload.msg_order_status) : '',
     msg_preparing: payload.msg_preparing !== undefined ? String(payload.msg_preparing) : '',
     msg_ready: payload.msg_ready !== undefined ? String(payload.msg_ready) : '',
-    custom_whatsapp_messages: Array.isArray(payload.custom_whatsapp_messages)
-      ? payload.custom_whatsapp_messages.map((m: any) => ({
-          id: String(m.id || Date.now() + Math.random().toString(36).slice(2, 6)),
-          title: String(m.title || 'Respuesta Rápida').trim(),
-          content: String(m.content || '').trim()
-        }))
-      : [],
+    custom_messages: Array.isArray(payload.custom_messages) ? payload.custom_messages : [],
     fulfillment_type: ['both', 'pickup_only', 'delivery_only'].includes(payload.fulfillment_type) ? payload.fulfillment_type : 'both',
     delivery_cost: Number(payload.delivery_cost || 0),
     free_delivery_over: Number(payload.free_delivery_over || 0),
