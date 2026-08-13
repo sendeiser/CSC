@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, SlidersHorizontal, Star, Heart, ShoppingBag, Eye, Percent, RefreshCw, Scale, X, ChevronDown } from 'lucide-react';
+import { Search, SlidersHorizontal, Star, Heart, ShoppingBag, Eye, Percent, RefreshCw, Scale, X, ChevronDown, Sparkles } from 'lucide-react';
 import { ActiveScreen, Product } from '../types';
 import { products as productsApi } from '../lib/api';
 import { PromoCarousel, PromoSlide } from './PromoCarousel';
@@ -45,6 +45,7 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState<string>('Todos');
+  const [showPromoBanner, setShowPromoBanner] = useState(false);
 
   const [onlyVegan, setOnlyVegan] = React.useState(false);
   const [onlyOrganic, setOnlyOrganic] = React.useState(false);
@@ -111,16 +112,30 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-5">
-        {/* Carrusel Promocional de Banners y Productos Nuevos */}
-        <PromoCarousel
-          products={products}
-          onSelectProduct={(prod) => {
-            setSelectedProductById(prod.id);
-            setActiveScreen('detalle');
-          }}
-          onNavigate={(screen) => setActiveScreen(screen as any)}
-        />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
+        {/* Banner colapsable de ofertas */}
+        <div className="flex justify-between items-center">
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Explorar Catálogo</span>
+          <button
+            type="button"
+            onClick={() => setShowPromoBanner((s) => !s)}
+            className="text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-3 py-1.5 rounded-full inline-flex items-center space-x-1.5 transition-all cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>{showPromoBanner ? '✕ Ocultar Promociones' : '🔥 Ver Promociones y Novedades'}</span>
+          </button>
+        </div>
+
+        {showPromoBanner && (
+          <PromoCarousel
+            products={products}
+            onSelectProduct={(prod) => {
+              setSelectedProductById(prod.id);
+              setActiveScreen('detalle');
+            }}
+            onNavigate={(screen) => setActiveScreen(screen as any)}
+          />
+        )}
 
         {/* Search + Filter Bar */}
         <div className="flex gap-2 sm:gap-3">

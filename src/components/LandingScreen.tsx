@@ -64,8 +64,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
             const displayImage = heroContent.image_url || heroProduct.image_url
 
             return (
-              <React.Fragment key={section.id}>
-                <section className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
+              <section key={section.id} className="relative min-h-[85vh] flex items-center bg-gradient-to-br from-slate-950 via-purple-950 to-slate-900 overflow-hidden">
                   {/* Lightweight radial gradient ambient background */}
                   <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_30%_30%,_rgba(236,72,153,0.18),transparent_50%),radial-gradient(circle_at_70%_70%,_rgba(168,85,247,0.18),transparent_50%)]" />
 
@@ -215,24 +214,6 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                     </svg>
                   </div>
               </section>
-
-              {/* Carrusel de Publicidades y Productos Nuevos */}
-              {(() => {
-                const bannerSection = sections.find((s) => s.section_type === 'banners');
-                const customSlides: PromoSlide[] = bannerSection?.content?.slides || undefined;
-                return (
-                  <PromoCarousel
-                    slides={customSlides}
-                    products={allProducts.length > 0 ? allProducts : PRODUCTS}
-                    onSelectProduct={(prod) => {
-                      setSelectedProductById(prod.id);
-                      setActiveScreen('detalle');
-                    }}
-                    onNavigate={(screen) => setActiveScreen(screen as any)}
-                  />
-                );
-              })()}
-            </React.Fragment>
             )
           }
 
@@ -359,8 +340,40 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                     })}
                   </div>
                 </div>
+
+                {/* Promo Carousel as featured section below categories */}
+                {!sections.some((s) => s.section_type === 'banners') && (
+                  <div className="py-2">
+                    <PromoCarousel
+                      products={allProducts.length > 0 ? allProducts : PRODUCTS}
+                      onSelectProduct={(prod) => {
+                        setSelectedProductById(prod.id);
+                        setActiveScreen('detalle');
+                      }}
+                      onNavigate={(screen) => setActiveScreen(screen as any)}
+                    />
+                  </div>
+                )}
               </section>
             )
+          }
+
+          case 'banners': {
+            if (section.visible === false) return null;
+            const customSlides: PromoSlide[] = section?.content?.slides || undefined;
+            return (
+              <section key={section.id} className="py-2 bg-slate-50/40">
+                <PromoCarousel
+                  slides={customSlides}
+                  products={allProducts.length > 0 ? allProducts : PRODUCTS}
+                  onSelectProduct={(prod) => {
+                    setSelectedProductById(prod.id);
+                    setActiveScreen('detalle');
+                  }}
+                  onNavigate={(screen) => setActiveScreen(screen as any)}
+                />
+              </section>
+            );
           }
 
           case 'store': {
