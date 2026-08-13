@@ -177,7 +177,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
   };
 
   const renderWhatsAppPreview = (rawText: string) => {
-    const sampleText = rawText
+    const sampleText = (rawText || '')
       .replace(/\{numero_pedido\}/g, 'A1B2C3D4')
       .replace(/\{detalle_productos\}/g, '• 500g Gomitas Dulces = $2,500.00\n• 2x Chocolate Block = $1,800.00')
       .replace(/\{subtotal\}/g, '$4,300.00')
@@ -194,6 +194,11 @@ export const AdminWhatsAppEditor: React.FC = () => {
       .replace(/\{telefono_cliente\}/g, '3826123456')
       .replace(/\{direccion_linea\}/g, 'Notas / Dirección: Av. San Martín 123\n')
       .replace(/\{direccion_cliente\}/g, 'Av. San Martín 123')
+      .replace(/\{direccion_local\}/g, 'Av. Presidente Perón N°145 (Frente del Super X Día)')
+      .replace(/\{horarios\}/g, 'Lunes a Sábado de 09:00 a 20:00 hs')
+      .replace(/\{costo_envio\}/g, '$500.00')
+      .replace(/\{envio_gratis\}/g, '$10,000.00')
+      .replace(/\{notas_envio\}/g, 'Envíos en el día dentro del radio urbano.')
       .replace(/\{estado_pedido\}/g, 'En Preparación');
 
     // Convert *bold* to <strong>
@@ -212,21 +217,47 @@ export const AdminWhatsAppEditor: React.FC = () => {
     });
 
     return (
-      <div className="bg-[#efeae2] p-4 rounded-2xl border border-emerald-900/10 shadow-inner font-sans text-xs sm:text-sm text-slate-800 space-y-2">
-        <div className="flex items-center space-x-2 border-b border-emerald-900/10 pb-2 mb-3">
-          <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center text-white">
-            <MessageCircle className="w-4 h-4 fill-white" />
+      <div className="bg-slate-900 rounded-[32px] p-2.5 shadow-2xl border-4 border-slate-800 max-w-sm mx-auto overflow-hidden">
+        {/* Phone Top Notch Bar */}
+        <div className="flex items-center justify-between px-4 py-1 text-[10px] text-slate-400 font-mono select-none">
+          <span>09:41</span>
+          <div className="w-16 h-2.5 bg-slate-800 rounded-full" />
+          <span>100% 🔋</span>
+        </div>
+
+        {/* WhatsApp App Header Bar */}
+        <div className="bg-[#075e54] text-white px-3 py-2.5 flex items-center justify-between shadow-md rounded-t-2xl">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-8 h-8 rounded-full bg-white p-0.5 shadow-sm overflow-hidden flex-shrink-0">
+              <img src="/logo.png" alt="Candy Shop" className="w-full h-full object-contain rounded-full" />
+            </div>
+            <div className="leading-tight">
+              <span className="font-bold text-xs block text-white">Chamical Candy Shop 🍬</span>
+              <span className="text-[10px] text-emerald-200 block">En línea</span>
+            </div>
           </div>
-          <div>
-            <span className="font-bold text-slate-900 text-xs block">Vista Previa WhatsApp</span>
-            <span className="text-[10px] text-slate-500">Ejemplo de visualización en el teléfono del cliente</span>
+
+          <div className="flex items-center space-x-3 text-emerald-100">
+            <Phone className="w-4 h-4" />
+            <Smartphone className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-3 rounded-xl rounded-tl-none shadow-sm max-w-[92%] relative border border-slate-200/60 leading-relaxed">
-          {formattedLines}
-          <div className="mt-2 text-right text-[10px] text-slate-400 font-mono">
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ✓✓
+        {/* WhatsApp Wallpaper Chat Background */}
+        <div className="bg-[#efeae2] p-3 min-h-[300px] max-h-[380px] overflow-y-auto rounded-b-2xl space-y-3 font-sans text-xs">
+          <div className="text-center my-1">
+            <span className="bg-white/80 backdrop-blur-sm text-slate-500 text-[10px] font-semibold px-2.5 py-0.5 rounded-md shadow-xs">
+              HOY
+            </span>
+          </div>
+
+          {/* Outgoing Message Bubble (Green) */}
+          <div className="bg-[#d9fdd3] text-slate-900 p-3 rounded-2xl rounded-tr-none shadow-sm ml-auto max-w-[88%] border border-emerald-100 relative leading-relaxed text-xs">
+            {formattedLines}
+            <div className="mt-1.5 flex items-center justify-end space-x-1 text-[10px] text-emerald-800 font-medium">
+              <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="text-sky-600 font-bold">✓✓</span>
+            </div>
           </div>
         </div>
       </div>

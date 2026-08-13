@@ -46,6 +46,11 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
     }
   }, [products]);
 
+  // Quick Messages Modal Picker State
+  const [showQuickMsgPicker, setShowQuickMsgPicker] = useState(false);
+  const [quickSearchTerm, setQuickSearchTerm] = useState('');
+  const [quickCategoryFilter, setQuickCategoryFilter] = useState('all');
+
   // Manual Sale Modal State
   const [showManualSaleModal, setShowManualSaleModal] = useState(false);
 
@@ -968,31 +973,19 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                         <span>Avisar: Listo para Retirar</span>
                       </a>
 
-                      {/* Selector de Respuestas Rápidas Personalizadas */}
-                      <div className="relative inline-block">
-                        <select
-                          defaultValue=""
-                          onChange={(e) => {
-                            const selectedId = e.target.value;
-                            if (!selectedId) return;
-                            const found = quickMsgs.find(m => m.id === selectedId);
-                            if (found) {
-                              const msgText = buildMensajePersonalizado(found.content, selectedOrder, storeSettings);
-                              window.open(waLink(msgText, targetCustomerPhone), '_blank', 'noopener,noreferrer');
-                            }
-                            e.target.value = '';
-                          }}
-                          className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs shadow-sm outline-none cursor-pointer border border-purple-600 appearance-none pr-8 transition-all hover:scale-105 whitespace-nowrap"
-                        >
-                          <option value="" disabled>💬 Más Respuestas Rápidas...</option>
-                          {quickMsgs.map((m) => (
-                            <option key={m.id} value={m.id} className="bg-slate-900 text-white py-1">
-                              {m.title} {m.category ? `(${m.category})` : ''}
-                            </option>
-                          ))}
-                        </select>
-                        <Sparkles className="w-3.5 h-3.5 text-purple-200 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                      </div>
+                      {/* Botón Modal Picker de Respuestas Rápidas */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setQuickSearchTerm('');
+                          setQuickCategoryFilter('all');
+                          setShowQuickMsgPicker(true);
+                        }}
+                        className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs shadow-sm transition-all hover:scale-105 inline-flex items-center space-x-1.5 whitespace-nowrap cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-purple-200" />
+                        <span>💬 Respuestas Rápidas</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -1414,6 +1407,137 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+      {/* Modal Picker de Respuestas Rápidas por WhatsApp */}
+      {showQuickMsgPicker && selectedOrder && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 space-y-5 shadow-2xl relative border border-purple-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <span className="p-2 bg-purple-100 text-purple-700 rounded-xl">
+                  <MessageCircle className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-headline font-bold text-base text-slate-900">
+                    Respuestas Rápidas por WhatsApp
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Seleccioná un mensaje para enviar a <b className="text-purple-700">{selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente'}</b> (📲 {extractCustomerPhone(selectedOrder) || WHATSAPP_NUMERO})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowQuickMsgPicker(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Buscador y Filtros por Categoría */}
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar respuesta rápida por título o texto..."
+                  value={quickSearchTerm}
+                  onChange={(e) => setQuickSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs font-medium outline-none focus:ring-2 focus:ring-purple-400 bg-slate-50/50"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                {['all', 'Información', 'Pagos', 'Envíos', 'Promociones', 'Seguimiento', 'General'].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setQuickCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+                      quickCategoryFilter === cat
+                        ? 'bg-purple-700 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {cat === 'all' ? 'Todas' : cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grid de Plantillas de Mensajes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1">
+              {(() => {
+                const targetPhone = extractCustomerPhone(selectedOrder) || WHATSAPP_NUMERO;
+                const quickMsgs: CustomQuickMessage[] = (storeSettings?.custom_messages && Array.isArray(storeSettings.custom_messages) && storeSettings.custom_messages.length > 0)
+                  ? storeSettings.custom_messages
+                  : DEFAULT_CUSTOM_QUICK_MESSAGES;
+
+                const filtered = quickMsgs.filter((m) => {
+                  const matchesCategory = quickCategoryFilter === 'all' || m.category === quickCategoryFilter;
+                  const matchesSearch = !quickSearchTerm.trim() || 
+                    m.title.toLowerCase().includes(quickSearchTerm.toLowerCase()) || 
+                    m.content.toLowerCase().includes(quickSearchTerm.toLowerCase());
+                  return matchesCategory && matchesSearch;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="col-span-2 text-center py-8 text-xs text-slate-500">
+                      No se encontraron respuestas rápidas para esta búsqueda.
+                    </div>
+                  );
+                }
+
+                return filtered.map((m) => {
+                  const renderedMsg = buildMensajePersonalizado(m.content, selectedOrder, storeSettings);
+
+                  return (
+                    <div
+                      key={m.id}
+                      onClick={() => {
+                        window.open(waLink(renderedMsg, targetPhone), '_blank', 'noopener,noreferrer');
+                        setShowQuickMsgPicker(false);
+                      }}
+                      className="border border-slate-200 hover:border-purple-500 bg-slate-50/60 hover:bg-purple-50/40 p-4 rounded-2xl space-y-2 transition-all cursor-pointer group shadow-xs hover:shadow-md"
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="font-bold text-xs text-slate-900 group-hover:text-purple-700">{m.title}</span>
+                        {m.category && (
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                            {m.category}
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 font-mono bg-white p-2.5 rounded-xl border border-slate-200 line-clamp-3 leading-relaxed">
+                        {renderedMsg}
+                      </p>
+
+                      <div className="flex items-center justify-end pt-1">
+                        <span className="text-[11px] font-bold text-emerald-600 group-hover:text-emerald-700 inline-flex items-center space-x-1">
+                          <span>Enviar Mensaje</span>
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        </span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            <div className="flex justify-end border-t border-slate-100 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowQuickMsgPicker(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
