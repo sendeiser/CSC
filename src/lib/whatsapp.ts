@@ -13,6 +13,35 @@ export interface WhatsAppTemplates {
   msg_ready: string;
 }
 
+export interface CustomWhatsAppMessage {
+  id: string;
+  title: string;
+  content: string;
+}
+
+export const DEFAULT_CUSTOM_WHATSAPP_MESSAGES: CustomWhatsAppMessage[] = [
+  {
+    id: 'demora_delivery',
+    title: '🚚 Retraso / Demora en Delivery',
+    content: '¡Hola {nombre_cliente}! 🚚 Te avisamos que tu pedido #{numero_pedido} se encuentra demorado unos minutos por alta demanda. ¡El repartidor ya está en camino!'
+  },
+  {
+    id: 'recordatorio_pago',
+    title: '💳 Recordatorio de Pago Pendiente',
+    content: '¡Hola {nombre_cliente}! 👋 Te recordamos que tu pedido #{numero_pedido} por {monto_total} sigue reservado y pendiente de pago. ¡Avisanos cuando realices la transferencia!'
+  },
+  {
+    id: 'ubicacion_local',
+    title: '📍 Ubicación y Dirección del Local',
+    content: '¡Hola {nombre_cliente}! 📍 Nuestro local está ubicado en Av. Presidente Perón N°145 (Frente del Super X Día), Chamical. ¡Te esperamos!'
+  },
+  {
+    id: 'horarios_atencion',
+    title: '⏰ Horarios de Atención',
+    content: '¡Hola {nombre_cliente}! 🕒 Abrimos de Lunes a Sábado de 09:00 a 13:00 hs y de 17:00 a 21:00 hs. ¡Cualquier duda nos avisás!'
+  }
+];
+
 export const DEFAULT_WHATSAPP_TEMPLATES: WhatsAppTemplates = {
   msg_transfer: `Hola! Quiero confirmar mi pedido.
 
@@ -207,4 +236,34 @@ export function extractCustomerPhone(order: any): string {
   }
 
   return '';
+}
+
+export function buildCustomMensajeWhatsApp(
+  rawContent: string,
+  vars: {
+    nombreCliente?: string;
+    numeroPedido?: string;
+    montoTotal?: number | string;
+    direccionCliente?: string;
+    estadoPedido?: string;
+  }
+): string {
+  if (!rawContent) return '';
+
+  const nombre = vars.nombreCliente || 'Cliente';
+  const pedido = (vars.numeroPedido || '').slice(0, 8).toUpperCase();
+  const total = vars.montoTotal !== undefined ? (typeof vars.montoTotal === 'number' ? `$${vars.montoTotal.toFixed(2)}` : String(vars.montoTotal)) : '';
+  const direccion = vars.direccionCliente || '';
+  const estado = vars.estadoPedido || '';
+
+  return rawContent
+    .replace(/\{nombre_cliente\}/g, nombre)
+    .replace(/\{numero_pedido\}/g, pedido)
+    .replace(/\{monto_total\}/g, total)
+    .replace(/\{direccion_cliente\}/g, direccion)
+    .replace(/\{estado_pedido\}/g, estado)
+    .replace(/\{banco\}/g, DATOS_BANCO.banco)
+    .replace(/\{alias\}/g, DATOS_BANCO.alias)
+    .replace(/\{titular\}/g, DATOS_BANCO.titular)
+    .trim();
 }

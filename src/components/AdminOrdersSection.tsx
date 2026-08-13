@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus, Clock } from 'lucide-react';
-import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo, extractCustomerPhone, waLink } from '../lib/whatsapp';
-import { admin as adminApi, products as productsApi } from '../lib/api';
+import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus, Clock, Zap, Send } from 'lucide-react';
+import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo, extractCustomerPhone, waLink, DEFAULT_CUSTOM_WHATSAPP_MESSAGES, CustomWhatsAppMessage, buildCustomMensajeWhatsApp } from '../lib/whatsapp';
+import { admin as adminApi, products as productsApi, homepage as homepageApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 
 interface AdminOrdersSectionProps {
@@ -26,6 +26,17 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
   const [sortBy, setSortBy] = useState<string>('newest');
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+
+  // Custom WhatsApp Quick Responses
+  const [customMessages, setCustomMessages] = useState<CustomWhatsAppMessage[]>(DEFAULT_CUSTOM_WHATSAPP_MESSAGES);
+
+  useEffect(() => {
+    homepageApi.getSettings().then((data) => {
+      if (data && Array.isArray(data.custom_whatsapp_messages) && data.custom_whatsapp_messages.length > 0) {
+        setCustomMessages(data.custom_whatsapp_messages);
+      }
+    }).catch(console.error);
+  }, []);
 
   // Local products fallback if prop is empty
   const [availableProducts, setAvailableProducts] = useState<any[]>(products);
@@ -904,6 +915,46 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                 })}
               </div>
             </div>
+
+            {/* Quick Responses Section */}
+            {customMessages.length > 0 && (
+              <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-xs uppercase text-amber-900 tracking-wider flex items-center space-x-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-600 fill-amber-600" />
+                    <span>Respuestas Rápidas de Vendedor (1 Clic a WhatsApp)</span>
+                  </h4>
+                  <span className="text-[10px] text-amber-700 font-semibold">Mensajes automáticos</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {customMessages.map((msg) => {
+                    const targetCustomerPhone = extractCustomerPhone(selectedOrder) || WHATSAPP_NUMERO;
+                    const builtMsg = buildCustomMensajeWhatsApp(msg.content, {
+                      nombreCliente: selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
+                      numeroPedido: selectedOrder.id,
+                      montoTotal: selectedOrder.total,
+                      direccionCliente: selectedOrder.shipping_address || '',
+                      estadoPedido: selectedOrder.status,
+                    });
+
+                    return (
+                      <a
+                        key={msg.id}
+                        href={waLink(builtMsg, targetCustomerPhone)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-between p-2.5 bg-white hover:bg-emerald-50 text-slate-800 hover:text-emerald-900 border border-amber-200/60 hover:border-emerald-300 font-bold rounded-xl text-xs shadow-sm transition-all hover:scale-[1.01]"
+                        title={`Enviar a WhatsApp: ${msg.title}`}
+                      >
+                        <span className="truncate text-[11px]">{msg.title}</span>
+                        <Send className="w-3.5 h-3.5 text-emerald-600 ml-1.5 flex-shrink-0" />
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Total + 2 WhatsApp Action Buttons */}
             <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
