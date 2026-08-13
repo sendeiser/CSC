@@ -343,7 +343,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
 
                 {/* Promo Carousel as featured section below categories */}
                 {!sections.some((s) => s.section_type === 'banners') && (
-                  <div className="py-2">
+                  <div className="py-0 my-0 w-full">
                     <PromoCarousel
                       products={allProducts.length > 0 ? allProducts : PRODUCTS}
                       onSelectProduct={(prod) => {
@@ -362,7 +362,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
             if (section.visible === false) return null;
             const customSlides: PromoSlide[] = section?.content?.slides || undefined;
             return (
-              <section key={section.id} className="py-2 bg-slate-50/40">
+              <section key={section.id} className="py-0 my-0 w-full">
                 <PromoCarousel
                   slides={customSlides}
                   products={allProducts.length > 0 ? allProducts : PRODUCTS}

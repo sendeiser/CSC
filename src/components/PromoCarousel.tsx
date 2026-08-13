@@ -131,103 +131,93 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
 
   return (
     <div
-      className="relative w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 my-4 sm:my-8"
+      className="relative w-full my-0 py-0 overflow-hidden"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
-      <div className={`relative rounded-3xl overflow-hidden shadow-xl sm:shadow-2xl bg-gradient-to-r ${bgGradient} border border-white/20 transition-all duration-700`}>
-        {/* Animated Background Shapes */}
-        <div className="absolute -right-16 -top-16 w-48 h-48 sm:w-80 sm:h-80 bg-white/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-48 h-48 sm:w-80 sm:h-80 bg-pink-500/20 rounded-full blur-2xl sm:blur-3xl pointer-events-none" />
+      <div className={`relative w-full overflow-hidden bg-gradient-to-r ${bgGradient} transition-all duration-700 shadow-md`}>
+        {/* Background Ambient Glow */}
+        <div className="absolute -right-16 -top-16 w-48 h-48 sm:w-72 sm:h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 w-48 h-48 sm:w-72 sm:h-72 bg-pink-500/20 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 min-h-[220px] sm:min-h-[380px] lg:min-h-[420px] items-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 grid grid-cols-1 lg:grid-cols-12 min-h-[140px] sm:min-h-[220px] lg:min-h-[250px] items-center py-4 sm:py-6">
           
           {/* Slide Text Content */}
-          <div className="lg:col-span-7 p-4 sm:p-8 lg:p-12 text-white space-y-2.5 sm:space-y-4 flex flex-col justify-center">
-            
+          <div className="lg:col-span-8 space-y-2 sm:space-y-3 text-white flex flex-col justify-center">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide.id + '_content'}
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="space-y-2 sm:space-y-4"
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-1.5 sm:space-y-2.5"
               >
                 {/* Badge Tag */}
-                <div className="inline-flex items-center space-x-1.5 bg-white/20 backdrop-blur-md border border-white/30 px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-black tracking-wide text-white shadow-sm">
+                <div className="inline-flex items-center space-x-1.5 bg-white/20 backdrop-blur-md border border-white/30 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black tracking-wide text-white shadow-xs">
                   {currentSlide.type === 'new_product' ? (
-                    <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300 fill-amber-300" />
+                    <Flame className="w-3 h-3 text-amber-300 fill-amber-300" />
                   ) : (
-                    <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-amber-300" />
+                    <Sparkles className="w-3 h-3 text-amber-300" />
                   )}
                   <span className="truncate max-w-[220px] sm:max-w-none">{currentSlide.badge || (currentSlide.type === 'new_product' ? '¡NUEVO PRODUCTO!' : '¡PROMO ESPECIAL!')}</span>
                 </div>
 
                 {/* Title */}
-                <h2 className="font-headline font-black text-lg sm:text-3xl lg:text-5xl leading-tight text-white drop-shadow-sm line-clamp-2">
+                <h2 className="font-headline font-black text-base sm:text-2xl lg:text-3xl leading-snug text-white drop-shadow-xs line-clamp-2">
                   {currentSlide.title}
                 </h2>
 
                 {/* Subtitle */}
                 {currentSlide.subtitle && (
-                  <p className="text-xs sm:text-base text-white/90 leading-relaxed font-medium max-w-xl line-clamp-2 sm:line-clamp-none">
+                  <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-medium max-w-xl line-clamp-1 sm:line-clamp-2">
                     {currentSlide.subtitle}
                   </p>
                 )}
 
-                {/* Linked Product Info Card inside slide */}
-                {matchedProduct && (
-                  <div className="bg-white/15 backdrop-blur-md border border-white/30 rounded-xl sm:rounded-2xl p-2 sm:p-3 inline-flex items-center space-x-2.5 sm:space-x-3 max-w-sm">
-                    <img
-                      src={matchedProduct.image_url}
-                      alt={matchedProduct.name}
-                      className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl object-cover bg-white/40 flex-shrink-0"
-                    />
-                    <div className="leading-tight text-left overflow-hidden">
-                      <span className="font-bold text-[11px] sm:text-xs text-white block truncate">{matchedProduct.name}</span>
-                      <span className="font-black text-xs sm:text-sm text-amber-300 block">${matchedProduct.base_price.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action CTA Button */}
-                <div className="pt-1 sm:pt-2">
+                {/* Action Row: CTA Button + Linked Product Badge */}
+                <div className="pt-1 flex flex-wrap items-center gap-3">
                   <button
                     onClick={handleButtonClick}
-                    className="inline-flex items-center justify-center space-x-2 px-4 py-2 sm:px-6 sm:py-3 bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs sm:text-sm rounded-xl sm:rounded-2xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer group"
+                    className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 sm:px-5 sm:py-2.5 bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs rounded-xl sm:rounded-2xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer group"
                   >
                     <span>{currentSlide.button_text || 'Ver Más'}</span>
-                    <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-700 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-3.5 h-3.5 text-purple-700 group-hover:translate-x-1 transition-transform" />
                   </button>
+
+                  {matchedProduct && (
+                    <div className="bg-white/15 backdrop-blur-md border border-white/30 rounded-xl px-3 py-1.5 inline-flex items-center space-x-2">
+                      <span className="font-bold text-xs text-white truncate max-w-[140px]">{matchedProduct.name}</span>
+                      <span className="font-black text-xs text-amber-300">${matchedProduct.base_price.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </AnimatePresence>
           </div>
 
-          {/* Slide Image Showcase Container (Compact / Hidden on small mobile to avoid vertical bloat) */}
-          <div className="hidden sm:flex lg:col-span-5 p-4 sm:p-8 items-center justify-center relative">
+          {/* Slide Image Showcase Container (Compact Banner Image) */}
+          <div className="hidden sm:flex lg:col-span-4 justify-end items-center">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide.id + '_img'}
-                initial={{ opacity: 0, scale: 0.9, rotate: -2 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={{ opacity: 0, scale: 0.9, rotate: 2 }}
-                transition={{ duration: 0.4 }}
-                className="relative w-full max-w-xs sm:max-w-sm aspect-[4/3] rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl border-2 sm:border-4 border-white/30 bg-black/20 group"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3 }}
+                className="relative w-full max-w-[220px] lg:max-w-[260px] aspect-[16/10] rounded-2xl overflow-hidden shadow-lg border-2 border-white/30 bg-black/20 group"
               >
                 <img
                   src={matchedProduct?.image_url || currentSlide.image_url}
                   alt={currentSlide.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
 
-                {/* Floating Discount Tag if applicable */}
                 {(matchedProduct?.on_sale || currentSlide.product_discount) && (
-                  <div className="absolute top-3 right-3 bg-rose-500 text-white font-black text-xs px-3 py-1 rounded-full shadow-lg border border-white/40 animate-pulse">
+                  <div className="absolute top-2 right-2 bg-rose-500 text-white font-black text-[10px] px-2.5 py-0.5 rounded-full shadow-md border border-white/30 animate-pulse">
                     ¡{matchedProduct?.discount_percentage || currentSlide.product_discount}% OFF!
                   </div>
                 )}
@@ -241,33 +231,33 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
           <>
             <button
               onClick={handlePrev}
-              className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/20 z-20"
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/25 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/20 z-20"
               aria-label="Anterior slide"
             >
-              <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
 
             <button
               onClick={handleNext}
-              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/30 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/20 z-20"
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/25 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/20 z-20"
               aria-label="Siguiente slide"
             >
-              <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </>
         )}
 
         {/* Dot Indicators */}
         {displaySlides.length > 1 && (
-          <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 sm:space-x-2 z-20">
+          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 z-20">
             {displaySlides.map((s, idx) => (
               <button
                 key={s.id}
                 onClick={() => setCurrentIndex(idx)}
-                className={`h-1.5 sm:h-2 rounded-full transition-all cursor-pointer ${
+                className={`h-1.5 rounded-full transition-all cursor-pointer ${
                   currentIndex === idx
-                    ? 'w-5 sm:w-7 bg-white shadow-md'
-                    : 'w-1.5 sm:w-2 bg-white/40 hover:bg-white/70'
+                    ? 'w-5 bg-white shadow-xs'
+                    : 'w-1.5 bg-white/40 hover:bg-white/70'
                 }`}
                 aria-label={`Ir a slide ${idx + 1}`}
               />
