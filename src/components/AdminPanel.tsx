@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck, Sparkles } from 'lucide-react';
 import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
+import { AdminBannersEditor } from './AdminBannersEditor';
 import AdminAboutPageEditor from './AdminAboutPageEditor';
 import { AdminWhatsAppEditor } from './AdminWhatsAppEditor';
 import { AdminOrdersSection } from './AdminOrdersSection';
@@ -639,6 +640,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     { id: 'users', label: 'Usuarios', icon: <Users className="w-4.5 h-4.5" /> },
     { id: 'promos', label: 'Cupones', icon: <Ticket className="w-4.5 h-4.5" /> },
     { id: 'homepage', label: 'Homepage', icon: <Layout className="w-4.5 h-4.5" /> },
+    { id: 'banners', label: 'Banners & Promos', icon: <Sparkles className="w-4.5 h-4.5 text-amber-400" /> },
     { id: 'about-page', label: 'Sobre Nosotros', icon: <FileText className="w-4.5 h-4.5" /> },
     { id: 'categories', label: 'Categorías', icon: <Layout className="w-4.5 h-4.5" /> },
     { id: 'whatsapp', label: 'Mensajes WhatsApp', icon: <MessageCircle className="w-4.5 h-4.5 text-emerald-400" /> },
@@ -2024,6 +2026,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               )}
 
               {section === 'homepage' && <AdminHomepageEditor />}
+              {section === 'banners' && <AdminBannersEditor />}
               {section === 'about-page' && <AdminAboutPageEditor />}
               {section === 'categories' && <AdminCategoriesScreen />}
               {section === 'whatsapp' && <AdminWhatsAppEditor />}

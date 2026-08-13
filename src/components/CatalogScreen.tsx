@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, SlidersHorizontal, Star, Heart, ShoppingBag, Eye, Percent, RefreshCw, Scale, X, ChevronDown } from 'lucide-react';
 import { ActiveScreen, Product } from '../types';
 import { products as productsApi } from '../lib/api';
+import { PromoCarousel, PromoSlide } from './PromoCarousel';
 
 interface CatalogScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
@@ -111,6 +112,15 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-5">
+        {/* Carrusel Promocional de Banners y Productos Nuevos */}
+        <PromoCarousel
+          products={products}
+          onSelectProduct={(prod) => {
+            setSelectedProductById(prod.id);
+            setActiveScreen('detalle');
+          }}
+          onNavigate={(screen) => setActiveScreen(screen as any)}
+        />
 
         {/* Search + Filter Bar */}
         <div className="flex gap-2 sm:gap-3">

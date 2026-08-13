@@ -36,7 +36,7 @@ export interface CartItem {
 
 export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros' | 'como-comprar' | 'mis-pedidos';
 
-export type AdminSection = 'dashboard' | 'analytics' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'about-page' | 'categories' | 'whatsapp' | 'shipping';
+export type AdminSection = 'dashboard' | 'analytics' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'banners' | 'about-page' | 'categories' | 'whatsapp' | 'shipping';
 
 export interface StoreSettings {
   whatsapp_number_1: string;
