@@ -137,10 +137,10 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
-      {/* Top puzzle interlocking wave */}
+      {/* Top puzzle interlocking wave - Exact match to Hero bottom curve */}
       <div className="w-full overflow-hidden leading-none pointer-events-none -mb-1 relative z-20">
-        <svg viewBox="0 0 1440 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-5 sm:h-9 text-white">
-          <path d="M0 0 C240 38 480 0 720 24 C960 48 1200 10 1440 34 L1440 0 L0 0 Z" fill="currentColor"/>
+        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-8 sm:h-14 text-white">
+          <path d="M0 0L1440 0L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 0Z" fill="currentColor"/>
         </svg>
       </div>
 
@@ -249,7 +249,7 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
 
             <button
               onClick={handleNext}
-              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/30 hover:bg-black/70 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/30 z-20 shadow-md"
+              className="absolute right-2 sm:left-auto sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/30 hover:bg-black/70 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/30 z-20 shadow-md"
               aria-label="Siguiente slide"
             >
               <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
@@ -276,10 +276,10 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
         )}
       </div>
 
-      {/* Bottom puzzle interlocking wave */}
+      {/* Bottom puzzle interlocking wave - Exact match to Hero curve */}
       <div className="w-full overflow-hidden leading-none pointer-events-none -mt-1 relative z-20">
-        <svg viewBox="0 0 1440 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-5 sm:h-9 text-white">
-          <path d="M0 44 C240 10 480 44 720 20 C960 -4 1200 32 1440 10 L1440 44 L0 44 Z" fill="currentColor"/>
+        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-8 sm:h-14 text-white">
+          <path d="M0 80L1440 80L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 80Z" fill="currentColor"/>
         </svg>
       </div>
     </div>
