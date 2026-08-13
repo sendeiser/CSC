@@ -139,34 +139,34 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
     >
       {/* Top puzzle interlocking wave */}
       <div className="w-full overflow-hidden leading-none pointer-events-none -mb-1 relative z-20">
-        <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-4 sm:h-7 text-white">
-          <path d="M0 0 C240 32 480 0 720 20 C960 40 1200 10 1440 28 L1440 0 L0 0 Z" fill="currentColor"/>
+        <svg viewBox="0 0 1440 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-5 sm:h-9 text-white">
+          <path d="M0 0 C240 38 480 0 720 24 C960 48 1200 10 1440 34 L1440 0 L0 0 Z" fill="currentColor"/>
         </svg>
       </div>
 
-      <div className={`relative w-full overflow-hidden bg-gradient-to-r ${bgGradient} transition-all duration-700 shadow-lg`}>
+      <div className={`relative w-full overflow-hidden bg-gradient-to-r ${bgGradient} transition-all duration-700 shadow-xl border-y border-white/20`}>
         {/* Background Ambient Glow & Puzzle Pattern */}
-        <div className="absolute -right-16 -top-16 w-48 h-48 sm:w-72 sm:h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute -right-16 -top-16 w-48 h-48 sm:w-72 sm:h-72 bg-white/15 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -left-16 -bottom-16 w-48 h-48 sm:w-72 sm:h-72 bg-pink-500/20 rounded-full blur-2xl pointer-events-none" />
         
-        {/* Subtle puzzle watermark grid */}
-        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10px 10px, rgba(255,255,255,0.4) 2px, transparent 0)', backgroundSize: '24px 24px' }} />
+        {/* Puzzle Interlocking Watermark Grid Pattern */}
+        <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 12px 12px, rgba(255,255,255,0.6) 2.5px, transparent 0)', backgroundSize: '28px 28px' }} />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 grid grid-cols-1 lg:grid-cols-12 min-h-[130px] sm:min-h-[200px] lg:min-h-[230px] items-center py-3 sm:py-5">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 grid grid-cols-1 lg:grid-cols-12 min-h-[140px] sm:min-h-[210px] lg:min-h-[240px] items-center py-4 sm:py-6">
           
           {/* Slide Text Content */}
           <div className="lg:col-span-8 space-y-2 sm:space-y-3 text-white flex flex-col justify-center">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide.id + '_content'}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 12 }}
+                transition={{ duration: 0.28 }}
                 className="space-y-1.5 sm:space-y-2.5"
               >
-                {/* Badge Tag */}
-                <div className="inline-flex items-center space-x-1.5 bg-white/20 backdrop-blur-md border border-white/30 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black tracking-wide text-white shadow-xs">
+                {/* Badge Tag with Puzzle Accents */}
+                <div className="inline-flex items-center space-x-1.5 bg-white/20 backdrop-blur-md border border-white/30 px-3 py-1 rounded-full text-[10px] sm:text-xs font-black tracking-wide text-white shadow-sm">
                   {currentSlide.type === 'new_product' ? (
                     <Flame className="w-3 h-3 text-amber-300 fill-amber-300" />
                   ) : (
@@ -176,7 +176,7 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
                 </div>
 
                 {/* Title */}
-                <h2 className="font-headline font-black text-base sm:text-2xl lg:text-3xl leading-snug text-white drop-shadow-xs line-clamp-2">
+                <h2 className="font-headline font-black text-base sm:text-2xl lg:text-3xl leading-snug text-white drop-shadow-md line-clamp-2">
                   {currentSlide.title}
                 </h2>
 
@@ -188,17 +188,17 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
                 )}
 
                 {/* Action Row: CTA Button + Linked Product Badge */}
-                <div className="pt-1 flex flex-wrap items-center gap-3">
+                <div className="pt-1.5 flex flex-wrap items-center gap-3">
                   <button
                     onClick={handleButtonClick}
-                    className="inline-flex items-center justify-center space-x-1.5 px-4 py-2 sm:px-5 sm:py-2.5 bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs rounded-xl sm:rounded-2xl shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer group"
+                    className="inline-flex items-center justify-center space-x-2 px-4 py-2 sm:px-5 sm:py-2.5 bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs rounded-2xl shadow-lg transition-all hover:scale-105 active:scale-95 cursor-pointer group border border-white/40"
                   >
                     <span>{currentSlide.button_text || 'Ver Más'}</span>
                     <ArrowRight className="w-3.5 h-3.5 text-purple-700 group-hover:translate-x-1 transition-transform" />
                   </button>
 
                   {matchedProduct && (
-                    <div className="bg-white/15 backdrop-blur-md border border-white/30 rounded-xl px-3 py-1.5 inline-flex items-center space-x-2">
+                    <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl px-3 py-1.5 inline-flex items-center space-x-2 shadow-sm">
                       <span className="font-bold text-xs text-white truncate max-w-[140px]">{matchedProduct.name}</span>
                       <span className="font-black text-xs text-amber-300">${matchedProduct.base_price.toFixed(2)}</span>
                     </div>
@@ -208,26 +208,26 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
             </AnimatePresence>
           </div>
 
-          {/* Slide Image Showcase Container (Compact Banner Image) */}
+          {/* Slide Image Showcase Container (Puzzle Framed Image Card) */}
           <div className="hidden sm:flex lg:col-span-4 justify-end items-center">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentSlide.id + '_img'}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, scale: 0.9, rotate: -1 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.9, rotate: 1 }}
                 transition={{ duration: 0.3 }}
-                className="relative w-full max-w-[220px] lg:max-w-[250px] aspect-[16/10] rounded-2xl overflow-hidden shadow-lg border-2 border-white/30 bg-black/20 group"
+                className="relative w-full max-w-[220px] lg:max-w-[250px] aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl border-2 sm:border-4 border-white/40 bg-black/30 group"
               >
                 <img
                   src={matchedProduct?.image_url || currentSlide.image_url}
                   alt={currentSlide.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
                 {(matchedProduct?.on_sale || currentSlide.product_discount) && (
-                  <div className="absolute top-2 right-2 bg-rose-500 text-white font-black text-[10px] px-2.5 py-0.5 rounded-full shadow-md border border-white/30 animate-pulse">
+                  <div className="absolute top-2.5 right-2.5 bg-rose-500 text-white font-black text-[10px] px-2.5 py-1 rounded-full shadow-lg border border-white/40 animate-pulse">
                     ¡{matchedProduct?.discount_percentage || currentSlide.product_discount}% OFF!
                   </div>
                 )}
@@ -241,32 +241,32 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
           <>
             <button
               onClick={handlePrev}
-              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/25 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/20 z-20"
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/30 hover:bg-black/70 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/30 z-20 shadow-md"
               aria-label="Anterior slide"
             >
-              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+              <ChevronLeft className="w-4 h-4 sm:w-6 sm:h-6" />
             </button>
 
             <button
               onClick={handleNext}
-              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/25 hover:bg-black/60 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/20 z-20"
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/30 hover:bg-black/70 backdrop-blur-md text-white flex items-center justify-center transition-all hover:scale-110 cursor-pointer border border-white/30 z-20 shadow-md"
               aria-label="Siguiente slide"
             >
-              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+              <ChevronRight className="w-4 h-4 sm:w-6 sm:h-6" />
             </button>
           </>
         )}
 
         {/* Dot Indicators */}
         {displaySlides.length > 1 && (
-          <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 z-20">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center space-x-1.5 z-20">
             {displaySlides.map((s, idx) => (
               <button
                 key={s.id}
                 onClick={() => setCurrentIndex(idx)}
                 className={`h-1.5 rounded-full transition-all cursor-pointer ${
                   currentIndex === idx
-                    ? 'w-5 bg-white shadow-xs'
+                    ? 'w-6 bg-white shadow-md'
                     : 'w-1.5 bg-white/40 hover:bg-white/70'
                 }`}
                 aria-label={`Ir a slide ${idx + 1}`}
@@ -278,8 +278,8 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
 
       {/* Bottom puzzle interlocking wave */}
       <div className="w-full overflow-hidden leading-none pointer-events-none -mt-1 relative z-20">
-        <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-4 sm:h-7 text-white">
-          <path d="M0 40 C240 10 480 40 720 18 C960 -4 1200 30 1440 12 L1440 40 L0 40 Z" fill="currentColor"/>
+        <svg viewBox="0 0 1440 44" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-5 sm:h-9 text-white">
+          <path d="M0 44 C240 10 480 44 720 20 C960 -4 1200 32 1440 10 L1440 44 L0 44 Z" fill="currentColor"/>
         </svg>
       </div>
     </div>
