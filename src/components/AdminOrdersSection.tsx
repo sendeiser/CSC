@@ -913,13 +913,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
               </div>
             </div>
 
-            {/* Total + 2 WhatsApp Action Buttons */}
-            <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <span className="text-xs text-slate-500">Monto Total</span>
-                <p className="text-2xl font-black text-purple-700">${Number(selectedOrder.total || 0).toFixed(2)}</p>
-              </div>
-
+            {/* Sección de Respuestas Rápidas y Avisos de WhatsApp */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 space-y-3">
               {(() => {
                 const targetCustomerPhone = extractCustomerPhone(selectedOrder) || WHATSAPP_NUMERO;
                 const quickMsgs: CustomQuickMessage[] = (storeSettings?.custom_messages && Array.isArray(storeSettings.custom_messages) && storeSettings.custom_messages.length > 0)
@@ -927,67 +922,89 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                   : DEFAULT_CUSTOM_QUICK_MESSAGES;
 
                 return (
-                  <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
-                    <a
-                      href={waLink(
-                        buildMensajeEnPreparacion(
-                          selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
-                          selectedOrder.id
-                        ),
-                        targetCustomerPhone
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all hover:scale-105"
-                    >
-                      <MessageCircle className="w-4 h-4 text-indigo-200" />
-                      <span>Avisar: En Preparación</span>
-                    </a>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="font-bold text-xs uppercase text-slate-700 tracking-wider flex items-center space-x-1.5">
+                        <MessageCircle className="w-4 h-4 text-emerald-600" />
+                        <span>Respuestas Rápidas por WhatsApp</span>
+                      </h4>
+                      <span className="text-[10px] font-mono font-bold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full truncate max-w-[160px]" title="Número de WhatsApp del cliente">
+                        📲 {targetCustomerPhone}
+                      </span>
+                    </div>
 
-                    <a
-                      href={waLink(
-                        buildMensajeListo(
-                          selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
-                          selectedOrder.id
-                        ),
-                        targetCustomerPhone
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md transition-all hover:scale-105"
-                    >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-200" />
-                      <span>Avisar: Listo para Retirar</span>
-                    </a>
-
-                    {/* Quick Responses Selector */}
-                    <div className="relative w-full sm:w-auto">
-                      <select
-                        defaultValue=""
-                        onChange={(e) => {
-                          const selectedId = e.target.value;
-                          if (!selectedId) return;
-                          const found = quickMsgs.find(m => m.id === selectedId);
-                          if (found) {
-                            const msgText = buildMensajePersonalizado(found.content, selectedOrder, storeSettings);
-                            window.open(waLink(msgText, targetCustomerPhone), '_blank', 'noopener,noreferrer');
-                          }
-                          e.target.value = '';
-                        }}
-                        className="w-full sm:w-auto px-4 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs shadow-md outline-none cursor-pointer border border-purple-600 appearance-none pr-8 transition-all hover:scale-105"
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      {/* Botón En Preparación */}
+                      <a
+                        href={waLink(
+                          buildMensajeEnPreparacion(
+                            selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
+                            selectedOrder.id
+                          ),
+                          targetCustomerPhone
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all hover:scale-105 inline-flex items-center space-x-1.5 whitespace-nowrap cursor-pointer"
                       >
-                        <option value="" disabled>💬 Respuestas Rápidas...</option>
-                        {quickMsgs.map((m) => (
-                          <option key={m.id} value={m.id} className="bg-slate-900 text-white py-1">
-                            {m.title} {m.category ? `(${m.category})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <Sparkles className="w-3.5 h-3.5 text-purple-200 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <MessageCircle className="w-3.5 h-3.5 text-indigo-200" />
+                        <span>Avisar: En Preparación</span>
+                      </a>
+
+                      {/* Botón Listo para Retirar */}
+                      <a
+                        href={waLink(
+                          buildMensajeListo(
+                            selectedOrder.shipping_name || selectedOrder.profiles?.name || 'Cliente',
+                            selectedOrder.id
+                          ),
+                          targetCustomerPhone
+                        )}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-sm transition-all hover:scale-105 inline-flex items-center space-x-1.5 whitespace-nowrap cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-200" />
+                        <span>Avisar: Listo para Retirar</span>
+                      </a>
+
+                      {/* Selector de Respuestas Rápidas Personalizadas */}
+                      <div className="relative inline-block">
+                        <select
+                          defaultValue=""
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            if (!selectedId) return;
+                            const found = quickMsgs.find(m => m.id === selectedId);
+                            if (found) {
+                              const msgText = buildMensajePersonalizado(found.content, selectedOrder, storeSettings);
+                              window.open(waLink(msgText, targetCustomerPhone), '_blank', 'noopener,noreferrer');
+                            }
+                            e.target.value = '';
+                          }}
+                          className="px-3.5 py-2 bg-purple-700 hover:bg-purple-800 text-white font-bold rounded-xl text-xs shadow-sm outline-none cursor-pointer border border-purple-600 appearance-none pr-8 transition-all hover:scale-105 whitespace-nowrap"
+                        >
+                          <option value="" disabled>💬 Más Respuestas Rápidas...</option>
+                          {quickMsgs.map((m) => (
+                            <option key={m.id} value={m.id} className="bg-slate-900 text-white py-1">
+                              {m.title} {m.category ? `(${m.category})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <Sparkles className="w-3.5 h-3.5 text-purple-200 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
                 );
               })()}
+            </div>
+
+            {/* Total Monto bar */}
+            <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-slate-500">Monto Total</span>
+                <p className="text-2xl font-black text-purple-700">${Number(selectedOrder.total || 0).toFixed(2)}</p>
+              </div>
             </div>
           </div>
         </div>
