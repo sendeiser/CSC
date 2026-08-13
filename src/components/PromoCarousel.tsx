@@ -137,12 +137,22 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
-      <div className={`relative w-full overflow-hidden bg-gradient-to-r ${bgGradient} transition-all duration-700 shadow-md`}>
-        {/* Background Ambient Glow */}
+      {/* Top puzzle interlocking wave */}
+      <div className="w-full overflow-hidden leading-none pointer-events-none -mb-1 relative z-20">
+        <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-4 sm:h-7 text-white">
+          <path d="M0 0 C240 32 480 0 720 20 C960 40 1200 10 1440 28 L1440 0 L0 0 Z" fill="currentColor"/>
+        </svg>
+      </div>
+
+      <div className={`relative w-full overflow-hidden bg-gradient-to-r ${bgGradient} transition-all duration-700 shadow-lg`}>
+        {/* Background Ambient Glow & Puzzle Pattern */}
         <div className="absolute -right-16 -top-16 w-48 h-48 sm:w-72 sm:h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -left-16 -bottom-16 w-48 h-48 sm:w-72 sm:h-72 bg-pink-500/20 rounded-full blur-2xl pointer-events-none" />
+        
+        {/* Subtle puzzle watermark grid */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 10px 10px, rgba(255,255,255,0.4) 2px, transparent 0)', backgroundSize: '24px 24px' }} />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 grid grid-cols-1 lg:grid-cols-12 min-h-[140px] sm:min-h-[220px] lg:min-h-[250px] items-center py-4 sm:py-6">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 grid grid-cols-1 lg:grid-cols-12 min-h-[130px] sm:min-h-[200px] lg:min-h-[230px] items-center py-3 sm:py-5">
           
           {/* Slide Text Content */}
           <div className="lg:col-span-8 space-y-2 sm:space-y-3 text-white flex flex-col justify-center">
@@ -207,7 +217,7 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.3 }}
-                className="relative w-full max-w-[220px] lg:max-w-[260px] aspect-[16/10] rounded-2xl overflow-hidden shadow-lg border-2 border-white/30 bg-black/20 group"
+                className="relative w-full max-w-[220px] lg:max-w-[250px] aspect-[16/10] rounded-2xl overflow-hidden shadow-lg border-2 border-white/30 bg-black/20 group"
               >
                 <img
                   src={matchedProduct?.image_url || currentSlide.image_url}
@@ -264,6 +274,13 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Bottom puzzle interlocking wave */}
+      <div className="w-full overflow-hidden leading-none pointer-events-none -mt-1 relative z-20">
+        <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-4 sm:h-7 text-white">
+          <path d="M0 40 C240 10 480 40 720 18 C960 -4 1200 30 1440 12 L1440 40 L0 40 Z" fill="currentColor"/>
+        </svg>
       </div>
     </div>
   );
