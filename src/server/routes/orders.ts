@@ -311,6 +311,7 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
         selected_size: item.selected_size,
         item_price: item.item_price,
         weight_grams: item.weight_grams,
+        combo_selections: item.combo_selections || null,
       }))
     }
   }
@@ -325,6 +326,7 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
         selected_size: item.selected_size || item.selectedSize || 'Estándar',
         item_price: Number(item.item_price || item.unit_price || item.itemPrice || 0),
         weight_grams: item.weight_grams || null,
+        combo_selections: item.combo_selections || item.comboSelections || null,
       }
     }).filter((i: any) => Boolean(i.product_id))
   }
@@ -409,6 +411,7 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
     selected_size: item.selected_size,
     unit_price: item.item_price,
     weight_grams: item.weight_grams,
+    combo_selections: item.combo_selections || null,
   }))
 
   const { error: itemsError } = await serviceClient.from('order_items').insert(orderItems)
@@ -418,12 +421,12 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
     return
   }
 
-  // Subtract stock for each item
+  // Subtract stock for each item and combo sub-items
   for (const item of orderItemsToProcess) {
     const stockToSubtract = item.weight_grams || item.quantity
     const { data: product } = await serviceClient
       .from('products')
-      .select('stock')
+      .select('stock, is_combo')
       .eq('id', item.product_id)
       .single()
     if (product) {
@@ -431,6 +434,26 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
         .from('products')
         .update({ stock: Math.max(0, product.stock - stockToSubtract) })
         .eq('id', item.product_id)
+
+      if (product.is_combo && item.combo_selections && Array.isArray(item.combo_selections)) {
+        for (const selection of item.combo_selections) {
+          const selStockToSubtract = Number(selection.quantity || 0) * Number(item.quantity || 1)
+          const subProductId = selection.productId || selection.product?.id || selection.id
+          if (subProductId && selStockToSubtract > 0) {
+            const { data: subProduct } = await serviceClient
+              .from('products')
+              .select('stock')
+              .eq('id', subProductId)
+              .single()
+            if (subProduct) {
+              await serviceClient
+                .from('products')
+                .update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) })
+                .eq('id', subProductId)
+            }
+          }
+        }
+      }
     }
   }
 
@@ -444,7 +467,7 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
 router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { data, error } = await serviceClient
     .from('orders')
-    .select('*, order_items(*)')
+    .select('*, order_items(*, products(*))')
     .eq('id', req.params.id)
     .eq('user_id', req.user!.id)
     .single()

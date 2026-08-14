@@ -113,42 +113,45 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
     const addQty = Number(quantity) || 1
     const priceVal = Number(item_price) || Number(product.base_price) || 0
 
-    const { data: existing } = await serviceClient
-      .from('cart_items')
-      .select('*')
-      .eq('user_id', req.user!.id)
-      .eq('product_id', product_id)
-      .eq('selected_size', finalSize)
-      .maybeSingle()
-
-    if (existing) {
-      const newQty = existing.quantity + addQty
-
-      if (product.stock < newQty) {
-        res.status(400).json({
-          error: `Stock insuficiente. Ya tenés ${existing.quantity} en el carrito y el stock total disponible es ${product.stock}.`
-        })
-        return
-      }
-
-      const { data, error } = await serviceClient
+    // Solo buscar ítem existente si NO es un combo (los combos tienen selecciones personalizadas únicas)
+    if (!product.is_combo) {
+      const { data: existing } = await serviceClient
         .from('cart_items')
-        .update({
-          quantity: newQty,
-          item_price: priceVal,
-          selected_size: finalSize,
-          weight_grams: null
-        })
-        .eq('id', existing.id)
-        .select('*, products(*)')
-        .single()
+        .select('*')
+        .eq('user_id', req.user!.id)
+        .eq('product_id', product_id)
+        .eq('selected_size', finalSize)
+        .maybeSingle()
 
-      if (error) {
-        res.status(400).json({ error: error.message })
+      if (existing) {
+        const newQty = existing.quantity + addQty
+
+        if (product.stock < newQty) {
+          res.status(400).json({
+            error: `Stock insuficiente. Ya tenés ${existing.quantity} en el carrito y el stock total disponible es ${product.stock}.`
+          })
+          return
+        }
+
+        const { data, error } = await serviceClient
+          .from('cart_items')
+          .update({
+            quantity: newQty,
+            item_price: priceVal,
+            selected_size: finalSize,
+            weight_grams: null
+          })
+          .eq('id', existing.id)
+          .select('*, products(*)')
+          .single()
+
+        if (error) {
+          res.status(400).json({ error: error.message })
+          return
+        }
+        res.json(data)
         return
       }
-      res.json(data)
-      return
     }
 
     // Nuevo ítem por unidad

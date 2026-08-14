@@ -35,6 +35,7 @@ router.post('/create-preference', optionalAuth, async (req: AuthenticatedRequest
           selected_size: item.selected_size || item.selectedSize || 'Estándar',
           item_price: Number(item.item_price || item.unit_price || item.itemPrice || 0),
           weight_grams: item.weight_grams || null,
+          combo_selections: item.combo_selections || item.comboSelections || null,
           products: prod,
         }
       }).filter((i: any) => Boolean(i.product_id))
@@ -148,6 +149,7 @@ router.post('/create-preference', optionalAuth, async (req: AuthenticatedRequest
       selected_size: item.selected_size,
       unit_price: item.item_price,
       weight_grams: item.weight_grams,
+      combo_selections: item.combo_selections || item.comboSelections || null,
     }))
 
     await serviceClient.from('order_items').insert(orderItemsData)
@@ -188,7 +190,7 @@ router.post('/webhook', async (req, res) => {
                 const stockToSubtract = item.weight_grams || item.quantity
                 const { data: product } = await serviceClient
                   .from('products')
-                  .select('stock')
+                  .select('stock, is_combo')
                   .eq('id', item.product_id)
                   .single()
                 if (product) {
@@ -196,6 +198,26 @@ router.post('/webhook', async (req, res) => {
                     .from('products')
                     .update({ stock: Math.max(0, product.stock - stockToSubtract) })
                     .eq('id', item.product_id)
+
+                  if (product.is_combo && item.combo_selections && Array.isArray(item.combo_selections)) {
+                    for (const selection of item.combo_selections) {
+                      const selStockToSubtract = Number(selection.quantity || 0) * Number(item.quantity || 1)
+                      const subProductId = selection.productId || selection.product?.id || selection.id
+                      if (subProductId && selStockToSubtract > 0) {
+                        const { data: subProduct } = await serviceClient
+                          .from('products')
+                          .select('stock')
+                          .eq('id', subProductId)
+                          .single()
+                        if (subProduct) {
+                          await serviceClient
+                            .from('products')
+                            .update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) })
+                            .eq('id', subProductId)
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }

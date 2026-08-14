@@ -150,12 +150,16 @@ export function buildMensajePedido(pedido: PedidoWhatsApp): string {
     : (currentTemplates.msg_mercadopago || DEFAULT_WHATSAPP_TEMPLATES.msg_mercadopago);
 
   const detalleProds = pedido.items.map(
-    (i) => {
-      let line = `• ${i.weight_grams ? `${i.weight_grams}g` : `${i.quantity}x ${i.selectedSize}`} ${i.product.name} = *${fmt(i.itemPrice * i.quantity)}*`;
-      if (i.comboSelections && i.comboSelections.length > 0) {
+    (i: any) => {
+      const prodName = i.product?.name || i.products?.name || i.name || 'Golosina';
+      const sizeDesc = i.weight_grams ? `${i.weight_grams}g` : `${i.quantity || 1}x ${i.selectedSize || i.selected_size || 'Estándar'}`;
+      const priceVal = (Number(i.itemPrice ?? i.unit_price ?? i.item_price ?? 0) * (i.quantity || 1));
+      let line = `• ${sizeDesc} ${prodName} = *${fmt(priceVal)}*`;
+      const selections = i.comboSelections || i.combo_selections;
+      if (selections && Array.isArray(selections) && selections.length > 0) {
         line += '\n  _Bandeja armable con:_';
-        i.comboSelections.forEach((sel: any) => {
-          line += `\n  - ${sel.quantity}${sel.isWeight ? 'g' : ' un.'} de ${sel.name || sel.product?.name}`;
+        selections.forEach((sel: any) => {
+          line += `\n  - ${sel.quantity}${sel.isWeight ? 'g' : ' un.'} de ${sel.name || sel.product?.name || 'Gomita'}`;
         });
       }
       return line;

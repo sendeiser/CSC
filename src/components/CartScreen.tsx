@@ -247,9 +247,18 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
           setCart([])
           setStep('success')
 
-          const itemsList = (result.order_items || []).map((i: any) =>
-            `• ${i.quantity}x ${i.selected_size} - $${Number(i.unit_price).toFixed(2)}`
-          ).join('\n')
+          const itemsList = (result.order_items || []).map((i: any) => {
+            const prodName = i.products?.name || i.product?.name || 'Golosina';
+            let itemDesc = `• ${i.weight_grams ? `${i.weight_grams}g` : `${i.quantity}x ${i.selected_size || 'Estándar'}`} ${prodName} - $${Number(i.unit_price || 0).toFixed(2)}`;
+            const selections = i.combo_selections || i.comboSelections;
+            if (selections && Array.isArray(selections) && selections.length > 0) {
+              itemDesc += '\n  _Bandeja armable con:_';
+              selections.forEach((sel: any) => {
+                itemDesc += `\n  - ${sel.quantity}${sel.isWeight ? 'g' : ' un.'} de ${sel.name || sel.product?.name || 'Gomita'}`;
+              });
+            }
+            return itemDesc;
+          }).join('\n')
 
           const msg = encodeURIComponent(
             `✅ *Compra confirmada!*\n\n*Pedido:* #${result.id.slice(0, 8).toUpperCase()}\n*Pago:* ${result.payment_id || paymentId}\n\n*Productos:*\n${itemsList}\n\n*Total:* $${finalTotal.toFixed(2)}\n\nGracias por tu compra! 🚀`

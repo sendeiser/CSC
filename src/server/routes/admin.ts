@@ -549,6 +549,7 @@ router.post('/orders/manual', requireAdmin, async (req: AuthenticatedRequest, re
         unit_price: price,
         weight_grams: weight_grams || null,
         selected_size: selected_size || 'Estándar',
+        combo_selections: item.combo_selections || item.comboSelections || null,
       })
     }
 
@@ -610,10 +611,10 @@ router.post('/orders/manual', requireAdmin, async (req: AuthenticatedRequest, re
       console.error('[Manual Order Items Error]:', itemsError)
     }
 
-    // Deduct stock from products
+    // Deduct stock from products and combo sub-items
     for (const item of items) {
-      const { product_id, quantity, weight_grams } = item
-      const { data: prod } = await db.from('products').select('stock, unit_type').eq('id', product_id).single()
+      const { product_id, quantity, weight_grams, combo_selections } = item
+      const { data: prod } = await db.from('products').select('stock, unit_type, is_combo').eq('id', product_id).single()
       if (prod) {
         let deductAmount = quantity
         if (prod.unit_type === 'weight' && weight_grams) {
@@ -621,6 +622,20 @@ router.post('/orders/manual', requireAdmin, async (req: AuthenticatedRequest, re
         }
         const newStock = Math.max(0, Number(prod.stock || 0) - deductAmount)
         await db.from('products').update({ stock: newStock }).eq('id', product_id)
+
+        if (prod.is_combo && (combo_selections || item.comboSelections) && Array.isArray(combo_selections || item.comboSelections)) {
+          const selections = combo_selections || item.comboSelections
+          for (const selection of selections) {
+            const selStockToSubtract = Number(selection.quantity || 0) * Number(quantity || 1)
+            const subProductId = selection.productId || selection.product?.id || selection.id
+            if (subProductId && selStockToSubtract > 0) {
+              const { data: subProduct } = await db.from('products').select('stock').eq('id', subProductId).single()
+              if (subProduct) {
+                await db.from('products').update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) }).eq('id', subProductId)
+              }
+            }
+          }
+        }
       }
     }
 
