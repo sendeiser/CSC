@@ -39,12 +39,13 @@ export const DEFAULT_PROMO_SLIDES: PromoSlide[] = [
     id: 'slide_2',
     type: 'new_product',
     badge: '✨ ¡NUEVO INGRESO ESTRELLA!',
-    title: 'Nuevos Chocolates Block y Gomitas Ácidas Fini',
+    title: 'Gomitas Dulces Moras y Frambuesas',
     subtitle: 'Sabor intenso y la máxima frescura garantizada. ¡Recién llegados a nuestra tienda!',
-    image_url: 'https://images.unsplash.com/photo-1575224300306-1b8da36134ec?auto=format&fit=crop&w=800&q=80',
+    image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?auto=format&fit=crop&w=800&q=80',
     bg_gradient: 'from-amber-500 via-rose-600 to-purple-800',
-    button_text: 'Explorar Novedades',
-    button_link: 'catalogo',
+    product_id: '1',
+    button_text: 'Comprar Producto',
+    button_link: 'detalle',
     active: true,
     order_index: 2,
   },
@@ -106,16 +107,32 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
 
   const currentSlide = displaySlides[currentIndex] || displaySlides[0];
 
-  // Try finding linked product if slide links to a product_id
+  // Try finding linked product if slide links to a product_id or title
   const matchedProduct = currentSlide.product_id
-    ? products.find((p) => p.id === currentSlide.product_id)
-    : null;
+    ? products.find((p) => String(p.id) === String(currentSlide.product_id))
+    : (currentSlide.type === 'new_product'
+        ? (products.find((p) => p.name.toLowerCase() === currentSlide.title.replace(/^¡Nuevo!\s*/i, '').toLowerCase() || currentSlide.title.toLowerCase().includes(p.name.toLowerCase())) || (products.length > 0 ? products[0] : null))
+        : null);
 
   const bgGradient = currentSlide.bg_gradient || 'from-purple-700 via-pink-600 to-indigo-800';
 
   const handleButtonClick = () => {
+    // Si es un producto nuevo o tiene un producto vinculado, llevar DIRECTO a la pantalla de detalle del producto
     if (matchedProduct && onSelectProduct) {
       onSelectProduct(matchedProduct);
+      return;
+    }
+
+    if (currentSlide.product_id) {
+      const prod = products.find((p) => String(p.id) === String(currentSlide.product_id));
+      if (prod && onSelectProduct) {
+        onSelectProduct(prod);
+        return;
+      }
+    }
+
+    if (currentSlide.type === 'new_product' && products.length > 0 && onSelectProduct) {
+      onSelectProduct(products[0]);
       return;
     }
 
@@ -193,7 +210,11 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
               )}
 
               {/* Central Axis Image Showcase */}
-              <div className="relative w-full max-w-sm sm:max-w-md aspect-[16/9] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/40 bg-black/30 group mx-auto my-2">
+              <div
+                onClick={handleButtonClick}
+                className="relative w-full max-w-sm sm:max-w-md aspect-[16/9] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/40 bg-black/30 group mx-auto my-2 cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                title={matchedProduct ? `Ver ${matchedProduct.name}` : currentSlide.title}
+              >
                 <img
                   src={matchedProduct?.image_url || currentSlide.image_url}
                   alt={currentSlide.title}
@@ -214,15 +235,20 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
                   onClick={handleButtonClick}
                   className="inline-flex items-center justify-center space-x-2 px-6 py-2.5 sm:px-7 sm:py-3 bg-white hover:bg-slate-100 text-slate-900 font-extrabold text-xs sm:text-sm rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 cursor-pointer group border border-white/40"
                 >
-                  <span>{currentSlide.button_text || 'Ver Más'}</span>
+                  <span>
+                    {currentSlide.button_text || (currentSlide.type === 'new_product' || matchedProduct ? 'Comprar Producto' : 'Ver Más')}
+                  </span>
                   <ArrowRight className="w-4 h-4 text-purple-700 group-hover:translate-x-1 transition-transform" />
                 </button>
 
                 {matchedProduct && (
-                  <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl px-4 py-2 inline-flex items-center space-x-2 shadow-md">
+                  <button
+                    onClick={handleButtonClick}
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-2xl px-4 py-2 inline-flex items-center space-x-2 shadow-md cursor-pointer transition-all hover:scale-105"
+                  >
                     <span className="font-bold text-xs sm:text-sm text-white">{matchedProduct.name}</span>
                     <span className="font-black text-xs sm:text-sm text-amber-300">${matchedProduct.base_price.toFixed(2)}</span>
-                  </div>
+                  </button>
                 )}
               </div>
             </motion.div>
