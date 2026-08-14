@@ -866,17 +866,40 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
   let totalInventoryCost = 0
   let totalInventoryValue = 0
   if (allProducts) {
+    // Calculamos el precio por kg estándar de gomitas a granel
+    const weightProds = allProducts.filter(p => !p.is_combo && p.unit_type === 'weight' && Number(p.price_per_kg || p.base_price || 0) > 0)
+    const standardPricePerKg = weightProds.length > 0
+      ? (weightProds.reduce((acc, p) => acc + Number(p.price_per_kg || p.base_price || 0), 0) / weightProds.length)
+      : 28000
+
     allProducts.forEach(p => {
       const stock = Number(p.stock || 0)
-      const price = Number(p.base_price || 0)
-      const cost = p.cost_price ? Number(p.cost_price) : (price * 0.6)
+      if (stock <= 0) return
 
-      // Para productos por peso, el stock está en GRAMOS y el precio/costo por KG (1000g)
-      const isWeight = p.unit_type === 'weight'
-      const realQty = isWeight ? (stock / 1000) : stock
+      if (p.is_combo) {
+        // Para combos/bandejas armables:
+        // El contenido de gomitas ya está sumado en el stock general a granel.
+        // Solo sumamos al inventario el valor agregado por el armado / bandeja plástica.
+        // Ej: Combo 500g a $16800. Gomitas 500g = $14000. Diferencia del armado = $2800.
+        const comboCap = Number(p.combo_capacity || 0)
+        const candyBaseValue = (comboCap / 1000) * standardPricePerKg
+        const comboPrice = Number(p.base_price || 0)
+        const assemblyDifference = Math.max(0, comboPrice - candyBaseValue)
+        const comboCost = p.cost_price ? Number(p.cost_price) : (assemblyDifference * 0.6)
 
-      totalInventoryCost += cost * realQty
-      totalInventoryValue += price * realQty
+        totalInventoryCost += comboCost * stock
+        totalInventoryValue += assemblyDifference * stock
+      } else {
+        const price = Number(p.base_price || 0)
+        const cost = p.cost_price ? Number(p.cost_price) : (price * 0.6)
+
+        // Para productos por peso, el stock está en GRAMOS y el precio/costo por KG (1000g)
+        const isWeight = p.unit_type === 'weight'
+        const realQty = isWeight ? (stock / 1000) : stock
+
+        totalInventoryCost += cost * realQty
+        totalInventoryValue += price * realQty
+      }
     })
   }
 
