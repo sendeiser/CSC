@@ -29,7 +29,7 @@ export const DEFAULT_PROMO_SLIDES: PromoSlide[] = [
     title: '¡20% OFF en Gomitas Dulces y Chocolates por Granel!',
     subtitle: 'Aprovechá la mejor variedad de golosinas de Chamical. Llevás la cantidad que quieras al mejor precio.',
     image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?auto=format&fit=crop&w=800&q=80',
-    bg_gradient: 'from-purple-950 via-pink-950 to-slate-950',
+    bg_gradient: 'from-pink-600 via-purple-600 to-indigo-800',
     button_text: 'Ver Ofertas Exclusivas',
     button_link: 'catalogo',
     active: true,
@@ -42,7 +42,7 @@ export const DEFAULT_PROMO_SLIDES: PromoSlide[] = [
     title: 'Nuevos Chocolates Block y Gomitas Ácidas Fini',
     subtitle: 'Sabor intenso y la máxima frescura garantizada. ¡Recién llegados a nuestra tienda!',
     image_url: 'https://images.unsplash.com/photo-1575224300306-1b8da36134ec?auto=format&fit=crop&w=800&q=80',
-    bg_gradient: 'from-slate-950 via-purple-900 to-rose-950',
+    bg_gradient: 'from-amber-500 via-rose-600 to-purple-800',
     button_text: 'Explorar Novedades',
     button_link: 'catalogo',
     active: true,
@@ -55,7 +55,7 @@ export const DEFAULT_PROMO_SLIDES: PromoSlide[] = [
     title: 'Comprá Online y Retirá Sin Demoras',
     subtitle: 'Armá tu carrito desde el celular, pagá por transferencia o efectivo y recibilo o retiralo en el día.',
     image_url: 'https://images.unsplash.com/photo-1534432182912-6385491589b6?auto=format&fit=crop&w=800&q=80',
-    bg_gradient: 'from-slate-950 via-teal-950 to-purple-950',
+    bg_gradient: 'from-emerald-600 via-teal-600 to-indigo-900',
     button_text: 'Hacer Pedido Ahora',
     button_link: 'catalogo',
     active: true,
@@ -137,6 +137,13 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
+      {/* Top wave curve - Extends dark Hero background into the Carousel's dynamic color */}
+      <div className="w-full overflow-hidden leading-none pointer-events-none -mb-1 relative z-20">
+        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-8 sm:h-14">
+          <path d="M0 0L1440 0L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 0Z" fill="#090514" />
+        </svg>
+      </div>
+
       {/* Background Ambient Glow & Puzzle Pattern */}
       <div className="absolute -right-16 -top-16 w-56 h-56 sm:w-80 sm:h-80 bg-white/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -left-16 -bottom-16 w-56 h-56 sm:w-80 sm:h-80 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
