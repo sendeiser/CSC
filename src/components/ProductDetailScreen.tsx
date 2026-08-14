@@ -343,7 +343,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                 {/* Selection List */}
                 <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2 max-h-60 overflow-y-auto scrollbar-dark space-y-1">
                   {(allProducts || []).filter(p => {
-                    if (p.category !== 'Gomitas' || p.is_combo || p.stock <= 0) return false;
+                    if (p.is_combo || p.stock <= 0) return false;
                     const allowedTypes = product.combo_allowed_types || 'both';
                     const pUnitType = p.unit_type || 'piece';
                     if (allowedTypes === 'weight' && pUnitType !== 'weight') return false;
@@ -403,14 +403,14 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                     );
                   })}
                   {(allProducts || []).filter(p => {
-                    if (p.category !== 'Gomitas' || p.is_combo || p.stock <= 0) return false;
+                    if (p.is_combo || p.stock <= 0) return false;
                     const allowedTypes = product.combo_allowed_types || 'both';
                     const pUnitType = p.unit_type || 'piece';
                     if (allowedTypes === 'weight' && pUnitType !== 'weight') return false;
                     if (allowedTypes === 'piece' && pUnitType !== 'piece') return false;
                     return true;
                   }).length === 0 && (
-                    <div className="p-4 text-center text-sm text-slate-500">No hay gomitas disponibles en stock para rellenar la bandeja.</div>
+                    <div className="p-4 text-center text-sm text-slate-500">No hay productos disponibles en stock para rellenar la bandeja.</div>
                   )}
                 </div>
               </div>
