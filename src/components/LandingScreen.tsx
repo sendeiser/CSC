@@ -208,9 +208,12 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                   </div>
 
                   {/* Wave bottom */}
-                  <div className="absolute bottom-0 left-0 right-0">
-                    <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-16">
-                      <path d="M0 80L1440 80L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 80Z" fill="white"/>
+                  <div className="absolute bottom-0 left-0 right-0 pointer-events-none z-10">
+                    <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-12 sm:h-16">
+                      <path
+                        d="M0 80L1440 80L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 80Z"
+                        fill={sections.find(s => s.visible !== false && s.section_type !== 'hero')?.section_type === 'banners' ? '#0d9488' : 'white'}
+                      />
                     </svg>
                   </div>
               </section>
