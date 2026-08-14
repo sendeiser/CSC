@@ -137,10 +137,18 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
-      {/* Top wave curve - Extends dark Hero background into the Carousel's dynamic color */}
+      {/* Top wave curve - Seamless puzzle interlocking matching Hero's gradient */}
       <div className="w-full overflow-hidden leading-none pointer-events-none -mb-1 relative z-20">
         <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-8 sm:h-14">
-          <path d="M0 0L1440 0L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 0Z" fill="#090514" />
+          <defs>
+            <linearGradient id="heroBottomGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="#020617" />
+              <stop offset="40%" stopColor="#3b0764" />
+              <stop offset="70%" stopColor="#2e1065" />
+              <stop offset="100%" stopColor="#0f172a" />
+            </linearGradient>
+          </defs>
+          <path d="M0 0L1440 0L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 0Z" fill="url(#heroBottomGrad)" />
         </svg>
       </div>
 
