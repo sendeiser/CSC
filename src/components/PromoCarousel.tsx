@@ -131,23 +131,15 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
 
   return (
     <div
-      className="relative w-full my-0 py-0 overflow-hidden"
+      className={`relative w-full my-0 py-0 overflow-hidden bg-gradient-to-r ${bgGradient} transition-all duration-700 shadow-xl`}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={() => setIsPaused(true)}
       onTouchEnd={() => setIsPaused(false)}
     >
-      {/* Top puzzle interlocking wave curve - Seamless connection without white gap */}
-      <div className="w-full overflow-hidden leading-none pointer-events-none -mb-1 relative z-20">
-        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-8 sm:h-14 text-white/0">
-          <path d="M0 0L1440 0L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 0Z" fill="currentColor"/>
-        </svg>
-      </div>
-
-      <div className={`relative w-full overflow-hidden bg-gradient-to-r ${bgGradient} transition-all duration-700 shadow-xl border-y border-white/10`}>
-        {/* Background Ambient Glow & Puzzle Pattern */}
-        <div className="absolute -right-16 -top-16 w-56 h-56 sm:w-80 sm:h-80 bg-white/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-56 h-56 sm:w-80 sm:h-80 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
+      {/* Background Ambient Glow & Puzzle Pattern */}
+      <div className="absolute -right-16 -top-16 w-56 h-56 sm:w-80 sm:h-80 bg-white/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -left-16 -bottom-16 w-56 h-56 sm:w-80 sm:h-80 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
         
         {/* Puzzle Interlocking Watermark Grid Pattern */}
         <div className="absolute inset-0 opacity-15 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 12px 12px, rgba(255,255,255,0.6) 2.5px, transparent 0)', backgroundSize: '28px 28px' }} />
@@ -260,14 +252,13 @@ export const PromoCarousel: React.FC<PromoCarouselProps> = ({
             ))}
           </div>
         )}
-      </div>
 
-      {/* Bottom puzzle interlocking wave - Smooth curve to next section */}
-      <div className="w-full overflow-hidden leading-none pointer-events-none -mt-1 relative z-20">
-        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-8 sm:h-14 text-white">
-          <path d="M0 80L1440 80L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 80Z" fill="currentColor"/>
-        </svg>
+        {/* Bottom puzzle interlocking wave - Smooth curve to next section */}
+        <div className="w-full overflow-hidden leading-none pointer-events-none -mb-1 mt-4 relative z-20">
+          <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" className="w-full h-8 sm:h-14 text-white">
+            <path d="M0 80L1440 80L1440 30C1200 70 960 10 720 40C480 70 240 0 0 30L0 80Z" fill="currentColor"/>
+          </svg>
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
