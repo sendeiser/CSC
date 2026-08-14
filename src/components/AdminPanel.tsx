@@ -1393,7 +1393,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                       <span className="text-[10px] text-slate-400">{prod.category} • {prod.totalSold} unidades sold</span>
                                     </div>
                                   </div>
-                                  <span className="font-black text-xs text-purple-700">${prod.revenue.toFixed(2)}</span>
+                                  <span className="font-black text-xs text-purple-700">${Number(prod.revenue || 0).toFixed(2)}</span>
                                 </div>
                                 <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                                   <div className="bg-gradient-to-r from-purple-600 to-indigo-500 h-full rounded-full" style={{ width: `${pct}%` }} />
@@ -1426,7 +1426,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                               <div key={idx} className="space-y-1.5">
                                 <div className="flex justify-between text-xs font-semibold">
                                   <span className="text-slate-700">{cat.category}</span>
-                                  <span className="text-purple-700 font-bold">${cat.revenue.toFixed(2)}</span>
+                                  <span className="text-purple-700 font-bold">${Number(cat.revenue || 0).toFixed(2)}</span>
                                 </div>
                                 <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                                   <div className="bg-purple-600 h-full rounded-full transition-all" style={{ width: `${pct}%` }} />
@@ -1562,7 +1562,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                             <p className="font-bold text-slate-900 text-sm truncate">{p.name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-xs text-slate-400">{p.category}</span>
-                              <span className="font-black text-purple-700 text-xs">${p.base_price.toFixed(2)}</span>
+                              <span className="font-black text-purple-700 text-xs">${Number(p.base_price || 0).toFixed(2)}</span>
                             </div>
                             <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${
                               p.stock > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
@@ -1657,7 +1657,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                 <td className="px-4 py-3 hidden md:table-cell">
                                   <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">{p.category}</span>
                                 </td>
-                                <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">${p.base_price.toFixed(2)}</td>
+                                <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap">${Number(p.base_price || 0).toFixed(2)}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">
                                   <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full ${
                                     p.stock > 0
@@ -1778,7 +1778,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                               </div>
                               <div className="bg-purple-50 rounded-xl p-2 text-center">
                                 <p className="text-[10px] text-purple-600 font-medium">Total gastado</p>
-                                <p className="font-black text-purple-800 text-sm">${totalSpent.toFixed(2)}</p>
+                                <p className="font-black text-purple-800 text-sm">${Number(totalSpent || 0).toFixed(2)}</p>
                               </div>
                             </div>
                             <div className="flex gap-2">
@@ -1855,7 +1855,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 font-black text-slate-900 whitespace-nowrap">
-                                    ${totalSpent.toFixed(2)}
+                                    ${Number(totalSpent || 0).toFixed(2)}
                                   </td>
                                   <td className="px-4 py-3 text-slate-500 text-xs hidden md:table-cell whitespace-nowrap">
                                     {new Date(u.created_at).toLocaleDateString()}
