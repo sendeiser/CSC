@@ -1,5 +1,17 @@
 {
   "whatsapp_number_1": "543826432180",
   "whatsapp_number_2": "5493826504710",
-  "active_whatsapp_number": "num2"
+  "active_whatsapp_number": "num1",
+  "msg_transfer": "Hola! Quiero confirmar mi pedido.\n\n*N° de pedido:* #{numero_pedido}\n*Detalle:*\n{detalle_productos}\n\n*Subtotal:* {subtotal}\n{descuento_linea}*TOTAL:* {monto_total}\n\n*Datos para la transferencia:*\nBanco: {banco}\nAlias: {alias}\n{cbu_linea}Titular: {titular}\n\nHacer la transferencia por *{monto_total}* al alias de arriba y enviar el comprobante por este chat para confirmar la compra.\n\n*Mis datos:*\nNombre: {nombre_cliente}\n{telefono_linea}{direccion_linea}\nGracias!",
+  "msg_mercadopago": "Hola! Realicé el pago por Mercado Pago para mi pedido.\n\n*N° de pedido:* #{numero_pedido}\n*Forma de pago:* MercadoPago (Pagado)\n*Detalle:*\n{detalle_productos}\n\n*TOTAL:* {monto_total}\n\n*Mis datos:*\nNombre: {nombre_cliente}\n{telefono_linea}{direccion_linea}\nGracias!",
+  "msg_general_inquiry": "Hola! Quiero hacer una consulta sobre la tienda.",
+  "msg_order_status": "Hola {nombre_cliente}! : tu pedido se encuentra en {estado_pedido}.",
+  "msg_preparing": "¡Hola {nombre_cliente}! 🍬 Te informamos que tu pedido #{numero_pedido} se encuentra EN PREPARACIÓN. ¡Muchas gracias por tu compra en Chamical Candy Shop!",
+  "msg_ready": "¡Hola {nombre_cliente}! 🎉 ¡Buenas noticias! Tu pedido #{numero_pedido} ya se encuentra LISTO para retirar o recibir. ¡Te esperamos!",
+  "fulfillment_type": "pickup_only",
+  "delivery_cost": 0,
+  "free_delivery_over": 0,
+  "pickup_address": "Av. Presidente Perón N°145 (Frente del Super X Día)",
+  "pickup_schedule": "Lunes a Domingo de 09:00 a 21:00 hs",
+  "delivery_notes": "Envíos en el día dentro del radio urbano de Chamical."
 }

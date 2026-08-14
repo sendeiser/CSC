@@ -2477,6 +2477,76 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 </div>
               </div>
 
+              {/* Combo Configuration */}
+              <div className="space-y-3 p-4 bg-purple-50 rounded-xl border border-purple-100">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-purple-700 uppercase tracking-wider">¿Es un Combo / Bandeja?</h4>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={!!editingProduct?.is_combo}
+                      onChange={(e) => setEditingProduct((p) => ({ ...p, is_combo: e.target.checked }))}
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+                {editingProduct?.is_combo && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Capacidad Total del Combo (Gramos) *</label>
+                      <input
+                        type="number"
+                        step="50"
+                        min="50"
+                        placeholder="Ej. 500"
+                        value={editingProduct?.combo_capacity || ''}
+                        onChange={(e) => setEditingProduct((p) => ({ ...p, combo_capacity: Number(e.target.value) }))}
+                        className="w-full px-3.5 py-2.5 border border-purple-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Tipo de Gomitas Permitidas</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingProduct((p) => ({ ...p, combo_allowed_types: 'weight' }))}
+                          className={`py-2 px-2 rounded-xl border text-[10px] font-bold transition-all ${
+                            editingProduct?.combo_allowed_types === 'weight'
+                              ? 'bg-purple-100 border-purple-300 text-purple-700'
+                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}
+                        >
+                          A Granel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProduct((p) => ({ ...p, combo_allowed_types: 'piece' }))}
+                          className={`py-2 px-2 rounded-xl border text-[10px] font-bold transition-all ${
+                            editingProduct?.combo_allowed_types === 'piece'
+                              ? 'bg-purple-100 border-purple-300 text-purple-700'
+                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}
+                        >
+                          Por Unidad
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProduct((p) => ({ ...p, combo_allowed_types: 'both' }))}
+                          className={`py-2 px-2 rounded-xl border text-[10px] font-bold transition-all ${
+                            (editingProduct?.combo_allowed_types === 'both' || !editingProduct?.combo_allowed_types)
+                              ? 'bg-purple-100 border-purple-300 text-purple-700'
+                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}
+                        >
+                          Ambas
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Unit Type & Pricing */}
               <div className="space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Tipo de Venta & Precio</h4>

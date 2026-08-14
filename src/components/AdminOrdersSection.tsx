@@ -904,6 +904,15 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                           <p className="text-slate-500 mt-0.5">
                             {item.weight_grams ? `${item.weight_grams}g` : item.selected_size || 'Estándar'}
                           </p>
+                          {item.combo_selections && item.combo_selections.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {item.combo_selections.map((sel: any, idxSel: number) => (
+                                <p key={idxSel} className="text-[10px] text-slate-500">
+                                  • {sel.name || sel.product?.name} ({sel.quantity}{sel.isWeight ? 'g' : ' un.'})
+                                </p>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">

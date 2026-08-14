@@ -17,14 +17,21 @@ function formatProductFromDb(p: any) {
     galleryImages = [p.image_url]
   }
 
+  let comboAllowedTypes = p.combo_allowed_types || 'both'
+  if (rawSizes && rawSizes.__combo_allowed_types__) {
+    comboAllowedTypes = rawSizes.__combo_allowed_types__
+  }
+
   // Clean internal key from sizes
   let cleanSizes = { ...rawSizes }
   delete cleanSizes.__gallery_images__
+  delete cleanSizes.__combo_allowed_types__
 
   return {
     ...p,
     sizes: cleanSizes,
-    images: galleryImages
+    images: galleryImages,
+    combo_allowed_types: comboAllowedTypes
   }
 }
 
@@ -40,11 +47,15 @@ function prepareProductForDb(reqBody: any) {
   const mainImageUrl = images[0] || payload.image_url || ''
   payload.image_url = mainImageUrl
 
+  const comboAllowedTypes = payload.combo_allowed_types || 'both'
+  delete payload.combo_allowed_types
+
   // Guardar imágenes en la columna sizes (JSONB) para garantía total de persistencia en PostgreSQL
   const existingSizes = payload.sizes && typeof payload.sizes === 'object' ? payload.sizes : {}
   payload.sizes = {
     ...existingSizes,
-    __gallery_images__: images
+    __gallery_images__: images,
+    __combo_allowed_types__: comboAllowedTypes
   }
 
   // Asegurar valores por defecto para campos obligatorios en DB

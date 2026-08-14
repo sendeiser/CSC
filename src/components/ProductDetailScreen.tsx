@@ -8,7 +8,7 @@ interface ProductDetailScreenProps {
   allProducts?: Product[];
   setActiveScreen: (screen: ActiveScreen) => void;
   setSelectedProductById: (id: string) => void;
-  addToCart: (product: Product, size: string, quantity: number, weight_grams?: number) => void;
+  addToCart: (product: Product, size: string, quantity: number, weight_grams?: number, comboSelections?: { productId: string; name: string; quantityGrams: number }[]) => void;
   favorites: Record<string, boolean>;
   toggleFavorite: (id: string) => void;
 }
@@ -57,6 +57,12 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
   const [weightGrams, setWeightGrams] = React.useState(product.min_weight || 50);
   const [activeTab, setActiveTab] = React.useState<'info' | 'ingredientes' | 'comentarios'>('info');
   
+  // Combo State
+  const [comboSelections, setComboSelections] = React.useState<Record<string, { product: Product, quantity: number, isWeight: boolean, capacityGrams: number }>>({});
+  const comboItems = Object.values(comboSelections) as any[];
+  const totalComboGrams: number = comboItems.reduce((acc: number, item: any) => acc + (item.quantity * item.capacityGrams), 0);
+  const remainingComboGrams = (product.combo_capacity || 0) - totalComboGrams;
+  
   // Track live client side reviews to give mock inputs
   const [localFeedback, setLocalFeedback] = React.useState<Array<{name: string, stars: number, msg: string, date: string}>>([
     { name: 'Sofía M.', stars: 5, msg: '¡La textura me fascinó! No es dura y el sabor ácidulado no se siente grasoso ni sintético.', date: 'Ayer' },
@@ -79,15 +85,18 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
     setSelectedSize(keys[0]);
     setQuantity(1);
     setWeightGrams(product.min_weight || 50);
+    setComboSelections({});
     setSuccessMsg(false);
     window.scrollTo(0, 0);
   }, [product]);
 
-  const activePrice = product.unit_type === 'weight'
-    ? (weightGrams / 1000) * (product.price_per_kg || 0)
-    : product.sizes && product.sizes[selectedSize]
-      ? product.sizes[selectedSize]
-      : product.base_price;
+  const activePrice = Number(
+    product.unit_type === 'weight'
+      ? (weightGrams / 1000) * (product.price_per_kg || 0)
+      : product.sizes && product.sizes[selectedSize]
+        ? product.sizes[selectedSize]
+        : (product.base_price || 0)
+  );
 
   const handleCreateFeedback = (e: React.FormEvent) => {
     e.preventDefault();
@@ -309,6 +318,104 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               </div>
             )}
 
+            {/* Combo Builder */}
+            {product.is_combo && (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h3 className="text-xs font-headline font-extrabold text-slate-700 uppercase tracking-widest flex items-center space-x-1">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                    <span>Arma tu Bandeja</span>
+                  </h3>
+                  <div className="bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-100 flex flex-col items-end">
+                    <span className="text-[10px] text-purple-500 font-bold uppercase tracking-wider">Capacidad</span>
+                    <span className="text-sm font-black text-purple-900">{totalComboGrams} / {product.combo_capacity}g</span>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-300"
+                    style={{ width: `${Math.min(100, (totalComboGrams / (product.combo_capacity || 1)) * 100)}%` }}
+                  />
+                </div>
+
+                {/* Selection List */}
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-2 max-h-60 overflow-y-auto scrollbar-dark space-y-1">
+                  {(allProducts || []).filter(p => {
+                    if (p.category !== 'Gomitas' || p.is_combo || p.stock <= 0) return false;
+                    const allowedTypes = product.combo_allowed_types || 'both';
+                    const pUnitType = p.unit_type || 'piece';
+                    if (allowedTypes === 'weight' && pUnitType !== 'weight') return false;
+                    if (allowedTypes === 'piece' && pUnitType !== 'piece') return false;
+                    return true;
+                  }).map(gummy => {
+                    const isWeight = gummy.unit_type === 'weight';
+                    const step = isWeight ? 50 : 1;
+                    const capacityCost = isWeight ? 1 : (gummy.min_weight || 50);
+                    const currentSelectedUnits = comboSelections[gummy.id]?.quantity || 0;
+                    
+                    return (
+                      <div key={gummy.id} className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-100 shadow-sm hover:border-purple-200 transition-colors">
+                        <div className="flex items-center space-x-3 overflow-hidden">
+                          <img src={gummy.image_url} alt={gummy.name} className="w-10 h-10 rounded-lg object-cover bg-slate-100 flex-shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-bold text-slate-800 truncate">{gummy.name}</span>
+                            <span className="text-[10px] text-slate-400">Stock: {gummy.stock}{isWeight ? 'g' : ' un.'}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 flex-shrink-0 ml-2">
+                          <button
+                            onClick={() => {
+                              setComboSelections(prev => {
+                                const next = { ...prev };
+                                if (currentSelectedUnits <= step) {
+                                  delete next[gummy.id];
+                                } else {
+                                  next[gummy.id] = { product: gummy, quantity: currentSelectedUnits - step, isWeight, capacityGrams: capacityCost };
+                                }
+                                return next;
+                              });
+                            }}
+                            disabled={currentSelectedUnits === 0}
+                            className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-slate-100 transition-colors"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-black text-slate-900 w-8 text-center">{currentSelectedUnits}{isWeight ? 'g' : ' un.'}</span>
+                          <button
+                            onClick={() => {
+                              const extraCapacity = step * capacityCost;
+                              if (remainingComboGrams >= extraCapacity && gummy.stock >= currentSelectedUnits + step) {
+                                setComboSelections(prev => ({
+                                  ...prev,
+                                  [gummy.id]: { product: gummy, quantity: currentSelectedUnits + step, isWeight, capacityGrams: capacityCost }
+                                }));
+                              }
+                            }}
+                            disabled={remainingComboGrams < (step * capacityCost) || gummy.stock < currentSelectedUnits + step}
+                            className="w-7 h-7 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-purple-100 transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {(allProducts || []).filter(p => {
+                    if (p.category !== 'Gomitas' || p.is_combo || p.stock <= 0) return false;
+                    const allowedTypes = product.combo_allowed_types || 'both';
+                    const pUnitType = p.unit_type || 'piece';
+                    if (allowedTypes === 'weight' && pUnitType !== 'weight') return false;
+                    if (allowedTypes === 'piece' && pUnitType !== 'piece') return false;
+                    return true;
+                  }).length === 0 && (
+                    <div className="p-4 text-center text-sm text-slate-500">No hay gomitas disponibles en stock para rellenar la bandeja.</div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Cost display */}
             <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-100 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
               
@@ -355,7 +462,6 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                   </div>
                 </div>
               )}
-
             </div>
 
             {/* Main CTA buttons */}
@@ -363,21 +469,31 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               <button
                 id="addToCartDetail"
                 onClick={() => {
-                  if (product.unit_type === 'weight') {
+                  if (product.is_combo) {
+                    if (remainingComboGrams > 0) return;
+                    const selectionsArray = Object.values(comboSelections).map((v: any) => ({
+                      productId: v.product.id,
+                      name: v.product.name,
+                      quantity: v.quantity,
+                      isWeight: v.isWeight,
+                      capacityGrams: v.capacityGrams
+                    }));
+                    addToCart(product, 'Combo', 1, product.combo_capacity, selectionsArray);
+                  } else if (product.unit_type === 'weight') {
                     addToCart(product, 'Granel', 1, weightGrams);
                   } else {
                     addToCart(product, selectedSize, quantity);
                   }
                 }}
-                disabled={product.stock === 0 || (product.unit_type === 'weight' && product.stock < weightGrams)}
+                disabled={product.stock === 0 || (product.is_combo && remainingComboGrams > 0) || (!product.is_combo && product.unit_type === 'weight' && product.stock < weightGrams)}
                 className={`flex-1 flex items-center justify-center space-x-2.5 px-8 py-4 font-bold rounded-2xl shadow-lg transition-all duration-150 text-base ${
-                  product.stock === 0 || (product.unit_type === 'weight' && product.stock < weightGrams)
+                  product.stock === 0 || (product.is_combo && remainingComboGrams > 0) || (!product.is_combo && product.unit_type === 'weight' && product.stock < weightGrams)
                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                     : 'candy-gradient-bg text-white shadow-purple-300/50 hover:shadow-purple-400/60 hover:opacity-95 cursor-pointer active:scale-98 hover:-translate-y-0.5'
                 }`}
               >
                 <ShoppingBag className="w-5 h-5" />
-                <span>{product.stock === 0 ? 'Agotado' : product.unit_type === 'weight' ? `Agregar ${weightGrams}g a la Bolsa` : 'Agregar a la Bolsa'}</span>
+                <span>{product.stock === 0 ? 'Agotado' : product.is_combo ? (remainingComboGrams > 0 ? `Faltan ${remainingComboGrams}g` : 'Agregar Combo a la Bolsa') : product.unit_type === 'weight' ? `Agregar ${weightGrams}g a la Bolsa` : 'Agregar a la Bolsa'}</span>
               </button>
             </div>
 

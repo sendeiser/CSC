@@ -19,7 +19,7 @@ router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =>
 })
 
 router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const { product_id, quantity, selected_size, item_price, weight_grams } = req.body
+  const { product_id, quantity, selected_size, item_price, weight_grams, combo_selections } = req.body
 
   const { data: product } = await serviceClient
     .from('products')
@@ -157,13 +157,17 @@ router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response) =
       return
     }
 
-    const insertData = {
+    const insertData: any = {
       user_id: req.user!.id,
       product_id,
       quantity: addQty,
       selected_size: finalSize,
       item_price: priceVal,
       weight_grams: null
+    }
+
+    if (combo_selections) {
+      insertData.combo_selections = combo_selections
     }
 
     const { data, error } = await serviceClient

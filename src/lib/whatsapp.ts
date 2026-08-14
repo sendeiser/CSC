@@ -150,7 +150,16 @@ export function buildMensajePedido(pedido: PedidoWhatsApp): string {
     : (currentTemplates.msg_mercadopago || DEFAULT_WHATSAPP_TEMPLATES.msg_mercadopago);
 
   const detalleProds = pedido.items.map(
-    (i) => `• ${i.weight_grams ? `${i.weight_grams}g` : `${i.quantity}x ${i.selectedSize}`} ${i.product.name} = *${fmt(i.itemPrice * i.quantity)}*`
+    (i) => {
+      let line = `• ${i.weight_grams ? `${i.weight_grams}g` : `${i.quantity}x ${i.selectedSize}`} ${i.product.name} = *${fmt(i.itemPrice * i.quantity)}*`;
+      if (i.comboSelections && i.comboSelections.length > 0) {
+        line += '\n  _Bandeja armable con:_';
+        i.comboSelections.forEach((sel: any) => {
+          line += `\n  - ${sel.quantity}${sel.isWeight ? 'g' : ' un.'} de ${sel.name || sel.product?.name}`;
+        });
+      }
+      return line;
+    }
   ).join('\n');
 
   const descLinea = pedido.discountAmount > 0 ? `*Descuento:* -${fmt(pedido.discountAmount)}\n` : '';

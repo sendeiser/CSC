@@ -224,7 +224,8 @@ export default function App() {
             quantity: item.quantity,
             selected_size: item.selectedSize,
             item_price: item.itemPrice,
-            weight_grams: item.weight_grams
+            weight_grams: item.weight_grams,
+            combo_selections: item.comboSelections
           }).catch(() => { })
         )).then(() => clearLocalCart())
         : Promise.resolve()
@@ -237,7 +238,8 @@ export default function App() {
               quantity: i.quantity,
               selectedSize: i.selected_size,
               itemPrice: Number(i.item_price),
-              weight_grams: i.weight_grams
+              weight_grams: i.weight_grams,
+              comboSelections: i.combo_selections
             }))
             setCart(mapped)
           })
@@ -289,12 +291,22 @@ export default function App() {
     }
   };
 
-  const addToCart = async (product: Product, size: string, quantity: number, weight_grams?: number) => {
+  const addToCart = async (product: Product, size: string, quantity: number, weight_grams?: number, comboSelections?: {
+    productId: string;
+    name: string;
+    quantity: number;
+    isWeight: boolean;
+    capacityGrams: number;
+  }[]) => {
     let priceVal: number
     let itemSize: string
     let itemQty: number
 
-    if (product.unit_type === 'weight') {
+    if (product.is_combo) {
+      itemSize = size
+      itemQty = quantity
+      priceVal = product.base_price
+    } else if (product.unit_type === 'weight') {
       itemSize = 'Granel'
       itemQty = 1
       priceVal = (weight_grams! / 1000) * product.price_per_kg!
@@ -309,17 +321,23 @@ export default function App() {
       quantity: itemQty,
       selectedSize: itemSize,
       itemPrice: priceVal,
-      weight_grams: product.unit_type === 'weight' ? weight_grams : undefined
+      weight_grams: product.unit_type === 'weight' ? weight_grams : undefined,
+      comboSelections: comboSelections
     }
 
     if (!session.isLoggedIn) {
       setCart(prev => {
+        // Para combos, siempre agregamos como un item nuevo si las selecciones son diferentes (o podríamos juntarlos, pero es más fácil agregar separados)
+        if (product.is_combo) {
+          return [...prev, newItem];
+        }
+        
         const existing = prev.find(
-          i => i.product.id === product.id && (product.unit_type === 'weight' ? true : i.selectedSize === itemSize)
+          i => i.product.id === product.id && (product.unit_type === 'weight' ? true : i.selectedSize === itemSize) && !i.product.is_combo
         )
         if (existing) {
           return prev.map(i => {
-            if (i.product.id !== product.id) return i;
+            if (i.product.id !== product.id || i.product.is_combo) return i;
             if (product.unit_type === 'weight') {
               const newWeight = (i.weight_grams || 0) + (weight_grams || 50);
               const newPrice = Math.round((newWeight / 1000) * (product.price_per_kg || 0) * 100) / 100;
@@ -332,7 +350,7 @@ export default function App() {
         }
         return [...prev, newItem];
       })
-      showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g' : itemQty + 'x'} ${product.name} a tu Bolsa!`)
+      showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g de ' : product.is_combo ? '' : itemQty + 'x '}${product.name} a tu Bolsa!`)
       return
     }
 
@@ -346,6 +364,9 @@ export default function App() {
       if (product.unit_type === 'weight') {
         cartPayload.weight_grams = weight_grams
       }
+      if (product.is_combo && comboSelections) {
+        cartPayload.combo_selections = comboSelections
+      }
       await cartApi.add(cartPayload)
       const items = await cartApi.list()
       const mapped: CartItem[] = items.map((i: any) => ({
@@ -353,7 +374,8 @@ export default function App() {
         quantity: i.quantity,
         selectedSize: i.selected_size,
         itemPrice: Number(i.item_price),
-        weight_grams: i.weight_grams
+        weight_grams: i.weight_grams,
+        comboSelections: i.combo_selections
       }))
       setCart(mapped)
       showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g' : itemQty + 'x'} ${product.name} a tu Bolsa!`)

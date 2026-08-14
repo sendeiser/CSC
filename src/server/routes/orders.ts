@@ -216,6 +216,7 @@ router.post('/confirm', optionalAuth, async (req: AuthenticatedRequest, res: Res
             selected_size: item.selected_size,
             unit_price: item.item_price,
             weight_grams: item.weight_grams,
+            combo_selections: item.combo_selections,
           }))
 
           await serviceClient.from('order_items').insert(orderItemsData)
@@ -224,7 +225,7 @@ router.post('/confirm', optionalAuth, async (req: AuthenticatedRequest, res: Res
             const stockToSubtract = item.weight_grams || item.quantity
             const { data: product } = await serviceClient
               .from('products')
-              .select('stock')
+              .select('stock, is_combo')
               .eq('id', item.product_id)
               .single()
             if (product) {
@@ -232,6 +233,16 @@ router.post('/confirm', optionalAuth, async (req: AuthenticatedRequest, res: Res
                 .from('products')
                 .update({ stock: Math.max(0, product.stock - stockToSubtract) })
                 .eq('id', item.product_id)
+            if (product.is_combo && item.combo_selections) {
+              for (const selection of item.combo_selections) {
+                const selStockToSubtract = selection.quantity * item.quantity;
+                const productId = selection.productId || selection.product?.id;
+                const { data: subProduct } = await serviceClient.from('products').select('stock').eq('id', productId).single();
+                if (subProduct) {
+                  await serviceClient.from('products').update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) }).eq('id', productId);
+                }
+              }
+            }
             }
           }
         }
@@ -242,7 +253,7 @@ router.post('/confirm', optionalAuth, async (req: AuthenticatedRequest, res: Res
         const stockToSubtract = item.weight_grams || item.quantity
         const { data: product } = await serviceClient
           .from('products')
-          .select('stock')
+          .select('stock, is_combo')
           .eq('id', item.product_id)
           .single()
         if (product) {
@@ -250,6 +261,16 @@ router.post('/confirm', optionalAuth, async (req: AuthenticatedRequest, res: Res
             .from('products')
             .update({ stock: Math.max(0, product.stock - stockToSubtract) })
             .eq('id', item.product_id)
+          if (product.is_combo && item.combo_selections) {
+            for (const selection of item.combo_selections) {
+              const selStockToSubtract = selection.quantity * item.quantity;
+              const productId = selection.productId || selection.product?.id;
+              const { data: subProduct } = await serviceClient.from('products').select('stock').eq('id', productId).single();
+              if (subProduct) {
+                await serviceClient.from('products').update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) }).eq('id', productId);
+              }
+            }
+          }
         }
       }
     }

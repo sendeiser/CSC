@@ -194,6 +194,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
       selected_size: item.selectedSize || 'Estándar',
       item_price: item.itemPrice,
       weight_grams: item.weight_grams || null,
+      combo_selections: item.comboSelections || null,
     }));
 
     try {
@@ -460,6 +461,15 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                           <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider">{item.product.category}</span>
                           <h3 className="font-headline font-bold text-sm sm:text-base text-gray-900 leading-tight">{item.product.name}</h3>
                           <p className="text-xs text-gray-400 mt-0.5">{item.weight_grams ? `${item.weight_grams}g · Granel` : `Tamaño: ${item.selectedSize}`}</p>
+                          {item.comboSelections && item.comboSelections.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {item.comboSelections.map((sel: any, idx: number) => (
+                                <p key={idx} className="text-[10px] text-slate-500">
+                                  • {sel.name || sel.product?.name} ({sel.quantity}{sel.isWeight ? 'g' : ' un.'})
+                                </p>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={() => handleRemoveItem(index)}

@@ -23,6 +23,9 @@ export interface Product {
   max_weight?: number;
   weight_step?: number;
   images?: string[];
+  is_combo?: boolean;
+  combo_capacity?: number;
+  combo_allowed_types?: 'weight' | 'piece' | 'both';
   created_at: string;
 }
 
@@ -32,6 +35,13 @@ export interface CartItem {
   selectedSize: string;
   itemPrice: number;
   weight_grams?: number;
+  comboSelections?: {
+    productId: string;
+    name: string;
+    quantity: number;
+    isWeight: boolean;
+    capacityGrams: number;
+  }[];
 }
 
 export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros' | 'como-comprar' | 'mis-pedidos';
