@@ -501,7 +501,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                           </div>
                         </div>
                         <span className="font-bold text-base text-gray-900">
-                          ${(item.weight_grams ? item.itemPrice : item.itemPrice * item.quantity).toFixed(2)}
+                          ${Number(item.weight_grams ? item.itemPrice : (item.itemPrice || 0) * (item.quantity || 1)).toFixed(2)}
                         </span>
                       </div>
                     </div>

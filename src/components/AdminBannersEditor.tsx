@@ -480,7 +480,7 @@ export const AdminBannersEditor: React.FC = () => {
                     <option value="" disabled>Elegí un producto para vincular...</option>
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} - ${p.base_price.toFixed(2)} ({p.category})
+                        {p.name} - ${Number(p.base_price || 0).toFixed(2)} ({p.category})
                       </option>
                     ))}
                   </select>

@@ -310,7 +310,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                         }`}
                       >
                         <span className="text-xs">{weightKey}</span>
-                        <span className="text-[10px] text-slate-500 mt-0.5">${priceVal.toFixed(2)}</span>
+                        <span className="text-[10px] text-slate-500 mt-0.5">${Number(priceVal || 0).toFixed(2)}</span>
                       </button>
                     );
                   })}
@@ -426,7 +426,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                 </span>
                 {product.unit_type === 'weight' ? (
                   <span className="text-[10px] text-slate-500 mt-0.5">
-                    ${(product.price_per_kg || 0).toFixed(2)} / kg
+                    ${Number(product.price_per_kg || 0).toFixed(2)} / kg
                   </span>
                 ) : (
                   <span className="text-[10px] text-slate-500 mt-0.5">
@@ -674,7 +674,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                     </h4>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs sm:text-sm font-black text-slate-900">
-                        ${(relItem.base_price || 0).toFixed(2)}
+                        ${Number(relItem.base_price || 0).toFixed(2)}
                       </span>
                       <span className="text-[10px] text-pink-500 font-bold group-hover:underline">
                         Detalles

@@ -1206,7 +1206,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                           </div>
                           <p className="font-bold text-xs text-slate-900 truncate">{p.name}</p>
                           <p className="font-black text-xs text-purple-900">
-                            ${p.base_price.toFixed(2)}{isWeight ? ' / 1k' : ''}
+                            ${Number(p.base_price || 0).toFixed(2)}{isWeight ? ' / 1k' : ''}
                           </p>
                         </div>
                         {isSelected && (
@@ -1367,7 +1367,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
-                        <span className="font-black text-slate-900">${item.unit_price.toFixed(2)}</span>
+                        <span className="font-black text-slate-900">${Number(item.unit_price || 0).toFixed(2)}</span>
                         <button
                           onClick={() => handleRemoveManualItem(idx)}
                           className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"

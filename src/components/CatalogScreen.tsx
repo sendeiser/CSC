@@ -375,19 +375,19 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                       {product.unit_type === 'weight' ? (
                         <>
                           <span className="text-sm sm:text-base font-bold text-gray-900">
-                            ${(((product.min_weight || 50) / 1000) * (product.price_per_kg || 0)).toFixed(2)}
+                            ${Number(((product.min_weight || 50) / 1000) * (product.price_per_kg || 0)).toFixed(2)}
                           </span>
                           <span className="text-[10px] text-purple-500 font-semibold">/ {(product.min_weight || 50)}g · Granel</span>
                         </>
                       ) : product.onSale && product.discountPercentage ? (
                         <>
                           <span className="text-sm sm:text-base font-bold text-pink-600">
-                            ${(product.base_price * (1 - product.discountPercentage / 100)).toFixed(2)}
+                            ${Number(Number(product.base_price || 0) * (1 - (product.discountPercentage || 0) / 100)).toFixed(2)}
                           </span>
-                          <span className="text-[10px] text-gray-400 line-through">${product.base_price.toFixed(2)}</span>
+                          <span className="text-[10px] text-gray-400 line-through">${Number(product.base_price || 0).toFixed(2)}</span>
                         </>
                       ) : (
-                        <span className="text-sm sm:text-base font-bold text-gray-900">${product.base_price.toFixed(2)}</span>
+                        <span className="text-sm sm:text-base font-bold text-gray-900">${Number(product.base_price || 0).toFixed(2)}</span>
                       )}
                     </div>
                     <div className="flex items-center space-x-1.5">
