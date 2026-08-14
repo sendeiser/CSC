@@ -142,7 +142,7 @@ export interface PedidoWhatsApp {
   formaPago: 'transferencia' | 'mercadopago';
 }
 
-const fmt = (n: number) => '$' + n.toFixed(2);
+const fmt = (n: any) => '$' + Number(n || 0).toFixed(2);
 
 export function buildMensajePedido(pedido: PedidoWhatsApp): string {
   const tpl = pedido.formaPago === 'transferencia'

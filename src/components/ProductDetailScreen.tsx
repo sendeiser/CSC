@@ -276,7 +276,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
                   </button>
                   <div className="flex-1 text-center">
                     <span className="text-3xl font-black text-slate-900">{weightGrams}g</span>
-                    <p className="text-sm text-slate-500 font-semibold">${((weightGrams / 1000) * (product.price_per_kg || 0)).toFixed(2)}</p>
+                    <p className="text-sm text-slate-500 font-semibold">${Number(((weightGrams || 50) / 1000) * (product.price_per_kg || 0)).toFixed(2)}</p>
                   </div>
                   <button
                     onClick={() => setWeightGrams(g => Math.min(product.max_weight || 1000, g + (product.weight_step || 50)))}
@@ -422,7 +422,7 @@ export const ProductDetailScreen: React.FC<ProductDetailScreenProps> = ({
               <div className="flex flex-col">
                 <span className="text-xs text-slate-400 font-medium">{product.unit_type === 'weight' ? 'Precio:' : 'Subtotal Estimado:'}</span>
                 <span className="text-2xl font-black text-slate-950">
-                  ${activePrice.toFixed(2)}
+                  ${Number(activePrice || 0).toFixed(2)}
                 </span>
                 {product.unit_type === 'weight' ? (
                   <span className="text-[10px] text-slate-500 mt-0.5">
