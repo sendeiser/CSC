@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import { serviceClient } from '../lib/supabase'
 import { requireAuth, optionalAuth, AuthenticatedRequest } from '../lib/auth'
 import { getPayment } from '../lib/mercadopago'
+import { adjustOrderStock, isPaidOrActiveStatus } from '../lib/stock'
 
 const router = Router()
 
@@ -220,58 +221,13 @@ router.post('/confirm', optionalAuth, async (req: AuthenticatedRequest, res: Res
           }))
 
           await serviceClient.from('order_items').insert(orderItemsData)
-
-          for (const item of cartItems) {
-            const stockToSubtract = item.weight_grams || item.quantity
-            const { data: product } = await serviceClient
-              .from('products')
-              .select('stock, is_combo')
-              .eq('id', item.product_id)
-              .single()
-            if (product) {
-              await serviceClient
-                .from('products')
-                .update({ stock: Math.max(0, product.stock - stockToSubtract) })
-                .eq('id', item.product_id)
-            if (product.is_combo && item.combo_selections) {
-              for (const selection of item.combo_selections) {
-                const selStockToSubtract = selection.quantity * item.quantity;
-                const productId = selection.productId || selection.product?.id;
-                const { data: subProduct } = await serviceClient.from('products').select('stock').eq('id', productId).single();
-                if (subProduct) {
-                  await serviceClient.from('products').update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) }).eq('id', productId);
-                }
-              }
-            }
-            }
-          }
+          await adjustOrderStock(serviceClient, orderItemsData, 'deduct')
         }
       }
     } else {
-      // Stock subtraction for pre-existing order_items
-      for (const item of order.order_items) {
-        const stockToSubtract = item.weight_grams || item.quantity
-        const { data: product } = await serviceClient
-          .from('products')
-          .select('stock, is_combo')
-          .eq('id', item.product_id)
-          .single()
-        if (product) {
-          await serviceClient
-            .from('products')
-            .update({ stock: Math.max(0, product.stock - stockToSubtract) })
-            .eq('id', item.product_id)
-          if (product.is_combo && item.combo_selections) {
-            for (const selection of item.combo_selections) {
-              const selStockToSubtract = selection.quantity * item.quantity;
-              const productId = selection.productId || selection.product?.id;
-              const { data: subProduct } = await serviceClient.from('products').select('stock').eq('id', productId).single();
-              if (subProduct) {
-                await serviceClient.from('products').update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) }).eq('id', productId);
-              }
-            }
-          }
-        }
+      // Order items already exist; deduct stock if transition to paid
+      if (order.status !== 'paid' && order.order_items?.length) {
+        await adjustOrderStock(serviceClient, order.order_items, 'deduct')
       }
     }
 
@@ -421,41 +377,8 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
     return
   }
 
-  // Subtract stock for each item and combo sub-items
-  for (const item of orderItemsToProcess) {
-    const stockToSubtract = item.weight_grams || item.quantity
-    const { data: product } = await serviceClient
-      .from('products')
-      .select('stock, is_combo')
-      .eq('id', item.product_id)
-      .single()
-    if (product) {
-      await serviceClient
-        .from('products')
-        .update({ stock: Math.max(0, product.stock - stockToSubtract) })
-        .eq('id', item.product_id)
-
-      if (product.is_combo && item.combo_selections && Array.isArray(item.combo_selections)) {
-        for (const selection of item.combo_selections) {
-          const selStockToSubtract = Number(selection.quantity || 0) * Number(item.quantity || 1)
-          const subProductId = selection.productId || selection.product?.id || selection.id
-          if (subProductId && selStockToSubtract > 0) {
-            const { data: subProduct } = await serviceClient
-              .from('products')
-              .select('stock')
-              .eq('id', subProductId)
-              .single()
-            if (subProduct) {
-              await serviceClient
-                .from('products')
-                .update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) })
-                .eq('id', subProductId)
-            }
-          }
-        }
-      }
-    }
-  }
+  // NOTE: We do NOT deduct stock when the order is pending.
+  // Stock is only deducted when the order is paid or completed.
 
   if (req.user?.id) {
     await serviceClient.from('cart_items').delete().eq('user_id', req.user.id)

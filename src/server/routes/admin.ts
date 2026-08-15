@@ -3,6 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { supabase, serviceClient } from '../lib/supabase'
 import { requireAdmin, AuthenticatedRequest } from '../lib/auth'
+import { adjustOrderStock, isPaidOrActiveStatus, isUnpaidStatus } from '../lib/stock'
 
 const FINANCIAL_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'financial_settings.json')
 const STORE_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'store_settings.json')
@@ -456,8 +457,19 @@ function normalizeOrder(o: any) {
 }
 
 async function updateOrderStatusHelper(db: any, orderId: string, targetStatus: string) {
-  // Obtener dirección actual y limpiar cualquier tag de estado previo
-  const { data: currentOrder } = await db.from('orders').select('shipping_address').eq('id', orderId).single()
+  // Obtener orden y estado actual antes de actualizar
+  const { data: currentOrder } = await db
+    .from('orders')
+    .select('*, order_items(*)')
+    .eq('id', orderId)
+    .single()
+
+  const prevNormalized = normalizeOrder(currentOrder)
+  const prevStatus = prevNormalized?.status || currentOrder?.status || 'pending'
+  const wasPaid = isPaidOrActiveStatus(prevStatus)
+  const willBePaid = isPaidOrActiveStatus(targetStatus)
+  const willBeUnpaid = isUnpaidStatus(targetStatus)
+
   let cleanAddress = (currentOrder?.shipping_address || '').replace(/\[Estado: [^\]]+\]/g, '').trim()
 
   let tag = ''
@@ -468,6 +480,13 @@ async function updateOrderStatusHelper(db: any, orderId: string, targetStatus: s
   }
 
   const finalAddress = tag ? `${cleanAddress} ${tag}`.trim() : cleanAddress
+
+  // Ajuste de stock si cambia de impago a pagado/entregado o viceversa
+  if (!wasPaid && willBePaid && currentOrder?.order_items?.length) {
+    await adjustOrderStock(db, currentOrder.order_items, 'deduct')
+  } else if (wasPaid && willBeUnpaid && currentOrder?.order_items?.length) {
+    await adjustOrderStock(db, currentOrder.order_items, 'restore')
+  }
 
   // 1. Intenta la actualización directa con el estado deseado y la dirección limpia de tags viejos
   const { data: directData, error: directErr } = await db
@@ -611,32 +630,9 @@ router.post('/orders/manual', requireAdmin, async (req: AuthenticatedRequest, re
       console.error('[Manual Order Items Error]:', itemsError)
     }
 
-    // Deduct stock from products and combo sub-items
-    for (const item of items) {
-      const { product_id, quantity, weight_grams, combo_selections } = item
-      const { data: prod } = await db.from('products').select('stock, unit_type, is_combo').eq('id', product_id).single()
-      if (prod) {
-        let deductAmount = quantity
-        if (prod.unit_type === 'weight' && weight_grams) {
-          deductAmount = weight_grams
-        }
-        const newStock = Math.max(0, Number(prod.stock || 0) - deductAmount)
-        await db.from('products').update({ stock: newStock }).eq('id', product_id)
-
-        if (prod.is_combo && (combo_selections || item.comboSelections) && Array.isArray(combo_selections || item.comboSelections)) {
-          const selections = combo_selections || item.comboSelections
-          for (const selection of selections) {
-            const selStockToSubtract = Number(selection.quantity || 0) * Number(quantity || 1)
-            const subProductId = selection.productId || selection.product?.id || selection.id
-            if (subProductId && selStockToSubtract > 0) {
-              const { data: subProduct } = await db.from('products').select('stock').eq('id', subProductId).single()
-              if (subProduct) {
-                await db.from('products').update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) }).eq('id', subProductId)
-              }
-            }
-          }
-        }
-      }
+    // Deduct stock if manual sale is registered as paid/active
+    if (isPaidOrActiveStatus(status || 'paid')) {
+      await adjustOrderStock(db, itemsWithOrderId, 'deduct')
     }
 
     res.status(201).json(newOrder)

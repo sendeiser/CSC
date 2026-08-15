@@ -2,6 +2,7 @@ import { Router, Response } from 'express'
 import { serviceClient } from '../lib/supabase'
 import { requireAuth, optionalAuth, AuthenticatedRequest } from '../lib/auth'
 import { createPreference, getPayment } from '../lib/mercadopago'
+import { adjustOrderStock, isPaidOrActiveStatus } from '../lib/stock'
 
 const router = Router()
 
@@ -179,47 +180,14 @@ router.post('/webhook', async (req, res) => {
             .eq('preference_id', payment.preference_id)
             .maybeSingle()
 
-          if (order && order.status !== 'paid') {
+          if (order && !isPaidOrActiveStatus(order.status)) {
             const { data: orderItems } = await serviceClient
               .from('order_items')
               .select('*')
               .eq('order_id', order.id)
 
-            if (orderItems) {
-              for (const item of orderItems) {
-                const stockToSubtract = item.weight_grams || item.quantity
-                const { data: product } = await serviceClient
-                  .from('products')
-                  .select('stock, is_combo')
-                  .eq('id', item.product_id)
-                  .single()
-                if (product) {
-                  await serviceClient
-                    .from('products')
-                    .update({ stock: Math.max(0, product.stock - stockToSubtract) })
-                    .eq('id', item.product_id)
-
-                  if (product.is_combo && item.combo_selections && Array.isArray(item.combo_selections)) {
-                    for (const selection of item.combo_selections) {
-                      const selStockToSubtract = Number(selection.quantity || 0) * Number(item.quantity || 1)
-                      const subProductId = selection.productId || selection.product?.id || selection.id
-                      if (subProductId && selStockToSubtract > 0) {
-                        const { data: subProduct } = await serviceClient
-                          .from('products')
-                          .select('stock')
-                          .eq('id', subProductId)
-                          .single()
-                        if (subProduct) {
-                          await serviceClient
-                            .from('products')
-                            .update({ stock: Math.max(0, subProduct.stock - selStockToSubtract) })
-                            .eq('id', subProductId)
-                        }
-                      }
-                    }
-                  }
-                }
-              }
+            if (orderItems && orderItems.length > 0) {
+              await adjustOrderStock(serviceClient, orderItems, 'deduct')
             }
 
             await serviceClient
