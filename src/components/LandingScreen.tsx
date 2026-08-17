@@ -178,11 +178,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                           </div>
 
                           {/* Floating badges */}
-                          <motion.div
-                            animate={{ y: [0, -8, 0] }}
-                            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                            className="absolute -bottom-4 -left-4 bg-white rounded-2xl p-3 shadow-xl border border-pink-100 flex items-center space-x-2"
-                          >
+                          <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl p-3 shadow-xl border border-pink-100 flex items-center space-x-2 animate-float">
                             <div className="w-8 h-8 rounded-xl bg-pink-100 flex items-center justify-center text-pink-600 font-bold text-xs">
                               {heroProduct.category.slice(0, 3)}
                             </div>
@@ -190,18 +186,14 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
                               <p className="text-[10px] font-bold text-gray-900">Por Granel</p>
                               <p className="text-[9px] text-gray-400">Elegí tu cantidad</p>
                             </div>
-                          </motion.div>
+                          </div>
 
-                          <motion.div
-                            animate={{ y: [0, 8, 0] }}
-                            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                            className="absolute -top-4 -right-4 bg-white rounded-2xl p-3 shadow-xl border border-purple-100 flex items-center space-x-2"
-                          >
+                          <div className="absolute -top-4 -right-4 bg-white rounded-2xl p-3 shadow-xl border border-purple-100 flex items-center space-x-2 animate-float-delayed">
                             <div className="flex space-x-0.5">
                               {[1,2,3,4,5].map((s) => <Star key={s} className="w-3 h-3 fill-amber-400 text-amber-400" />)}
                             </div>
                             <span className="text-xs font-bold text-gray-800">5.0</span>
-                          </motion.div>
+                          </div>
                         </motion.div>
                       </div>
                     </div>
@@ -319,25 +311,20 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({
 
                   {/* Scroll horizontal en mobile, grid en desktop */}
                   <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 sm:grid sm:grid-cols-3 lg:grid-cols-5 sm:overflow-visible">
-                    {cats.map((cat: any, idx: number) => {
+                    {cats.map((cat: any) => {
                       const Icon = getCategoryIcon(cat.icon)
                       return (
-                        <motion.button
+                        <button
                           key={cat.slug}
-                          initial={{ opacity: 0, y: 20 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 0.4, delay: idx * 0.07 }}
-                          whileHover={{ y: -6, scale: 1.02 }}
                           onClick={() => setActiveScreen('catalogo')}
-                          className={`flex-shrink-0 w-40 sm:w-auto ${cat.bg_color || 'bg-pink-50'} rounded-3xl p-6 sm:p-8 text-center group cursor-pointer border border-white/60 shadow-sm hover:shadow-lg transition-all duration-300`}
+                          className={`flex-shrink-0 w-40 sm:w-auto ${cat.bg_color || 'bg-pink-50'} rounded-3xl p-6 sm:p-8 text-center group cursor-pointer border border-white/60 shadow-sm hover:shadow-lg transition-all duration-200`}
                         >
-                          <div className={`w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-white mb-4 shadow-md group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                          <div className={`w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-white mb-4 shadow-md sm:group-hover:scale-110 sm:group-hover:rotate-3 transition-transform duration-200`}>
                             <Icon className="w-7 h-7" />
                           </div>
                           <h3 className={`font-headline font-bold text-base ${cat.text_color || 'text-pink-700'}`}>{cat.name}</h3>
                           <p className="text-xs text-gray-400 mt-1 group-hover:text-gray-600 transition-colors">Ver más →</p>
-                        </motion.button>
+                        </button>
                       )
                     })}
                   </div>

@@ -298,13 +298,10 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
           </motion.div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 pb-16">
-            {products.map((product, idx) => (
-              <motion.div
+            {products.map((product) => (
+              <div
                 key={product.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: Math.min(idx * 0.03, 0.2) }}
-                className="group bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all duration-300 flex flex-col"
+                className="group bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all duration-200 flex flex-col"
               >
                 {/* Image */}
                 <div className="relative overflow-hidden aspect-square bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
@@ -419,7 +416,7 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

@@ -148,30 +148,6 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  /* Mobile hardware & GPU rendering optimizations */
-  @media (max-width: 640px) {
-    /* Desactivar o suavizar blurs pesados en móvil para 60fps constantes */
-    .glass {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-    }
-    .glass-dark {
-      background: rgba(15, 10, 30, 0.95);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-    }
-    .animate-blob {
-      animation: none !important; /* Evita recalcular border-radius cada frame en móvil */
-    }
-    .animate-float, .animate-float-delayed {
-      animation-duration: 8s !important;
-    }
-    .blur-3xl, .blur-2xl {
-      filter: blur(24px) !important; /* Reducir radio de desenfoque GPU en móvil */
-    }
-  }
-
   /* Gradient text */
   .candy-gradient-text {
     background: linear-gradient(135deg, #ec4899, #a855f7, #6366f1);
@@ -285,36 +261,99 @@
   }
 }
 
-/* ─── Mobile Performance Optimizations ───────────────────────── */
-@media (max-width: 640px) {
-  /* Eliminar backdrop-blur pesado en móviles para navegación ultra rápida */
+/* ─── Ultra-Fast Mobile Performance Optimizations (max-width: 768px) ─── */
+@media (max-width: 768px) {
+  /* 1. Anular todos los filtros GPU de desenfoque pesado en móvil */
+  *,
+  *::before,
+  *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
   .backdrop-blur-sm,
   .backdrop-blur-md,
   .backdrop-blur-lg,
   .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-3xl,
   .backdrop-blur {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
 
-  /* Desactivar animaciones continuas en bucle en móviles para liberar GPU/CPU */
+  /* 2. Ocultar orbes y capas decorativas con desenfoques masivos (blur-xl, blur-2xl, blur-3xl) en móvil */
+  .blur,
+  .blur-sm,
+  .blur-md,
+  .blur-lg,
+  .blur-xl,
+  .blur-2xl,
+  .blur-3xl,
+  [class*="blur-"] {
+    filter: none !important;
+    opacity: 0 !important;
+    display: none !important;
+  }
+
+  /* 3. Desactivar animaciones continuas en bucle y efectos pesados en móviles para liberar GPU/CPU */
   .animate-bounce,
   .animate-pulse,
   .animate-ping,
   .animate-ping-slow,
   .animate-float,
-  .animate-float-delayed {
+  .animate-float-delayed,
+  .animate-blob,
+  .animate-shimmer,
+  .animate-fade-in-up,
+  .animate-bounce-in,
+  .animate-slide-up {
     animation: none !important;
+    transform: none !important;
+    will-change: auto !important;
   }
 
-  /* Respuesta al toque táctil instantánea de 0ms */
+  /* Mantener spinner esencial de carga */
+  .animate-spin {
+    animation: spin 0.8s linear infinite !important;
+  }
+
+  /* 4. Suprimir efectos de escala / hover lentos en móvil (evita retrasos táctiles) */
+  .card-hover,
+  .group:hover .group-hover\:scale-105,
+  .group:hover .group-hover\:scale-110,
+  .hover\:scale-105,
+  .hover\:scale-110 {
+    transform: none !important;
+  }
+
+  /* 5. Optimización de cristales / glass en móvil con fondos limpios y opacos */
+  .glass {
+    background: rgba(255, 255, 255, 0.98) !important;
+    border-color: rgba(241, 245, 249, 0.9) !important;
+  }
+  .glass-dark {
+    background: rgba(15, 10, 30, 0.98) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  /* 6. Respuesta al toque táctil instantánea de 0ms */
   button, a, input, select {
     touch-action: manipulation !important;
   }
 
-  /* Optimizar renderizado de cuadrículas de tarjetas de productos */
+  /* 7. Optimizar renderizado de cuadrículas de tarjetas de productos */
   .grid > div {
+    content-visibility: auto;
+    contain-intrinsic-size: 260px;
     contain: layout style paint;
   }
+
+  /* 8. Suavizar sombras multinivel pesadas */
+  .shadow-2xl,
+  .shadow-xl {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  }
 }
+
 
