@@ -282,18 +282,15 @@
     -webkit-backdrop-filter: none !important;
   }
 
-  /* 2. Ocultar orbes y capas decorativas con desenfoques masivos (blur-xl, blur-2xl, blur-3xl) en móvil */
+  /* 2. Suavizar filtros blur en móvil sin ocultar elementos */
   .blur,
   .blur-sm,
   .blur-md,
   .blur-lg,
   .blur-xl,
   .blur-2xl,
-  .blur-3xl,
-  [class*="blur-"] {
+  .blur-3xl {
     filter: none !important;
-    opacity: 0 !important;
-    display: none !important;
   }
 
   /* 3. Desactivar animaciones continuas en bucle y efectos pesados en móviles para liberar GPU/CPU */
