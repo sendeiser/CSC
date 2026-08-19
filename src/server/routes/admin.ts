@@ -7,6 +7,74 @@ import { adjustOrderStock, isPaidOrActiveStatus, isUnpaidStatus } from '../lib/s
 
 const FINANCIAL_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'financial_settings.json')
 const STORE_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'store_settings.json')
+const EXPENSES_FILE = path.join(process.cwd(), 'public', 'uploads', 'expenses.json')
+
+export async function getExpensesHelper(): Promise<any[]> {
+  const db = serviceClient || supabase
+  try {
+    const { data } = await db
+      .from('homepage_sections')
+      .select('content')
+      .eq('section_type', 'expenses_tracker')
+      .single()
+
+    if (data?.content?.expenses && Array.isArray(data.content.expenses)) {
+      return data.content.expenses
+    }
+  } catch (_e) {}
+
+  try {
+    if (fs.existsSync(EXPENSES_FILE)) {
+      const raw = fs.readFileSync(EXPENSES_FILE, 'utf-8')
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return parsed
+      if (parsed.expenses && Array.isArray(parsed.expenses)) return parsed.expenses
+    }
+  } catch (_e) {}
+
+  return []
+}
+
+export async function saveExpensesHelper(expenses: any[]) {
+  const db = serviceClient || supabase
+  try {
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true })
+    }
+    fs.writeFileSync(EXPENSES_FILE, JSON.stringify(expenses, null, 2), 'utf-8')
+  } catch (err) {
+    console.error('[Expenses File Save Error]:', err)
+  }
+
+  try {
+    const { data: existing } = await db
+      .from('homepage_sections')
+      .select('id')
+      .eq('section_type', 'expenses_tracker')
+      .single()
+
+    if (existing?.id) {
+      await db
+        .from('homepage_sections')
+        .update({ content: { expenses } })
+        .eq('id', existing.id)
+    } else {
+      await db
+        .from('homepage_sections')
+        .insert({
+          section_type: 'expenses_tracker',
+          title: 'Registro de Gastos y Movimientos',
+          visible: false,
+          order_index: 98,
+          content: { expenses },
+        })
+    }
+  } catch (err) {
+    console.warn('[Expenses DB Upsert Warning]:', err)
+  }
+  return expenses
+}
 
 export async function getStoreSettingsHelper() {
   const db = serviceClient || supabase
@@ -943,15 +1011,37 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
 
   const financialSettings = await getFinancialSettingsHelper()
   const initialInvestment = Number(financialSettings.initial_investment || 0)
-  const realNetProfit = totalRevenue - initialInvestment
-  const roiPct = initialInvestment > 0 ? ((totalRevenue - initialInvestment) / initialInvestment) * 100 : 0
-  const recoveryPct = initialInvestment > 0 ? Math.min(100, Math.round((totalRevenue / initialInvestment) * 100)) : 100
+  
+  const allExpenses = await getExpensesHelper()
+  const totalExpenses = allExpenses
+    .filter(e => e.type !== 'income')
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+  const totalExtraIncomes = allExpenses
+    .filter(e => e.type === 'income')
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+  const packagingExpenses = allExpenses
+    .filter(e => e.type !== 'income' && String(e.category || '').toLowerCase().includes('packaging'))
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+  const stockExpenses = allExpenses
+    .filter(e => e.type !== 'income' && (String(e.category || '').toLowerCase().includes('stock') || String(e.category || '').toLowerCase().includes('golosina') || String(e.category || '').toLowerCase().includes('materia prima')))
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+
+  const effectiveTotalOutflow = initialInvestment > 0 ? (initialInvestment + totalExpenses) : totalExpenses
+  const totalAllRevenue = totalRevenue + totalExtraIncomes
+  const realNetProfit = totalAllRevenue - effectiveTotalOutflow
+  const roiPct = effectiveTotalOutflow > 0 ? ((totalAllRevenue - effectiveTotalOutflow) / effectiveTotalOutflow) * 100 : 0
+  const recoveryPct = effectiveTotalOutflow > 0 ? Math.min(100, Math.round((totalAllRevenue / effectiveTotalOutflow) * 100)) : 100
 
   res.json({
     totalProducts: totalProducts || 0,
     totalUsers: totalUsers || 0,
     totalOrders: totalOrders || 0,
     totalRevenue,
+    totalExtraIncomes,
+    totalAllRevenue,
+    totalExpenses,
+    packagingExpenses,
+    stockExpenses,
     todaySales,
     weeklySales,
     monthlySales,
@@ -960,6 +1050,7 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
     netProfit,
     profitMargin,
     initialInvestment,
+    effectiveTotalOutflow,
     financialSettings,
     realNetProfit,
     roiPct,
@@ -968,8 +1059,126 @@ router.get('/stats', requireAdmin, async (req: AuthenticatedRequest, res: Respon
     topProducts,
     salesByCategory,
     statusCounts,
-    recentOrders: recentOrdersWithProfiles
+    recentOrders: recentOrdersWithProfiles,
+    recentExpenses: allExpenses.slice(0, 10),
   })
+})
+
+// ── EXPENSES & FINANCES ────────────────────────────────────────
+
+router.get('/expenses', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  const expenses = await getExpensesHelper()
+  
+  // Resumen calculado
+  const totalExpenses = expenses
+    .filter(e => e.type !== 'income')
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+
+  const totalExtraIncomes = expenses
+    .filter(e => e.type === 'income')
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+
+  const packagingExpenses = expenses
+    .filter(e => e.type !== 'income' && String(e.category || '').toLowerCase().includes('packaging'))
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+
+  const stockExpenses = expenses
+    .filter(e => e.type !== 'income' && (String(e.category || '').toLowerCase().includes('stock') || String(e.category || '').toLowerCase().includes('golosina') || String(e.category || '').toLowerCase().includes('materia prima')))
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+
+  const shippingExpenses = expenses
+    .filter(e => e.type !== 'income' && (String(e.category || '').toLowerCase().includes('envio') || String(e.category || '').toLowerCase().includes('flete') || String(e.category || '').toLowerCase().includes('shipping')))
+    .reduce((acc, e) => acc + Number(e.amount || 0), 0)
+
+  const byCategory: Record<string, number> = {}
+  expenses.forEach(e => {
+    if (e.type !== 'income') {
+      const cat = e.category || 'Otros'
+      byCategory[cat] = (byCategory[cat] || 0) + Number(e.amount || 0)
+    }
+  })
+
+  res.json({
+    expenses,
+    summary: {
+      totalExpenses,
+      totalExtraIncomes,
+      packagingExpenses,
+      stockExpenses,
+      shippingExpenses,
+      byCategory,
+      count: expenses.length,
+    }
+  })
+})
+
+router.post('/expenses', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { type = 'expense', category, description, amount, payment_method = 'Efectivo', date, notes } = req.body
+
+  if (!description || !amount || Number(amount) <= 0) {
+    res.status(400).json({ error: 'La descripción y el monto (mayor a 0) son obligatorios.' })
+    return
+  }
+
+  const newExpense = {
+    id: `exp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    type: type === 'income' ? 'income' : 'expense',
+    category: category || (type === 'income' ? 'Ingreso Extra' : 'Otros'),
+    description: String(description).trim(),
+    amount: Number(amount),
+    payment_method: payment_method || 'Efectivo',
+    date: date || new Date().toISOString().split('T')[0],
+    notes: notes ? String(notes).trim() : '',
+    created_at: new Date().toISOString(),
+  }
+
+  const existing = await getExpensesHelper()
+  const updated = [newExpense, ...existing]
+  await saveExpensesHelper(updated)
+
+  res.status(201).json(newExpense)
+})
+
+router.put('/expenses/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params
+  const { type, category, description, amount, payment_method, date, notes } = req.body
+
+  const existing = await getExpensesHelper()
+  const index = existing.findIndex(e => e.id === id)
+
+  if (index === -1) {
+    res.status(404).json({ error: 'Movimiento no encontrado.' })
+    return
+  }
+
+  existing[index] = {
+    ...existing[index],
+    type: type !== undefined ? type : existing[index].type,
+    category: category !== undefined ? category : existing[index].category,
+    description: description !== undefined ? String(description).trim() : existing[index].description,
+    amount: amount !== undefined ? Number(amount) : existing[index].amount,
+    payment_method: payment_method !== undefined ? payment_method : existing[index].payment_method,
+    date: date !== undefined ? date : existing[index].date,
+    notes: notes !== undefined ? String(notes).trim() : existing[index].notes,
+    updated_at: new Date().toISOString(),
+  }
+
+  await saveExpensesHelper(existing)
+  res.json(existing[index])
+})
+
+router.delete('/expenses/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { id } = req.params
+  const existing = await getExpensesHelper()
+  const filtered = existing.filter(e => e.id !== id)
+
+  if (filtered.length === existing.length) {
+    res.status(404).json({ error: 'Movimiento no encontrado.' })
+    return
+  }
+
+  await saveExpensesHelper(filtered)
+  res.json({ message: 'Movimiento eliminado con éxito.' })
 })
 
 router.get('/financial-settings', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {

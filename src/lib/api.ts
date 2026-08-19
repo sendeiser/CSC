@@ -210,6 +210,13 @@ export const admin = {
   getFinancialSettings: () => request<any>('/admin/financial-settings'),
   updateFinancialSettings: (data: any) =>
     request<any>('/admin/financial-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  getExpenses: () => request<{ expenses: any[]; summary: any }>('/admin/expenses'),
+  createExpense: (data: any) =>
+    request<any>('/admin/expenses', { method: 'POST', body: JSON.stringify(data) }),
+  updateExpense: (id: string, data: any) =>
+    request<any>(`/admin/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteExpense: (id: string) =>
+    request<{ message: string }>(`/admin/expenses/${id}`, { method: 'DELETE' }),
   getStoreSettings: () => request<StoreSettings>('/admin/store-settings'),
   updateStoreSettings: (data: any) =>
     request<any>('/admin/store-settings', { method: 'PUT', body: JSON.stringify(data) }),

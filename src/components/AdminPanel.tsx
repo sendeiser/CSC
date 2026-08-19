@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck, Sparkles, Wallet } from 'lucide-react';
 import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
@@ -9,6 +9,7 @@ import AdminAboutPageEditor from './AdminAboutPageEditor';
 import { AdminWhatsAppEditor } from './AdminWhatsAppEditor';
 import { AdminOrdersSection } from './AdminOrdersSection';
 import { AdminShippingEditor } from './AdminShippingEditor';
+import { AdminFinancesSection } from './AdminFinancesSection';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { useModal } from '../context/ModalContext';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
@@ -634,6 +635,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
 
   const navItems: { id: AdminSection; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
+    { id: 'finances', label: 'Gastos & Finanzas', icon: <Wallet className="w-4.5 h-4.5 text-rose-400" /> },
     { id: 'analytics', label: 'Gráficos', icon: <BarChart2 className="w-4.5 h-4.5" /> },
     { id: 'products', label: 'Productos', icon: <Package className="w-4.5 h-4.5" /> },
     { id: 'orders', label: 'Pedidos', icon: <ShoppingCart className="w-4.5 h-4.5" /> },
@@ -838,22 +840,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          setFinancialForm({
-                            products_cost: stats.financialSettings?.products_cost || 0,
-                            shipping_cost: stats.financialSettings?.shipping_cost || 0,
-                            packaging_cost: stats.financialSettings?.packaging_cost || 0,
-                            other_cost: stats.financialSettings?.other_cost || 0,
-                            initial_investment: stats.initialInvestment || 0,
-                          });
-                          setShowFinancialModal(true);
-                        }}
-                        className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 shrink-0"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        <span>Configurar Inversión Inicial</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          onClick={() => setSection('finances')}
+                          className="inline-flex items-center justify-center space-x-1.5 px-3.5 py-2 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs"
+                        >
+                          <Wallet className="w-4 h-4" />
+                          <span>Libro de Gastos</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFinancialForm({
+                              products_cost: stats.financialSettings?.products_cost || 0,
+                              shipping_cost: stats.financialSettings?.shipping_cost || 0,
+                              packaging_cost: stats.financialSettings?.packaging_cost || 0,
+                              other_cost: stats.financialSettings?.other_cost || 0,
+                              initial_investment: stats.initialInvestment || 0,
+                            });
+                            setShowFinancialModal(true);
+                          }}
+                          className="inline-flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all hover:scale-105 shrink-0 cursor-pointer"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                          <span>Configurar Inversión Inicial</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Financial stats cards */}
@@ -2025,6 +2036,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 </div>
               )}
 
+              {section === 'finances' && <AdminFinancesSection />}
               {section === 'homepage' && <AdminHomepageEditor />}
               {section === 'banners' && <AdminBannersEditor />}
               {section === 'about-page' && <AdminAboutPageEditor />}

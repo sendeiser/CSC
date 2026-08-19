@@ -46,7 +46,19 @@ export interface CartItem {
 
 export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros' | 'como-comprar' | 'mis-pedidos';
 
-export type AdminSection = 'dashboard' | 'analytics' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'banners' | 'about-page' | 'categories' | 'whatsapp' | 'shipping';
+export type AdminSection = 'dashboard' | 'analytics' | 'finances' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'banners' | 'about-page' | 'categories' | 'whatsapp' | 'shipping';
+
+export interface ExpenseItem {
+  id: string;
+  type: 'expense' | 'income';
+  category: string;
+  description: string;
+  amount: number;
+  payment_method: 'Efectivo' | 'Transferencia' | string;
+  date: string;
+  notes?: string;
+  created_at?: string;
+}
 
 export interface StoreSettings {
   whatsapp_number_1: string;
