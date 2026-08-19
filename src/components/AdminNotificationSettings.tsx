@@ -43,8 +43,10 @@ export const AdminNotificationSettings: React.FC = () => {
     adminApi.getStoreSettings()
       .then((data) => {
         if (data) {
+          const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
           setForm({
             ...data,
+            store_website_url: data.store_website_url || currentOrigin || 'https://chamicalcandyshop.com',
             telegram_bot_token: data.telegram_bot_token || '',
             telegram_chat_id: data.telegram_chat_id || '',
             telegram_enabled: Boolean(data.telegram_enabled),
@@ -315,6 +317,43 @@ export const AdminNotificationSettings: React.FC = () => {
               className="w-5 h-5 rounded-lg accent-purple-600 cursor-pointer"
             />
           </label>
+        </div>
+      </div>
+
+      {/* Store Website Link Card */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-sm">
+        <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
+          <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-headline font-bold text-slate-900 text-sm">Enlace / Link de tu Tienda Web</h3>
+            <p className="text-xs text-slate-500">Este enlace se incluirá en cada mensaje para que puedas ingresar directo a la página</p>
+          </div>
+        </div>
+
+        <div className="space-y-3 pt-1">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              value={form.store_website_url || ''}
+              onChange={(e) => setForm({ ...form, store_website_url: e.target.value })}
+              placeholder="https://chamicalcandyshop.com"
+              className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-mono text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-200 transition-all"
+            />
+            {typeof window !== 'undefined' && (
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, store_website_url: window.location.origin })}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all shrink-0 cursor-pointer"
+              >
+                Usar link actual
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Ejemplo: <code>https://chamicalcandyshop.netlify.app</code> o tu dominio personalizado.
+          </p>
         </div>
       </div>
 

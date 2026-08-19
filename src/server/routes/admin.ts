@@ -98,6 +98,7 @@ export async function getStoreSettingsHelper() {
     delivery_notes: 'Envíos en el día dentro del radio urbano de Chamical.',
 
     // Notifications
+    store_website_url: '',
     telegram_bot_token: '',
     telegram_chat_id: '',
     telegram_enabled: false,
@@ -172,6 +173,7 @@ export async function saveStoreSettingsHelper(payload: any) {
     delivery_notes: payload.delivery_notes !== undefined ? String(payload.delivery_notes).trim() : current.delivery_notes,
 
     // Notifications: preservar siempre tokens existentes si no se pasan en el payload
+    store_website_url: payload.store_website_url !== undefined ? String(payload.store_website_url).trim() : (current.store_website_url || ''),
     telegram_bot_token: payload.telegram_bot_token !== undefined ? String(payload.telegram_bot_token).trim() : (current.telegram_bot_token || ''),
     telegram_chat_id: payload.telegram_chat_id !== undefined ? String(payload.telegram_chat_id).trim() : (current.telegram_chat_id || ''),
     telegram_enabled: payload.telegram_enabled !== undefined ? Boolean(payload.telegram_enabled) : Boolean(current.telegram_enabled),

@@ -245,6 +245,10 @@ export async function dispatchNotifications(text: string, options: { isOrder?: b
 
 export async function notifyNewOrder(order: any, items: any[] = []) {
   try {
+    const settings = await getStoreSettingsHelper();
+    const rawUrl = settings?.store_website_url || process.env.PUBLIC_URL || process.env.APP_URL || process.env.URL || '';
+    const storeUrl = (rawUrl ? rawUrl.trim() : 'https://chamicalcandyshop.com').replace(/\/+$/, '');
+
     const orderCode = escapeHtml((order.id || '').slice(0, 8).toUpperCase());
     const customer = escapeHtml(order.shipping_name || 'Cliente');
     const address = escapeHtml(order.shipping_address || 'Sin especificar');
@@ -272,6 +276,7 @@ export async function notifyNewOrder(order: any, items: any[] = []) {
       itemsList ? `\n📦 <b>Productos:</b>\n${itemsList}\n` : '',
       `🕒 <b>Fecha:</b> ${dateStr}`,
       ``,
+      `🌐 <b>Ingresar a la Web:</b> ${storeUrl}`,
       `👉 <i>Ingresá al panel admin para gestionarlo.</i>`
     ].filter(Boolean).join('\n');
 
@@ -283,6 +288,10 @@ export async function notifyNewOrder(order: any, items: any[] = []) {
 
 export async function notifyNewUser(user: { name?: string; email: string }) {
   try {
+    const settings = await getStoreSettingsHelper();
+    const rawUrl = settings?.store_website_url || process.env.PUBLIC_URL || process.env.APP_URL || process.env.URL || '';
+    const storeUrl = (rawUrl ? rawUrl.trim() : 'https://chamicalcandyshop.com').replace(/\/+$/, '');
+
     const name = escapeHtml(user.name || 'Nuevo Usuario');
     const email = escapeHtml(user.email || 'Sin email');
     const dateStr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
@@ -294,6 +303,7 @@ export async function notifyNewUser(user: { name?: string; email: string }) {
       `📧 <b>Email:</b> ${email}`,
       `🕒 <b>Fecha:</b> ${dateStr}`,
       ``,
+      `🌐 <b>Ingresar a la Web:</b> ${storeUrl}`,
       `👉 <i>Usuario listo para comprar en Chamical Candy Shop.</i>`
     ].join('\n');
 

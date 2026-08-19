@@ -80,6 +80,7 @@ export interface StoreSettings {
   delivery_notes: string;
 
   // Mobile & Server Notifications
+  store_website_url?: string;
   telegram_bot_token?: string;
   telegram_chat_id?: string;
   telegram_enabled?: boolean;
