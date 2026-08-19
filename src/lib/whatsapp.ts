@@ -6,6 +6,7 @@ export const WHATSAPP_NUMERO = WHATSAPP_NUMERO_1;
 
 export interface WhatsAppTemplates {
   msg_transfer: string;
+  msg_cash?: string;
   msg_mercadopago: string;
   msg_general_inquiry: string;
   msg_order_status: string;
@@ -54,7 +55,7 @@ export const DEFAULT_CUSTOM_QUICK_MESSAGES: CustomQuickMessage[] = [
 ];
 
 export const DEFAULT_WHATSAPP_TEMPLATES: WhatsAppTemplates = {
-  msg_transfer: `Hola! Quiero confirmar mi pedido.
+  msg_transfer: `Hola! Quiero confirmar mi pedido por *Transferencia*.
 
 *N° de pedido:* #{numero_pedido}
 *Detalle:*
@@ -69,6 +70,21 @@ Alias: {alias}
 {cbu_linea}Titular: {titular}
 
 Hacer la transferencia por *{monto_total}* al alias de arriba y enviar el comprobante por este chat para confirmar la compra.
+
+*Mis datos:*
+Nombre: {nombre_cliente}
+{telefono_linea}{direccion_linea}
+Gracias!`,
+
+  msg_cash: `Hola! Quiero confirmar mi pedido para abonar en *Efectivo*.
+
+*N° de pedido:* #{numero_pedido}
+*Forma de pago:* Efectivo
+*Detalle:*
+{detalle_productos}
+
+*Subtotal:* {subtotal}
+{descuento_linea}*TOTAL:* {monto_total}
 
 *Mis datos:*
 Nombre: {nombre_cliente}
@@ -109,6 +125,7 @@ export function setWhatsAppTemplates(templates?: Partial<WhatsAppTemplates>) {
   if (!templates) return;
   currentTemplates = {
     msg_transfer: templates.msg_transfer || DEFAULT_WHATSAPP_TEMPLATES.msg_transfer,
+    msg_cash: templates.msg_cash || DEFAULT_WHATSAPP_TEMPLATES.msg_cash,
     msg_mercadopago: templates.msg_mercadopago || DEFAULT_WHATSAPP_TEMPLATES.msg_mercadopago,
     msg_general_inquiry: templates.msg_general_inquiry || DEFAULT_WHATSAPP_TEMPLATES.msg_general_inquiry,
     msg_order_status: templates.msg_order_status || DEFAULT_WHATSAPP_TEMPLATES.msg_order_status,
@@ -139,15 +156,18 @@ export interface PedidoWhatsApp {
   discountAmount: number;
   shippingCost?: number;
   grandTotal: number;
-  formaPago: 'transferencia' | 'mercadopago';
+  formaPago: 'transferencia' | 'efectivo' | 'mercadopago';
 }
 
 const fmt = (n: any) => '$' + Number(n || 0).toFixed(2);
 
 export function buildMensajePedido(pedido: PedidoWhatsApp): string {
-  const tpl = pedido.formaPago === 'transferencia'
-    ? (currentTemplates.msg_transfer || DEFAULT_WHATSAPP_TEMPLATES.msg_transfer)
-    : (currentTemplates.msg_mercadopago || DEFAULT_WHATSAPP_TEMPLATES.msg_mercadopago);
+  let tpl = currentTemplates.msg_transfer || DEFAULT_WHATSAPP_TEMPLATES.msg_transfer;
+  if (pedido.formaPago === 'efectivo') {
+    tpl = currentTemplates.msg_cash || DEFAULT_WHATSAPP_TEMPLATES.msg_cash || DEFAULT_WHATSAPP_TEMPLATES.msg_transfer;
+  } else if (pedido.formaPago === 'mercadopago') {
+    tpl = currentTemplates.msg_mercadopago || DEFAULT_WHATSAPP_TEMPLATES.msg_mercadopago;
+  }
 
   const detalleProds = pedido.items.map(
     (i: any) => {

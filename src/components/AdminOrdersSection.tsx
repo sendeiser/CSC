@@ -1074,9 +1074,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg font-semibold outline-none bg-white"
                   >
                     <option value="Efectivo">Efectivo</option>
-                    <option value="Posnet / Tarjeta">Posnet / Tarjeta</option>
                     <option value="Transferencia Bancaria">Transferencia Bancaria</option>
-                    <option value="Mercado Pago QR">Mercado Pago QR</option>
                   </select>
                 </div>
 

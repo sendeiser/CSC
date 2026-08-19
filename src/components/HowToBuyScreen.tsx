@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, ShoppingBag, ArrowRight, HelpCircle, CheckCircle2, CreditCard, Truck, ShieldCheck, ChevronDown, Play, X, ArrowLeft, Store } from 'lucide-react';
+import { Sparkles, ShoppingBag, ArrowRight, HelpCircle, CheckCircle2, CreditCard, Truck, ShieldCheck, ChevronDown, Play, X, ArrowLeft, Store, Banknote } from 'lucide-react';
 import { ActiveScreen, StoreSettings } from '../types';
 import { homepage as homepageApi } from '../lib/api';
 
@@ -39,11 +39,11 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
       return {
         title: '3. Pagá y Retirá en Local',
         badge: 'Solo Retiro en Tienda',
-        subtitle: 'Ingresá tu nombre y elegí pagar online con Mercado Pago, Transferencia o abonar en efectivo al retirar.',
+        subtitle: 'Ingresá tu nombre y elegí abonar por Transferencia o en Efectivo al retirar.',
         detailText: `📍 Retiro exclusivo en tienda física (${pickupAddress}). Horarios de atención: ${pickupSchedule}.`,
         highlights: [
           'Retiro directo en tienda: ' + pickupAddress,
-          'Aceptamos Mercado Pago, Transferencia y Efectivo',
+          'Aceptamos Efectivo y Transferencia Bancaria',
           'Sin gastos de envío adicionales',
         ],
       };
@@ -52,11 +52,11 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
       return {
         title: '3. Datos de Envío y Pago',
         badge: 'Envío a Domicilio',
-        subtitle: 'Ingresá tu dirección de entrega y aboná con Mercado Pago o Transferencia Bancaria.',
+        subtitle: 'Ingresá tu dirección de entrega y aboná por Transferencia Bancaria o Efectivo contra entrega.',
         detailText: `🚚 Envío directo a tu casa. Costo de envío: ${deliveryCost > 0 ? `$${deliveryCost.toFixed(2)}` : 'GRATIS'}${freeDeliveryOver > 0 ? ` (Envío GRATIS en compras superiores a $${freeDeliveryOver.toFixed(2)})` : ''}. ${deliveryNotes}`,
         highlights: [
           'Despacho a tu domicilio en Chamical',
-          'Aceptamos Mercado Pago, QR y Transferencia',
+          'Aceptamos Transferencia Bancaria y Efectivo',
           deliveryCost === 0 ? 'Envío GRATIS incluido' : `Costo de envío: $${deliveryCost}`,
         ],
       };
@@ -69,7 +69,7 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
       highlights: [
         'Opción 1: Retiro en tienda (' + pickupAddress + ')',
         'Opción 2: Envío a domicilio (' + (deliveryCost === 0 ? 'Envío GRATIS' : `$${deliveryCost}`) + ')',
-        'Checkout rápido con Mercado Pago, QR o Transferencia',
+        'Checkout simple con Efectivo o Transferencia Bancaria',
       ],
     };
   };
@@ -158,7 +158,7 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
       },
       {
         q: '¿Cuáles son los medios de pago aceptados?',
-        a: 'Aceptamos pagos online con Mercado Pago (tarjetas de crédito, débito, transferencia bancaria, dinero en cuenta, saldo QR) y también opción de pago en efectivo' + (fulfillmentType !== 'delivery_only' ? ' al retirar en el local.' : '.')
+        a: 'Aceptamos pagos por Transferencia Bancaria (enviando el comprobante por WhatsApp) y pago en Efectivo al retirar en el local o al recibir tu pedido contra entrega.'
       },
       deliveryFaq
     ];
@@ -377,11 +377,11 @@ export const HowToBuyScreen: React.FC<HowToBuyScreenProps> = ({ setActiveScreen 
 
           <div className="bg-white p-6 rounded-2xl border border-slate-200 flex items-start space-x-4 shadow-sm">
             <div className="w-12 h-12 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center flex-shrink-0">
-              <CreditCard className="w-6 h-6" />
+              <Banknote className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="font-bold text-slate-900 text-sm mb-1">Pago 100% Seguro</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">Aboná con Mercado Pago online o directamente en efectivo al retirar.</p>
+              <h4 className="font-bold text-slate-900 text-sm mb-1">Pago Simple y Seguro</h4>
+              <p className="text-xs text-slate-500 leading-relaxed">Aboná por Transferencia bancaria o en Efectivo al retirar/recibir.</p>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone, Store, Truck, Copy, Info, Search } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone, Store, Truck, Copy, Info, Search, Banknote } from 'lucide-react';
 import { ActiveScreen, CartItem, UserSession } from '../types';
 import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
 import { getAuthToken } from '../lib/api';
@@ -30,7 +30,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [phoneField, setPhoneField] = React.useState('');
   const [shippingError, setShippingError] = React.useState('');
   const [orderId, setOrderId] = React.useState('');
-  const [paymentMethod, setPaymentMethod] = React.useState<'mercadopago' | 'transferencia'>('mercadopago');
+  const [paymentMethod, setPaymentMethod] = React.useState<'efectivo' | 'transferencia'>('efectivo');
   const [lastOrderItems, setLastOrderItems] = React.useState<CartItem[]>([]);
   const [lastOrderTotal, setLastOrderTotal] = React.useState<number>(0);
   const [activePhone, setActivePhone] = React.useState<string>(WHATSAPP_NUMERO_1);
@@ -198,34 +198,23 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
     }));
 
     try {
-      if (paymentMethod === 'transferencia') {
-        const result = await ordersApi.create({
-          shipping_name: fullName,
-          shipping_address: finalAddressNote,
-          shipping_city: cityField || 'Chamical',
-          promo_code: activeDiscount?.code,
-          items: itemsPayload,
-        })
-        const finalTotal = Number(result.total) || grandTotal
-        setLastOrderItems(cart)
-        setLastOrderTotal(finalTotal)
-        setOrderId(result.id)
-        setCart([])
-        clearLocalCart()
-        setStep('success')
-      } else {
-        const result = await paymentsApi.createPreference({
-          shipping_name: fullName,
-          shipping_address: finalAddressNote,
-          shipping_city: cityField || 'Chamical',
-          promo_code: activeDiscount?.code,
-          items: itemsPayload,
-        })
-        clearLocalCart()
-        window.location.href = result.init_point
-      }
+      const paymentTag = paymentMethod === 'efectivo' ? '[Pago: Efectivo]' : '[Pago: Transferencia]';
+      const result = await ordersApi.create({
+        shipping_name: fullName,
+        shipping_address: `${paymentTag} ${finalAddressNote}`.trim(),
+        shipping_city: cityField || 'Chamical',
+        promo_code: activeDiscount?.code,
+        items: itemsPayload,
+      });
+      const finalTotal = Number(result.total) || grandTotal;
+      setLastOrderItems(cart);
+      setLastOrderTotal(finalTotal);
+      setOrderId(result.id);
+      setCart([]);
+      clearLocalCart();
+      setStep('success');
     } catch (err: any) {
-      setShippingError(err.message || 'Error al procesar el pago.')
+      setShippingError(err.message || 'Error al procesar el pedido.');
     }
   };
 
@@ -335,7 +324,11 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                 </button>
               </div>
 
-              <p className="text-sm text-gray-500 mt-1">{paymentMethod === 'transferencia' ? 'Te esperamos para confirmarlo con el comprobante.' : 'Te contactaremos por WhatsApp si hay novedades.'}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {paymentMethod === 'transferencia'
+                  ? 'Te esperamos para confirmarlo con el comprobante de transferencia.'
+                  : 'Abonás en efectivo al retirar en el local o al recibir tu pedido.'}
+              </p>
             </div>
 
             {/* Aviso especial para clientes Invitados */}
@@ -368,7 +361,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
               </div>
             )}
 
-            {paymentMethod === 'transferencia' && (
+            {paymentMethod === 'transferencia' ? (
               <div className="max-w-md mx-auto text-left bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-200 rounded-2xl p-6 space-y-4 shadow-sm">
                 <h3 className="font-headline font-bold text-gray-900 flex items-center space-x-2">
                   <Landmark className="w-5 h-5 text-purple-600" />
@@ -410,6 +403,46 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                 >
                   <MessageCircle className="w-5 h-5" />
                   <span>Enviar comprobante por WhatsApp</span>
+                </a>
+              </div>
+            ) : (
+              <div className="max-w-md mx-auto text-left bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-6 space-y-4 shadow-sm">
+                <h3 className="font-headline font-bold text-gray-900 flex items-center space-x-2">
+                  <Banknote className="w-5 h-5 text-emerald-600" />
+                  <span>Pago en Efectivo</span>
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {deliveryMode === 'pickup'
+                    ? 'Tu pedido fue registrado con éxito. Abonás en efectivo al retirar por el local.'
+                    : 'Tu pedido fue registrado con éxito. Abonás en efectivo contra entrega cuando el repartidor llegue a tu domicilio.'}
+                </p>
+                <div className="flex justify-between bg-white rounded-xl px-4 py-2.5 border border-emerald-150 text-sm">
+                  <span className="text-gray-500">Total a abonar</span>
+                  <span className="font-bold text-emerald-700">${lastOrderTotal.toFixed(2)}</span>
+                </div>
+
+                <a
+                  href={waLink(
+                    buildMensajePedido({
+                      orderId,
+                      items: lastOrderItems.length > 0 ? lastOrderItems : cart,
+                      fullName,
+                      addressLine,
+                      cityField,
+                      phoneField,
+                      subTotal: lastOrderTotal,
+                      discountAmount: 0,
+                      grandTotal: lastOrderTotal,
+                      formaPago: 'efectivo',
+                    }),
+                    activePhone
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center space-x-2 px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl transition-all shadow-md cursor-pointer text-sm"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>Avisar pedido por WhatsApp</span>
                 </a>
               </div>
             )}
@@ -743,18 +776,18 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
 
               <div>
                 <div className="flex items-center space-x-3 mb-3">
-                  <CreditCard className="w-5 h-5 text-purple-600" />
+                  <Banknote className="w-5 h-5 text-purple-600" />
                   <h3 className="font-headline font-bold text-gray-900">Forma de pago</h3>
                 </div>
                 <div className="space-y-2">
                   <label
-                    className={`flex items-center justify-between border rounded-xl px-4 py-3 cursor-pointer transition-all text-sm ${paymentMethod === 'mercadopago' ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200' : 'border-pink-200 bg-white hover:bg-pink-50/50'}`}
+                    className={`flex items-center justify-between border rounded-xl px-4 py-3 cursor-pointer transition-all text-sm ${paymentMethod === 'efectivo' ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200' : 'border-pink-200 bg-white hover:bg-pink-50/50'}`}
                   >
                     <span className="flex items-center space-x-3">
-                      <input type="radio" name="payment-method" checked={paymentMethod === 'mercadopago'} onChange={() => setPaymentMethod('mercadopago')} className="accent-purple-600" />
+                      <input type="radio" name="payment-method" checked={paymentMethod === 'efectivo'} onChange={() => setPaymentMethod('efectivo')} className="accent-purple-600" />
                       <span>
-                        <span className="block font-semibold text-gray-800">MercadoPago</span>
-                        <span className="block text-[11px] text-gray-500">Tarjeta, débito, dinero en cuenta</span>
+                        <span className="block font-semibold text-gray-800">Efectivo</span>
+                        <span className="block text-[11px] text-gray-500">Abonás al retirar en el local o contra entrega</span>
                       </span>
                     </span>
                     <span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span>
@@ -775,10 +808,10 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
               </div>
 
               <div className="flex space-x-3">
-                <button onClick={() => setStep('basket')} className="flex-1 py-3 border border-pink-200 text-gray-600 font-semibold rounded-xl hover:bg-pink-50 transition-all text-sm">Volver</button>
-                <button onClick={handleCheckout} className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all text-sm flex items-center justify-center space-x-2">
-                  {paymentMethod === 'transferencia' ? <Landmark className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
-                  <span>{paymentMethod === 'transferencia' ? 'Confirmar pedido' : 'Pagar con Mercado Pago'}</span>
+                <button onClick={() => setStep('basket')} className="flex-1 py-3 border border-pink-200 text-gray-600 font-semibold rounded-xl hover:bg-pink-50 transition-all text-sm cursor-pointer">Volver</button>
+                <button onClick={handleCheckout} className="flex-1 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all text-sm flex items-center justify-center space-x-2 cursor-pointer">
+                  {paymentMethod === 'transferencia' ? <Landmark className="w-4 h-4" /> : <Banknote className="w-4 h-4" />}
+                  <span>Confirmar pedido (${grandTotal.toFixed(2)})</span>
                 </button>
               </div>
             </div>
