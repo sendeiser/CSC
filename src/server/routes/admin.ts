@@ -150,37 +150,47 @@ export async function getStoreSettingsHelper() {
 }
 
 export async function saveStoreSettingsHelper(payload: any) {
+  const current = await getStoreSettingsHelper()
   const db = serviceClient || supabase
-  const cleanPayload = {
-    whatsapp_number_1: String(payload.whatsapp_number_1 || '543826432180').trim(),
-    whatsapp_number_2: String(payload.whatsapp_number_2 || '5493826432180').trim(),
-    active_whatsapp_number: payload.active_whatsapp_number === 'num2' ? 'num2' : 'num1',
-    msg_transfer: payload.msg_transfer !== undefined ? String(payload.msg_transfer) : '',
-    msg_mercadopago: payload.msg_mercadopago !== undefined ? String(payload.msg_mercadopago) : '',
-    msg_general_inquiry: payload.msg_general_inquiry !== undefined ? String(payload.msg_general_inquiry) : '',
-    msg_order_status: payload.msg_order_status !== undefined ? String(payload.msg_order_status) : '',
-    msg_preparing: payload.msg_preparing !== undefined ? String(payload.msg_preparing) : '',
-    msg_ready: payload.msg_ready !== undefined ? String(payload.msg_ready) : '',
-    custom_messages: Array.isArray(payload.custom_messages) ? payload.custom_messages : [],
-    fulfillment_type: ['both', 'pickup_only', 'delivery_only'].includes(payload.fulfillment_type) ? payload.fulfillment_type : 'both',
-    delivery_cost: Number(payload.delivery_cost || 0),
-    free_delivery_over: Number(payload.free_delivery_over || 0),
-    pickup_address: payload.pickup_address !== undefined ? String(payload.pickup_address).trim() : 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
-    pickup_schedule: payload.pickup_schedule !== undefined ? String(payload.pickup_schedule).trim() : 'Lunes a Sábado de 09:00 a 20:00 hs',
-    delivery_notes: payload.delivery_notes !== undefined ? String(payload.delivery_notes).trim() : 'Envíos en el día dentro del radio urbano de Chamical.',
 
-    // Notifications
-    telegram_bot_token: payload.telegram_bot_token !== undefined ? String(payload.telegram_bot_token).trim() : '',
-    telegram_chat_id: payload.telegram_chat_id !== undefined ? String(payload.telegram_chat_id).trim() : '',
-    telegram_enabled: Boolean(payload.telegram_enabled),
-    whatsapp_callmebot_phone: payload.whatsapp_callmebot_phone !== undefined ? String(payload.whatsapp_callmebot_phone).trim() : '',
-    whatsapp_callmebot_apikey: payload.whatsapp_callmebot_apikey !== undefined ? String(payload.whatsapp_callmebot_apikey).trim() : '',
-    whatsapp_notifications_enabled: Boolean(payload.whatsapp_notifications_enabled),
-    discord_webhook_url: payload.discord_webhook_url !== undefined ? String(payload.discord_webhook_url).trim() : '',
-    discord_enabled: Boolean(payload.discord_enabled),
-    notify_on_new_order: payload.notify_on_new_order !== undefined ? Boolean(payload.notify_on_new_order) : true,
-    notify_on_new_user: payload.notify_on_new_user !== undefined ? Boolean(payload.notify_on_new_user) : true,
-    browser_sound_alerts_enabled: payload.browser_sound_alerts_enabled !== undefined ? Boolean(payload.browser_sound_alerts_enabled) : true,
+  const cleanPayload = {
+    whatsapp_number_1: payload.whatsapp_number_1 !== undefined ? String(payload.whatsapp_number_1).trim() : current.whatsapp_number_1,
+    whatsapp_number_2: payload.whatsapp_number_2 !== undefined ? String(payload.whatsapp_number_2).trim() : current.whatsapp_number_2,
+    active_whatsapp_number: payload.active_whatsapp_number !== undefined ? (payload.active_whatsapp_number === 'num2' ? 'num2' : 'num1') : current.active_whatsapp_number,
+    msg_transfer: payload.msg_transfer !== undefined ? String(payload.msg_transfer) : current.msg_transfer,
+    msg_mercadopago: payload.msg_mercadopago !== undefined ? String(payload.msg_mercadopago) : current.msg_mercadopago,
+    msg_general_inquiry: payload.msg_general_inquiry !== undefined ? String(payload.msg_general_inquiry) : current.msg_general_inquiry,
+    msg_order_status: payload.msg_order_status !== undefined ? String(payload.msg_order_status) : current.msg_order_status,
+    msg_preparing: payload.msg_preparing !== undefined ? String(payload.msg_preparing) : current.msg_preparing,
+    msg_ready: payload.msg_ready !== undefined ? String(payload.msg_ready) : current.msg_ready,
+    custom_messages: payload.custom_messages !== undefined && Array.isArray(payload.custom_messages) ? payload.custom_messages : current.custom_messages,
+    fulfillment_type: payload.fulfillment_type !== undefined ? (['both', 'pickup_only', 'delivery_only'].includes(payload.fulfillment_type) ? payload.fulfillment_type : 'both') : current.fulfillment_type,
+    delivery_cost: payload.delivery_cost !== undefined ? Number(payload.delivery_cost || 0) : current.delivery_cost,
+    free_delivery_over: payload.free_delivery_over !== undefined ? Number(payload.free_delivery_over || 0) : current.free_delivery_over,
+    pickup_address: payload.pickup_address !== undefined ? String(payload.pickup_address).trim() : current.pickup_address,
+    pickup_schedule: payload.pickup_schedule !== undefined ? String(payload.pickup_schedule).trim() : current.pickup_schedule,
+    delivery_notes: payload.delivery_notes !== undefined ? String(payload.delivery_notes).trim() : current.delivery_notes,
+
+    // Notifications: preservar siempre tokens existentes si no se pasan en el payload
+    telegram_bot_token: payload.telegram_bot_token !== undefined ? String(payload.telegram_bot_token).trim() : (current.telegram_bot_token || ''),
+    telegram_chat_id: payload.telegram_chat_id !== undefined ? String(payload.telegram_chat_id).trim() : (current.telegram_chat_id || ''),
+    telegram_enabled: payload.telegram_enabled !== undefined ? Boolean(payload.telegram_enabled) : Boolean(current.telegram_enabled),
+    whatsapp_callmebot_phone: payload.whatsapp_callmebot_phone !== undefined ? String(payload.whatsapp_callmebot_phone).trim() : (current.whatsapp_callmebot_phone || ''),
+    whatsapp_callmebot_apikey: payload.whatsapp_callmebot_apikey !== undefined ? String(payload.whatsapp_callmebot_apikey).trim() : (current.whatsapp_callmebot_apikey || ''),
+    whatsapp_notifications_enabled: payload.whatsapp_notifications_enabled !== undefined ? Boolean(payload.whatsapp_notifications_enabled) : Boolean(current.whatsapp_notifications_enabled),
+    discord_webhook_url: payload.discord_webhook_url !== undefined ? String(payload.discord_webhook_url).trim() : (current.discord_webhook_url || ''),
+    discord_enabled: payload.discord_enabled !== undefined ? Boolean(payload.discord_enabled) : Boolean(current.discord_enabled),
+    notify_on_new_order: payload.notify_on_new_order !== undefined ? Boolean(payload.notify_on_new_order) : (current.notify_on_new_order !== undefined ? current.notify_on_new_order : true),
+    notify_on_new_user: payload.notify_on_new_user !== undefined ? Boolean(payload.notify_on_new_user) : (current.notify_on_new_user !== undefined ? current.notify_on_new_user : true),
+    browser_sound_alerts_enabled: payload.browser_sound_alerts_enabled !== undefined ? Boolean(payload.browser_sound_alerts_enabled) : (current.browser_sound_alerts_enabled !== undefined ? current.browser_sound_alerts_enabled : true),
+  }
+
+  // Auto-activar canales si tienen credenciales configuradas
+  if (cleanPayload.telegram_bot_token && cleanPayload.telegram_chat_id && payload.telegram_enabled === undefined) {
+    cleanPayload.telegram_enabled = true
+  }
+  if (cleanPayload.whatsapp_callmebot_phone && cleanPayload.whatsapp_callmebot_apikey && payload.whatsapp_notifications_enabled === undefined) {
+    cleanPayload.whatsapp_notifications_enabled = true
   }
 
   try {

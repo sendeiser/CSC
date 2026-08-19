@@ -13,6 +13,14 @@ export interface NotificationSettings {
   notify_on_new_user?: boolean;
 }
 
+export function escapeHtml(str: any): string {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 export function formatForWhatsApp(text: string): string {
   if (!text) return '';
   return text
@@ -35,7 +43,9 @@ export async function sendTelegramMessage(token: string, chatId: string, text: s
     if (!cleanToken || !cleanChatId) return { success: false, error: 'Token o Chat ID de Telegram faltante' };
 
     const url = `https://api.telegram.org/bot${cleanToken}/sendMessage`;
-    const res = await fetch(url, {
+    
+    // 1st attempt: with HTML formatting
+    let res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -45,7 +55,29 @@ export async function sendTelegramMessage(token: string, chatId: string, text: s
       }),
     });
 
-    const data = await res.json().catch(() => ({}));
+    let data = await res.json().catch(() => ({}));
+
+    // If Telegram rejected HTML entities or tags, 2nd attempt: plain text fallback
+    if (!res.ok || !data.ok) {
+      console.warn('[Telegram HTML parsing warning, trying plain text]:', data.description || res.statusText);
+      const plainText = text
+        .replace(/<[^>]*>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>');
+
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: cleanChatId,
+          text: plainText,
+        }),
+      });
+      data = await res.json().catch(() => ({}));
+    }
+
     if (!res.ok || !data.ok) {
       const errMsg = data.description || `Error HTTP ${res.status}`;
       return { 
@@ -53,6 +85,7 @@ export async function sendTelegramMessage(token: string, chatId: string, text: s
         error: `Telegram error: ${errMsg}. Verificá que el Bot Token sea correcto y hayas presionado "Iniciar" (/start) en tu bot.` 
       };
     }
+
     return { success: true, message: 'Mensaje enviado a Telegram correctamente' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Error de conexión con Telegram' };
@@ -108,7 +141,6 @@ export async function sendCallMeBotWhatsApp(phone: string, apikey: string, text:
       return { success: true, message: cleanBody || 'Mensaje enviado a WhatsApp exitosamente.' };
     }
 
-    // Default fallback check
     if (res.status === 200 || res.status === 203) {
       return { success: true, message: cleanBody || 'Mensaje procesado por CallMeBot.' };
     }
@@ -148,30 +180,46 @@ export async function dispatchNotifications(text: string, options: { isOrder?: b
       return;
     }
 
-    if (options.isOrder && settings.notify_on_new_order === false) return;
-    if (options.isUser && settings.notify_on_new_user === false) return;
+    if (options.isOrder && settings.notify_on_new_order === false) {
+      console.log('[Notifications]: Alertas de nuevo pedido desactivadas por configuración.');
+      return;
+    }
+    if (options.isUser && settings.notify_on_new_user === false) {
+      console.log('[Notifications]: Alertas de nuevo usuario desactivadas por configuración.');
+      return;
+    }
 
     const promises: Promise<any>[] = [];
 
     // 1. Telegram
-    if (settings.telegram_enabled && settings.telegram_bot_token && settings.telegram_chat_id) {
+    const hasTelegram = Boolean(settings.telegram_bot_token && settings.telegram_chat_id);
+    const telegramActive = settings.telegram_enabled !== false && hasTelegram;
+
+    if (telegramActive && settings.telegram_bot_token && settings.telegram_chat_id) {
+      console.log(`[Notifications]: Enviando alerta a Telegram chat ID: ${settings.telegram_chat_id}...`);
       promises.push(
         sendTelegramMessage(settings.telegram_bot_token, settings.telegram_chat_id, text)
           .then(res => {
             if (!res.success) console.warn('[Telegram Alert Failed]:', res.error);
-            else console.log('[Telegram Alert Sent Successfully]');
+            else console.log('[Telegram Alert Sent Successfully!]');
           })
           .catch(err => console.warn('[Telegram Alert Error]:', err))
       );
+    } else {
+      console.log('[Notifications]: Telegram no enviado. (activo:', telegramActive, ', tiene credenciales:', hasTelegram, ')');
     }
 
     // 2. WhatsApp CallMeBot
-    if (settings.whatsapp_notifications_enabled && settings.whatsapp_callmebot_phone && settings.whatsapp_callmebot_apikey) {
+    const hasWhatsApp = Boolean(settings.whatsapp_callmebot_phone && settings.whatsapp_callmebot_apikey);
+    const whatsappActive = settings.whatsapp_notifications_enabled !== false && hasWhatsApp;
+
+    if (whatsappActive && settings.whatsapp_callmebot_phone && settings.whatsapp_callmebot_apikey) {
+      console.log(`[Notifications]: Enviando alerta a WhatsApp: ${settings.whatsapp_callmebot_phone}...`);
       promises.push(
         sendCallMeBotWhatsApp(settings.whatsapp_callmebot_phone, settings.whatsapp_callmebot_apikey, text)
           .then(res => {
             if (!res.success) console.warn('[WhatsApp Alert Failed]:', res.error);
-            else console.log('[WhatsApp Alert Sent Successfully]');
+            else console.log('[WhatsApp Alert Sent Successfully!]');
           })
           .catch(err => console.warn('[WhatsApp Alert Error]:', err))
       );
@@ -183,7 +231,7 @@ export async function dispatchNotifications(text: string, options: { isOrder?: b
         sendDiscordWebhook(settings.discord_webhook_url, text)
           .then(res => {
             if (!res.success) console.warn('[Discord Webhook Alert Failed]:', res.error);
-            else console.log('[Discord Alert Sent Successfully]');
+            else console.log('[Discord Alert Sent Successfully!]');
           })
           .catch(err => console.warn('[Discord Webhook Alert Error]:', err))
       );
@@ -197,17 +245,17 @@ export async function dispatchNotifications(text: string, options: { isOrder?: b
 
 export async function notifyNewOrder(order: any, items: any[] = []) {
   try {
-    const orderCode = (order.id || '').slice(0, 8).toUpperCase();
-    const customer = order.shipping_name || 'Cliente';
-    const address = order.shipping_address || 'Sin especificar';
-    const city = order.shipping_city || 'Chamical';
+    const orderCode = escapeHtml((order.id || '').slice(0, 8).toUpperCase());
+    const customer = escapeHtml(order.shipping_name || 'Cliente');
+    const address = escapeHtml(order.shipping_address || 'Sin especificar');
+    const city = escapeHtml(order.shipping_city || 'Chamical');
     const totalVal = Number(order.total || 0).toFixed(2);
     const dateStr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 
     let itemsList = '';
     if (items && Array.isArray(items) && items.length > 0) {
       itemsList = items.map((i: any) => {
-        const prodName = i.name || i.product?.name || i.products?.name || 'Golosina';
+        const prodName = escapeHtml(i.name || i.product?.name || i.products?.name || 'Golosina');
         const qty = i.weight_grams ? `${i.weight_grams}g` : `${i.quantity || 1} un.`;
         return `  • <b>${qty}</b> ${prodName}`;
       }).join('\n');
@@ -235,8 +283,8 @@ export async function notifyNewOrder(order: any, items: any[] = []) {
 
 export async function notifyNewUser(user: { name?: string; email: string }) {
   try {
-    const name = user.name || 'Nuevo Usuario';
-    const email = user.email || 'Sin email';
+    const name = escapeHtml(user.name || 'Nuevo Usuario');
+    const email = escapeHtml(user.email || 'Sin email');
     const dateStr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 
     const message = [
