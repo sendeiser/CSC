@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { supabase, serviceClient } from '../lib/supabase'
 import { requireAuth, AuthenticatedRequest, isEmailAdmin } from '../lib/auth'
+import { notifyNewUser } from '../lib/notifications'
 
 const router = Router()
 
@@ -12,11 +13,13 @@ router.post('/signup', async (req: Request, res: Response) => {
     return
   }
 
+  const resolvedName = name || email.split('@')[0]
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { name: name || email.split('@')[0] }
+      data: { name: resolvedName }
     }
   })
 
@@ -24,6 +27,11 @@ router.post('/signup', async (req: Request, res: Response) => {
     res.status(400).json({ error: error.message })
     return
   }
+
+  // Notificar al administrador al celular en segundo plano
+  notifyNewUser({ name: resolvedName, email }).catch((err) => {
+    console.warn('[Signup Notification Error]:', err)
+  })
 
   res.status(201).json({
     user: data.user,

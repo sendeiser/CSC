@@ -222,6 +222,8 @@ export const admin = {
     request<any>('/admin/store-settings', { method: 'PUT', body: JSON.stringify(data) }),
   saveStoreSettings: (data: any) =>
     request<any>('/admin/store-settings', { method: 'PUT', body: JSON.stringify(data) }),
+  testNotification: (data: { channel: 'telegram' | 'whatsapp' | 'discord'; token?: string; chatId?: string; phone?: string; apikey?: string; webhookUrl?: string }) =>
+    request<{ message: string }>('/admin/test-notification', { method: 'POST', body: JSON.stringify(data) }),
 }
 
 // Homepage (public)

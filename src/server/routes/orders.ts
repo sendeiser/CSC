@@ -3,6 +3,7 @@ import { serviceClient } from '../lib/supabase'
 import { requireAuth, optionalAuth, AuthenticatedRequest } from '../lib/auth'
 import { getPayment } from '../lib/mercadopago'
 import { adjustOrderStock, isPaidOrActiveStatus } from '../lib/stock'
+import { notifyNewOrder } from '../lib/notifications'
 
 const router = Router()
 
@@ -383,6 +384,27 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
   if (req.user?.id) {
     await serviceClient.from('cart_items').delete().eq('user_id', req.user.id)
   }
+
+  // Notificar al administrador al celular en segundo plano
+  (async () => {
+    try {
+      const pids = orderItemsToProcess.map(i => i.product_id).filter(Boolean)
+      let productsMap: Record<string, string> = {}
+      if (pids.length > 0) {
+        const { data: prods } = await serviceClient.from('products').select('id, name').in('id', pids)
+        if (prods) {
+          prods.forEach((p: any) => { productsMap[p.id] = p.name })
+        }
+      }
+      const detailedItems = orderItemsToProcess.map(i => ({
+        ...i,
+        name: productsMap[i.product_id] || 'Golosina',
+      }))
+      await notifyNewOrder(order, detailedItems)
+    } catch (err) {
+      console.warn('[Order Notification Background Error]:', err)
+    }
+  })()
 
   res.status(201).json({ ...order, items: orderItems })
 })

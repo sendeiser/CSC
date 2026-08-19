@@ -4,6 +4,7 @@ import path from 'path'
 import { supabase, serviceClient } from '../lib/supabase'
 import { requireAdmin, AuthenticatedRequest } from '../lib/auth'
 import { adjustOrderStock, isPaidOrActiveStatus, isUnpaidStatus } from '../lib/stock'
+import { sendTelegramMessage, sendCallMeBotWhatsApp, sendDiscordWebhook } from '../lib/notifications'
 
 const FINANCIAL_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'financial_settings.json')
 const STORE_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'store_settings.json')
@@ -95,6 +96,19 @@ export async function getStoreSettingsHelper() {
     pickup_address: 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
     pickup_schedule: 'Lunes a Sábado de 09:00 a 20:00 hs',
     delivery_notes: 'Envíos en el día dentro del radio urbano de Chamical.',
+
+    // Notifications
+    telegram_bot_token: '',
+    telegram_chat_id: '',
+    telegram_enabled: false,
+    whatsapp_callmebot_phone: '',
+    whatsapp_callmebot_apikey: '',
+    whatsapp_notifications_enabled: false,
+    discord_webhook_url: '',
+    discord_enabled: false,
+    notify_on_new_order: true,
+    notify_on_new_user: true,
+    browser_sound_alerts_enabled: true,
   }
 
   try {
@@ -106,43 +120,21 @@ export async function getStoreSettingsHelper() {
 
     if (data?.content) {
       settings = {
-        whatsapp_number_1: data.content.whatsapp_number_1 || '543826432180',
-        whatsapp_number_2: data.content.whatsapp_number_2 || '5493826432180',
-        active_whatsapp_number: data.content.active_whatsapp_number || 'num1',
-        msg_transfer: data.content.msg_transfer || '',
-        msg_mercadopago: data.content.msg_mercadopago || '',
-        msg_general_inquiry: data.content.msg_general_inquiry || '',
-        msg_order_status: data.content.msg_order_status || '',
-        msg_preparing: data.content.msg_preparing || '',
-        msg_ready: data.content.msg_ready || '',
+        ...settings,
+        ...data.content,
         custom_messages: Array.isArray(data.content.custom_messages) ? data.content.custom_messages : [],
-        fulfillment_type: data.content.fulfillment_type || 'both',
         delivery_cost: Number(data.content.delivery_cost || 0),
         free_delivery_over: Number(data.content.free_delivery_over || 0),
-        pickup_address: data.content.pickup_address || 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
-        pickup_schedule: data.content.pickup_schedule || 'Lunes a Sábado de 09:00 a 20:00 hs',
-        delivery_notes: data.content.delivery_notes || 'Envíos en el día dentro del radio urbano de Chamical.',
       }
     } else if (fs.existsSync(STORE_SETTINGS_FILE)) {
       const raw = fs.readFileSync(STORE_SETTINGS_FILE, 'utf-8')
       const parsed = JSON.parse(raw)
       settings = {
-        whatsapp_number_1: parsed.whatsapp_number_1 || '543826432180',
-        whatsapp_number_2: parsed.whatsapp_number_2 || '5493826432180',
-        active_whatsapp_number: parsed.active_whatsapp_number || 'num1',
-        msg_transfer: parsed.msg_transfer || '',
-        msg_mercadopago: parsed.msg_mercadopago || '',
-        msg_general_inquiry: parsed.msg_general_inquiry || '',
-        msg_order_status: parsed.msg_order_status || '',
-        msg_preparing: parsed.msg_preparing || '',
-        msg_ready: parsed.msg_ready || '',
+        ...settings,
+        ...parsed,
         custom_messages: Array.isArray(parsed.custom_messages) ? parsed.custom_messages : [],
-        fulfillment_type: parsed.fulfillment_type || 'both',
         delivery_cost: Number(parsed.delivery_cost || 0),
         free_delivery_over: Number(parsed.free_delivery_over || 0),
-        pickup_address: parsed.pickup_address || 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
-        pickup_schedule: parsed.pickup_schedule || 'Lunes a Sábado de 09:00 a 20:00 hs',
-        delivery_notes: parsed.delivery_notes || 'Envíos en el día dentro del radio urbano de Chamical.',
       }
     }
   } catch (_e) {}
@@ -176,6 +168,19 @@ export async function saveStoreSettingsHelper(payload: any) {
     pickup_address: payload.pickup_address !== undefined ? String(payload.pickup_address).trim() : 'Local Chamical Candy Shop - Calle Principal #123, Chamical',
     pickup_schedule: payload.pickup_schedule !== undefined ? String(payload.pickup_schedule).trim() : 'Lunes a Sábado de 09:00 a 20:00 hs',
     delivery_notes: payload.delivery_notes !== undefined ? String(payload.delivery_notes).trim() : 'Envíos en el día dentro del radio urbano de Chamical.',
+
+    // Notifications
+    telegram_bot_token: payload.telegram_bot_token !== undefined ? String(payload.telegram_bot_token).trim() : '',
+    telegram_chat_id: payload.telegram_chat_id !== undefined ? String(payload.telegram_chat_id).trim() : '',
+    telegram_enabled: Boolean(payload.telegram_enabled),
+    whatsapp_callmebot_phone: payload.whatsapp_callmebot_phone !== undefined ? String(payload.whatsapp_callmebot_phone).trim() : '',
+    whatsapp_callmebot_apikey: payload.whatsapp_callmebot_apikey !== undefined ? String(payload.whatsapp_callmebot_apikey).trim() : '',
+    whatsapp_notifications_enabled: Boolean(payload.whatsapp_notifications_enabled),
+    discord_webhook_url: payload.discord_webhook_url !== undefined ? String(payload.discord_webhook_url).trim() : '',
+    discord_enabled: Boolean(payload.discord_enabled),
+    notify_on_new_order: payload.notify_on_new_order !== undefined ? Boolean(payload.notify_on_new_order) : true,
+    notify_on_new_user: payload.notify_on_new_user !== undefined ? Boolean(payload.notify_on_new_user) : true,
+    browser_sound_alerts_enabled: payload.browser_sound_alerts_enabled !== undefined ? Boolean(payload.browser_sound_alerts_enabled) : true,
   }
 
   try {
@@ -1199,6 +1204,40 @@ router.get('/store-settings', requireAdmin, async (_req: AuthenticatedRequest, r
 router.put('/store-settings', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const saved = await saveStoreSettingsHelper(req.body)
   res.json(saved)
+})
+
+router.post('/test-notification', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const { channel, token, chatId, phone, apikey, webhookUrl } = req.body
+  const testMsg = `🧪 <b>¡Prueba de Notificación Exitosa!</b>\n\nTu sistema de alertas de <b>Chamical Candy Shop</b> está conectado y funcionando correctamente en tu celular.\n\nRecibirás un aviso inmediato cada vez que haya un nuevo pedido o usuario registrado. 🎉`
+
+  try {
+    if (channel === 'telegram') {
+      const result = await sendTelegramMessage(token, chatId, testMsg)
+      if (!result.success) {
+        res.status(400).json({ error: result.error || 'Error al enviar a Telegram' })
+        return
+      }
+      res.json({ message: '¡Mensaje de prueba enviado a Telegram con éxito!' })
+    } else if (channel === 'whatsapp') {
+      const result = await sendCallMeBotWhatsApp(phone, apikey, testMsg)
+      if (!result.success) {
+        res.status(400).json({ error: result.error || 'Error al enviar a WhatsApp' })
+        return
+      }
+      res.json({ message: '¡Mensaje de prueba enviado a WhatsApp con éxito!' })
+    } else if (channel === 'discord') {
+      const result = await sendDiscordWebhook(webhookUrl, testMsg)
+      if (!result.success) {
+        res.status(400).json({ error: result.error || 'Error al enviar a Webhook' })
+        return
+      }
+      res.json({ message: '¡Mensaje de prueba enviado a Webhook con éxito!' })
+    } else {
+      res.status(400).json({ error: 'Canal de notificación no válido' })
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error al enviar la prueba de notificación' })
+  }
 })
 
 router.get('/promo-codes', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {

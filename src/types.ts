@@ -46,7 +46,7 @@ export interface CartItem {
 
 export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros' | 'como-comprar' | 'mis-pedidos';
 
-export type AdminSection = 'dashboard' | 'analytics' | 'finances' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'banners' | 'about-page' | 'categories' | 'whatsapp' | 'shipping';
+export type AdminSection = 'dashboard' | 'analytics' | 'finances' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'banners' | 'about-page' | 'categories' | 'whatsapp' | 'shipping' | 'notifications';
 
 export interface ExpenseItem {
   id: string;
@@ -78,6 +78,19 @@ export interface StoreSettings {
   pickup_address: string;
   pickup_schedule: string;
   delivery_notes: string;
+
+  // Mobile & Server Notifications
+  telegram_bot_token?: string;
+  telegram_chat_id?: string;
+  telegram_enabled?: boolean;
+  whatsapp_callmebot_phone?: string;
+  whatsapp_callmebot_apikey?: string;
+  whatsapp_notifications_enabled?: boolean;
+  discord_webhook_url?: string;
+  discord_enabled?: boolean;
+  notify_on_new_order?: boolean;
+  notify_on_new_user?: boolean;
+  browser_sound_alerts_enabled?: boolean;
 }
 
 export interface HomepageSection {

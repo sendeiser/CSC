@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck, Sparkles, Wallet } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck, Sparkles, Wallet, Bell } from 'lucide-react';
 import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
@@ -10,6 +10,8 @@ import { AdminWhatsAppEditor } from './AdminWhatsAppEditor';
 import { AdminOrdersSection } from './AdminOrdersSection';
 import { AdminShippingEditor } from './AdminShippingEditor';
 import { AdminFinancesSection } from './AdminFinancesSection';
+import { AdminNotificationSettings } from './AdminNotificationSettings';
+import { playNotificationSound, showBrowserNotification } from '../lib/soundAlerts';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { useModal } from '../context/ModalContext';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
@@ -264,6 +266,48 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     statusCounts: {},
     recentOrders: [],
   });
+
+  // Detector en tiempo real con campana sonora y push browser
+  const prevOrdersCountRef = useRef<number | null>(null);
+  const prevUsersCountRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const checkRealtimeUpdates = async () => {
+      try {
+        const currentStats = await adminApi.getStats();
+        if (currentStats) {
+          const ordersCount = Number(currentStats.totalOrders || 0);
+          const usersCount = Number(currentStats.totalUsers || 0);
+
+          if (prevOrdersCountRef.current !== null && ordersCount > prevOrdersCountRef.current) {
+            const diff = ordersCount - prevOrdersCountRef.current;
+            playNotificationSound();
+            showBrowserNotification(`🛍️ ¡${diff === 1 ? 'Nuevo Pedido' : `${diff} Nuevos Pedidos`} Recibido(s)!`, {
+              body: `Total ventas actualizado: $${Number(currentStats.totalRevenue || 0).toFixed(2)}. Hacé clic para ver pedidos.`,
+              tag: `csc-order-${Date.now()}`
+            });
+            setStats(currentStats);
+          }
+
+          if (prevUsersCountRef.current !== null && usersCount > prevUsersCountRef.current) {
+            const diff = usersCount - prevUsersCountRef.current;
+            playNotificationSound();
+            showBrowserNotification(`👤 ¡${diff === 1 ? 'Nuevo Usuario' : `${diff} Nuevos Usuarios`} Registrado(s)!`, {
+              body: `Total clientes registrados: ${usersCount}.`,
+              tag: `csc-user-${Date.now()}`
+            });
+          }
+
+          prevOrdersCountRef.current = ordersCount;
+          prevUsersCountRef.current = usersCount;
+        }
+      } catch (_e) {}
+    };
+
+    checkRealtimeUpdates();
+    const interval = setInterval(checkRealtimeUpdates, 20000);
+    return () => clearInterval(interval);
+  }, []);
 
   const [showFinancialModal, setShowFinancialModal] = useState(false);
   const [financialForm, setFinancialForm] = useState({
@@ -635,6 +679,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
 
   const navItems: { id: AdminSection; label: string; icon: React.ReactNode; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="w-4.5 h-4.5" /> },
+    { id: 'notifications', label: 'Alertas al Móvil', icon: <Bell className="w-4.5 h-4.5 text-amber-400" /> },
     { id: 'finances', label: 'Gastos & Finanzas', icon: <Wallet className="w-4.5 h-4.5 text-rose-400" /> },
     { id: 'analytics', label: 'Gráficos', icon: <BarChart2 className="w-4.5 h-4.5" /> },
     { id: 'products', label: 'Productos', icon: <Package className="w-4.5 h-4.5" /> },
@@ -2036,6 +2081,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 </div>
               )}
 
+              {section === 'notifications' && <AdminNotificationSettings />}
               {section === 'finances' && <AdminFinancesSection />}
               {section === 'homepage' && <AdminHomepageEditor />}
               {section === 'banners' && <AdminBannersEditor />}
