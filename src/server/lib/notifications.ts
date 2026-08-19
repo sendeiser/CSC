@@ -13,11 +13,26 @@ export interface NotificationSettings {
   notify_on_new_user?: boolean;
 }
 
-export async function sendTelegramMessage(token: string, chatId: string, text: string): Promise<{ success: boolean; error?: string }> {
+export function formatForWhatsApp(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/<b>(.*?)<\/b>/gi, '*$1*')
+    .replace(/<strong>(.*?)<\/strong>/gi, '*$1*')
+    .replace(/<i>(.*?)<\/i>/gi, '_$1_')
+    .replace(/<em>(.*?)<\/em>/gi, '_$1_')
+    .replace(/<code>(.*?)<\/code>/gi, '`$1`')
+    .replace(/<[^>]*>/g, '') // remove remaining HTML tags
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
+}
+
+export async function sendTelegramMessage(token: string, chatId: string, text: string): Promise<{ success: boolean; error?: string; message?: string }> {
   try {
     const cleanToken = token.trim();
     const cleanChatId = chatId.trim();
-    if (!cleanToken || !cleanChatId) return { success: false, error: 'Token o Chat ID faltante' };
+    if (!cleanToken || !cleanChatId) return { success: false, error: 'Token o Chat ID de Telegram faltante' };
 
     const url = `https://api.telegram.org/bot${cleanToken}/sendMessage`;
     const res = await fetch(url, {
@@ -32,38 +47,79 @@ export async function sendTelegramMessage(token: string, chatId: string, text: s
 
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
-      return { success: false, error: data.description || `HTTP ${res.status}` };
+      const errMsg = data.description || `Error HTTP ${res.status}`;
+      return { 
+        success: false, 
+        error: `Telegram error: ${errMsg}. Verificá que el Bot Token sea correcto y hayas presionado "Iniciar" (/start) en tu bot.` 
+      };
     }
-    return { success: true };
+    return { success: true, message: 'Mensaje enviado a Telegram correctamente' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Error de conexión con Telegram' };
   }
 }
 
-export async function sendCallMeBotWhatsApp(phone: string, apikey: string, text: string): Promise<{ success: boolean; error?: string }> {
+export async function sendCallMeBotWhatsApp(phone: string, apikey: string, text: string): Promise<{ success: boolean; error?: string; message?: string }> {
   try {
-    const cleanPhone = phone.trim().replace(/\+/g, '').replace(/\s+/g, '');
+    const cleanPhone = phone.trim().replace(/\+/g, '').replace(/[\s-]/g, '');
     const cleanKey = apikey.trim();
-    if (!cleanPhone || !cleanKey) return { success: false, error: 'Teléfono o API Key de CallMeBot faltante' };
-
-    const cleanText = text
-      .replace(/<[^>]*>/g, '') // remove HTML tags
-      .replace(/&nbsp;/g, ' ');
-
-    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(cleanText)}&apikey=${encodeURIComponent(cleanKey)}`;
-    const res = await fetch(url);
-    const body = await res.text().catch(() => '');
-
-    if (!res.ok || body.toLowerCase().includes('error')) {
-      return { success: false, error: body || `HTTP ${res.status}` };
+    if (!cleanPhone || !cleanKey) {
+      return { success: false, error: 'El número de teléfono o la API Key de CallMeBot están vacíos.' };
     }
-    return { success: true };
+
+    const waText = formatForWhatsApp(text);
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(waText)}&apikey=${encodeURIComponent(cleanKey)}`;
+
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+
+    const body = await res.text().catch(() => '');
+    const cleanBody = body.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const lowerBody = cleanBody.toLowerCase();
+
+    // Check for explicit CallMeBot failure indicators
+    if (
+      lowerBody.includes('apikey is invalid') ||
+      lowerBody.includes('invalid') ||
+      lowerBody.includes('not found') ||
+      lowerBody.includes('please create') ||
+      lowerBody.includes('not authorized') ||
+      lowerBody.includes('color:red') ||
+      lowerBody.includes('error') ||
+      res.status >= 400
+    ) {
+      return {
+        success: false,
+        error: cleanBody || `Error HTTP ${res.status}: CallMeBot no pudo entregar el mensaje. Verificá que hayas enviado "I allow callmebot to send me messages" y que la API Key coincida.`,
+      };
+    }
+
+    // Check for success indicators
+    if (
+      lowerBody.includes('message queued') ||
+      lowerBody.includes('message sent') ||
+      lowerBody.includes('success') ||
+      lowerBody.includes('message to:')
+    ) {
+      return { success: true, message: cleanBody || 'Mensaje enviado a WhatsApp exitosamente.' };
+    }
+
+    // Default fallback check
+    if (res.status === 200 || res.status === 203) {
+      return { success: true, message: cleanBody || 'Mensaje procesado por CallMeBot.' };
+    }
+
+    return { success: false, error: cleanBody || `Error de entrega en CallMeBot (${res.status})` };
   } catch (err: any) {
-    return { success: false, error: err.message || 'Error de conexión con CallMeBot WhatsApp' };
+    return { success: false, error: err.message || 'Error de conexión al conectar con CallMeBot WhatsApp' };
   }
 }
 
-export async function sendDiscordWebhook(webhookUrl: string, text: string): Promise<{ success: boolean; error?: string }> {
+export async function sendDiscordWebhook(webhookUrl: string, text: string): Promise<{ success: boolean; error?: string; message?: string }> {
   try {
     const cleanUrl = webhookUrl.trim();
     if (!cleanUrl.startsWith('http')) return { success: false, error: 'URL de Webhook inválida' };
@@ -76,9 +132,9 @@ export async function sendDiscordWebhook(webhookUrl: string, text: string): Prom
     });
 
     if (!res.ok) {
-      return { success: false, error: `HTTP ${res.status}` };
+      return { success: false, error: `Error HTTP ${res.status} al enviar a Webhook` };
     }
-    return { success: true };
+    return { success: true, message: 'Mensaje enviado a Webhook correctamente' };
   } catch (err: any) {
     return { success: false, error: err.message || 'Error de conexión con Webhook' };
   }
@@ -87,7 +143,10 @@ export async function sendDiscordWebhook(webhookUrl: string, text: string): Prom
 export async function dispatchNotifications(text: string, options: { isOrder?: boolean; isUser?: boolean } = {}) {
   try {
     const settings = await getStoreSettingsHelper();
-    if (!settings) return;
+    if (!settings) {
+      console.warn('[Notifications]: No se pudo cargar store_settings.');
+      return;
+    }
 
     if (options.isOrder && settings.notify_on_new_order === false) return;
     if (options.isUser && settings.notify_on_new_user === false) return;
@@ -100,6 +159,7 @@ export async function dispatchNotifications(text: string, options: { isOrder?: b
         sendTelegramMessage(settings.telegram_bot_token, settings.telegram_chat_id, text)
           .then(res => {
             if (!res.success) console.warn('[Telegram Alert Failed]:', res.error);
+            else console.log('[Telegram Alert Sent Successfully]');
           })
           .catch(err => console.warn('[Telegram Alert Error]:', err))
       );
@@ -111,6 +171,7 @@ export async function dispatchNotifications(text: string, options: { isOrder?: b
         sendCallMeBotWhatsApp(settings.whatsapp_callmebot_phone, settings.whatsapp_callmebot_apikey, text)
           .then(res => {
             if (!res.success) console.warn('[WhatsApp Alert Failed]:', res.error);
+            else console.log('[WhatsApp Alert Sent Successfully]');
           })
           .catch(err => console.warn('[WhatsApp Alert Error]:', err))
       );
@@ -122,6 +183,7 @@ export async function dispatchNotifications(text: string, options: { isOrder?: b
         sendDiscordWebhook(settings.discord_webhook_url, text)
           .then(res => {
             if (!res.success) console.warn('[Discord Webhook Alert Failed]:', res.error);
+            else console.log('[Discord Alert Sent Successfully]');
           })
           .catch(err => console.warn('[Discord Webhook Alert Error]:', err))
       );
