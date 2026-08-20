@@ -11,6 +11,7 @@ interface HeaderProps {
   cart: CartItem[];
   session: UserSession;
   setSession: React.Dispatch<React.SetStateAction<UserSession>>;
+  onOpenCart?: () => void;
 }
 
 function getInitials(name: string | null) {
@@ -23,11 +24,20 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveScreen,
   cart,
   session,
-  setSession
+  setSession,
+  onOpenCart
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [scrolled, setScrolled] = React.useState(false);
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  const handleCartClick = () => {
+    if (onOpenCart) {
+      onOpenCart();
+    } else {
+      setActiveScreen('carrito');
+    }
+  };
 
   React.useEffect(() => {
     let ticking = false;
@@ -182,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Cart */}
               <button
                 id="header-cart-btn"
-                onClick={() => setActiveScreen('carrito')}
+                onClick={handleCartClick}
                 className={`relative p-2.5 rounded-xl border transition-all duration-200 ${activeScreen === 'carrito'
                     ? 'candy-gradient-bg text-white border-transparent shadow-md'
                     : 'bg-white hover:bg-purple-50 text-purple-700 border-purple-100 hover:border-purple-200'
@@ -215,7 +225,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 id="header-mobile-cart-btn"
-                onClick={() => setActiveScreen('carrito')}
+                onClick={handleCartClick}
                 className={`relative p-2.5 rounded-xl border transition-all cursor-pointer ${
                   activeScreen === 'carrito' || totalItems > 0
                     ? 'candy-gradient-bg text-white border-transparent shadow-md shadow-pink-500/20'

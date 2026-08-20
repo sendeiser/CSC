@@ -11,6 +11,7 @@ import { AdminPanel } from './components/AdminPanel';
 import { AboutUsScreen } from './components/AboutUsScreen';
 import { HowToBuyScreen } from './components/HowToBuyScreen';
 import { MyOrdersScreen } from './components/MyOrdersScreen';
+import { CartSlideDrawer } from './components/CartSlideDrawer';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { PRODUCTS } from './data';
 import { homepage as homepageApi, products as productsApi, cart as cartApi, auth as authApi, favorites as favoritesApi, setAuthToken, getAuthToken, setOnAuthExpired } from './lib/api';
@@ -32,6 +33,8 @@ export default function App() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [favorites, setFavorites] = useState<Record<string, boolean>>({});
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
+  const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(0);
   const [session, setSession] = useState<UserSession>({
     isLoggedIn: false,
     email: null,
@@ -115,6 +118,9 @@ export default function App() {
       if (st) {
         setWhatsAppNumbers(st.whatsapp_number_1, st.whatsapp_number_2);
         setWhatsAppTemplates(st);
+        if (st.free_delivery_over) {
+          setFreeDeliveryThreshold(Number(st.free_delivery_over || 0));
+        }
       }
     }).catch(console.error);
   }, []);
@@ -350,6 +356,7 @@ export default function App() {
         }
         return [...prev, newItem];
       })
+      setIsCartDrawerOpen(true);
       showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g de ' : product.is_combo ? '' : itemQty + 'x '}${product.name} a tu Bolsa!`)
       return
     }
@@ -378,6 +385,7 @@ export default function App() {
         comboSelections: i.combo_selections
       }))
       setCart(mapped)
+      setIsCartDrawerOpen(true);
       showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g' : itemQty + 'x'} ${product.name} a tu Bolsa!`)
     } catch (err: any) {
       showToast(err.message || 'Error al añadir al carrito', 'info')
@@ -428,6 +436,7 @@ export default function App() {
           cart={cart}
           session={session}
           setSession={setSession}
+          onOpenCart={() => setIsCartDrawerOpen(true)}
         />
       )}
 
@@ -594,7 +603,7 @@ export default function App() {
           {activeScreen !== 'carrito' && activeScreen !== 'admin' && cart.length > 0 && (
             <button
               id="floating-cart-btn"
-              onClick={() => setActiveScreen('carrito')}
+              onClick={() => setIsCartDrawerOpen(true)}
               aria-label="Ver Carrito de Compras"
               className="fixed bottom-23 right-5 z-50 flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-full shadow-2xl shadow-purple-900/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-white/20"
             >
@@ -604,9 +613,11 @@ export default function App() {
                   {cart.reduce((sum, item) => sum + item.quantity, 0) > 9 ? '9+' : cart.reduce((sum, item) => sum + item.quantity, 0)}
                 </span>
               </div>
-              <span className="font-headline font-black">Ver Carrito</span>
-              <span className="bg-white/20 px-2 py-0.5 rounded-full text-[11px] font-mono">
-                ${cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toLocaleString('es-AR')}
+              <span className="font-headline font-black">
+                Ver Carrito ({cart.reduce((sum, item) => sum + item.quantity, 0)})
+              </span>
+              <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-mono font-bold">
+                ${cart.reduce((sum, item) => sum + ((item.itemPrice ?? item.product?.price ?? 0) * item.quantity), 0).toLocaleString('es-AR')}
               </span>
             </button>
           )}
@@ -633,6 +644,24 @@ export default function App() {
           </div>
         </>
       )}
+
+      {/* Slide Drawer lateral del Carrito desde la derecha */}
+      <CartSlideDrawer
+        isOpen={isCartDrawerOpen}
+        onClose={() => setIsCartDrawerOpen(false)}
+        cart={cart}
+        setCart={setCart}
+        onCheckout={() => {
+          setIsCartDrawerOpen(false);
+          handleSetActiveScreen('carrito');
+        }}
+        onViewCatalog={() => {
+          setIsCartDrawerOpen(false);
+          handleSetActiveScreen('catalogo');
+        }}
+        isLoggedIn={session.isLoggedIn}
+        freeDeliveryOver={freeDeliveryThreshold}
+      />
     </div>
   );
 }
