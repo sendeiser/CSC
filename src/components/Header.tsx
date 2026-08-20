@@ -204,25 +204,31 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
 
-            {/* Mobile: cart + hamburger */}
+            {/* Mobile: hamburger + cart on the far right */}
             <div className="md:hidden flex items-center space-x-2">
               <button
-                onClick={() => setActiveScreen('carrito')}
-                className="relative p-2.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-100"
-              >
-                <ShoppingBag className="w-5 h-5" />
-                {totalItems > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-pink-500 text-white text-[9px] font-bold flex items-center justify-center">
-                    {totalItems > 9 ? '9+' : totalItems}
-                  </span>
-                )}
-              </button>
-              <button
                 onClick={() => setMobileMenuOpen(true)}
-                className="p-2.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 hover:bg-purple-100 transition-colors"
+                className="p-2.5 rounded-xl bg-purple-50 text-purple-700 border border-purple-100 hover:bg-purple-100 transition-colors cursor-pointer"
                 aria-label="Abrir menú"
               >
                 <Menu className="w-5 h-5" />
+              </button>
+              <button
+                id="header-mobile-cart-btn"
+                onClick={() => setActiveScreen('carrito')}
+                className={`relative p-2.5 rounded-xl border transition-all cursor-pointer ${
+                  activeScreen === 'carrito' || totalItems > 0
+                    ? 'candy-gradient-bg text-white border-transparent shadow-md shadow-pink-500/20'
+                    : 'bg-purple-50 text-purple-700 border-purple-100'
+                }`}
+                aria-label="Ver Carrito de compras"
+              >
+                <ShoppingBag className="w-5 h-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[19px] h-[19px] px-1 rounded-full bg-pink-500 text-white text-[10px] font-black flex items-center justify-center border-2 border-white shadow-sm">
+                    {totalItems > 9 ? '9+' : totalItems}
+                  </span>
+                )}
               </button>
             </div>
 

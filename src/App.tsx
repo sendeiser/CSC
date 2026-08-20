@@ -17,7 +17,7 @@ import { homepage as homepageApi, products as productsApi, cart as cartApi, auth
 import { supabase } from './lib/supabase';
 import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
 import { waLink, setWhatsAppNumbers, setWhatsAppTemplates } from './lib/whatsapp';
-import { MessageCircle, Instagram } from 'lucide-react';
+import { MessageCircle, Instagram, ShoppingBag } from 'lucide-react';
 
 const VALID_SCREENS: ActiveScreen[] = ['inicio', 'catalogo', 'detalle', 'carrito', 'login', 'registro', 'admin', 'nosotros', 'como-comprar', 'mis-pedidos'];
 
@@ -589,6 +589,27 @@ export default function App() {
               </div>
             </div>
           </footer>
+
+          {/* Botón flotante del Carrito a la derecha */}
+          {activeScreen !== 'carrito' && activeScreen !== 'admin' && cart.length > 0 && (
+            <button
+              id="floating-cart-btn"
+              onClick={() => setActiveScreen('carrito')}
+              aria-label="Ver Carrito de Compras"
+              className="fixed bottom-23 right-5 z-50 flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-full shadow-2xl shadow-purple-900/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-white/20"
+            >
+              <div className="relative">
+                <ShoppingBag className="w-5 h-5" />
+                <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-pink-400 text-white text-[9px] font-black flex items-center justify-center border border-white">
+                  {cart.reduce((sum, item) => sum + item.quantity, 0) > 9 ? '9+' : cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              </div>
+              <span className="font-headline font-black">Ver Carrito</span>
+              <span className="bg-white/20 px-2 py-0.5 rounded-full text-[11px] font-mono">
+                ${cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toLocaleString('es-AR')}
+              </span>
+            </button>
+          )}
 
           {/* WhatsApp floating button con ícono oficial */}
           <div className="fixed bottom-6 right-5 z-50 group">
