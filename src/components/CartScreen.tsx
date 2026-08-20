@@ -47,6 +47,11 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
     }
   };
 
+  // Scroll automático a la parte superior al cambiar de paso (especialmente a la pantalla de éxito/resumen)
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+  }, [step]);
+
   // Auto-completado automático de Nombre y Celular para usuarios registrados o previos
   React.useEffect(() => {
     const savedName = userSession?.name || localStorage.getItem('csc_user_name') || '';
@@ -213,6 +218,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
       setCart([]);
       clearLocalCart();
       setStep('success');
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     } catch (err: any) {
       setShippingError(err.message || 'Error al procesar el pedido.');
     }
