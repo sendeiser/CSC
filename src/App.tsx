@@ -602,20 +602,24 @@ export default function App() {
             <button
               id="floating-cart-btn"
               onClick={() => setIsCartDrawerOpen(true)}
-              aria-label="Ver Carrito de Compras"
-              className="fixed bottom-23 right-5 z-50 flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-full shadow-2xl shadow-purple-900/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-white/20"
+              aria-label="Carrito de Compras"
+              className="fixed bottom-23 right-5 z-50 flex items-center space-x-2 px-3.5 py-2.5 bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-full shadow-2xl shadow-purple-900/40 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer border border-white/20"
             >
               <div className="relative">
                 <ShoppingBag className="w-5 h-5" />
-                <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-pink-400 text-white text-[9px] font-black flex items-center justify-center border border-white">
-                  {cart.reduce((sum, item) => sum + item.quantity, 0) > 9 ? '9+' : cart.reduce((sum, item) => sum + item.quantity, 0)}
+                <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-pink-400 text-white text-[9px] font-black flex items-center justify-center border border-white shadow-xs">
+                  {cart.reduce((sum, item) => sum + (item.quantity || 1), 0) > 9 ? '9+' : cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
                 </span>
               </div>
-              <span className="font-headline font-black">
-                Ver Carrito ({cart.reduce((sum, item) => sum + item.quantity, 0)})
-              </span>
               <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-mono font-bold">
-                ${cart.reduce((sum, item) => sum + ((item.itemPrice ?? item.product?.price ?? 0) * item.quantity), 0).toLocaleString('es-AR')}
+                ${cart.reduce((sum, item) => {
+                  const p = (typeof item.itemPrice === 'number' && !isNaN(item.itemPrice) && item.itemPrice > 0)
+                    ? item.itemPrice
+                    : item.weight_grams
+                      ? Math.round((item.weight_grams / 1000) * Number(item.product?.price_per_kg || item.product?.base_price || 0) * 100) / 100
+                      : Number(item.product?.base_price || 0);
+                  return sum + (p * (item.quantity || 1));
+                }, 0).toLocaleString('es-AR')}
               </span>
             </button>
           )}
