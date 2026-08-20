@@ -15,6 +15,17 @@ interface CartSlideDrawerProps {
   freeDeliveryOver?: number;
 }
 
+function getItemPrice(item: CartItem): number {
+  if (typeof item.itemPrice === 'number' && !isNaN(item.itemPrice) && item.itemPrice > 0) {
+    return item.itemPrice;
+  }
+  if (item.weight_grams) {
+    const pricePerKg = Number(item.product?.price_per_kg || item.product?.base_price || 0);
+    return Math.round((item.weight_grams / 1000) * pricePerKg * 100) / 100;
+  }
+  return Number(item.product?.base_price || 0);
+}
+
 export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
   isOpen,
   onClose,
@@ -25,18 +36,29 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
   isLoggedIn,
   freeDeliveryOver = 0,
 }) => {
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const subTotal = cart.reduce((sum, item) => sum + ((item.itemPrice ?? item.product?.price ?? 0) * item.quantity), 0);
+  const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  const subTotal = cart.reduce((sum, item) => {
+    const p = getItemPrice(item);
+    return sum + (p * (item.quantity || 1));
+  }, 0);
 
   const handleUpdateQty = async (index: number, delta: number) => {
     const item = cart[index];
     if (!item) return;
 
     if (item.weight_grams) {
-      const step = item.product.unit_type === 'unit' ? 1 : 100;
-      const minWeight = 100;
-      const newWeight = Math.max(minWeight, (item.weight_grams || 100) + (delta * step));
-      const newPrice = (item.product.price / 100) * newWeight;
+      const step = 50; // Modificar de a 50 gramos
+      const newWeight = (item.weight_grams || 0) + (delta > 0 ? step : -step);
+      if (newWeight < 50) {
+        await handleRemoveItem(index);
+        return;
+      }
+      const pricePerKg = Number(
+        item.product?.price_per_kg || 
+        item.product?.base_price || 
+        (item.itemPrice && item.weight_grams ? (item.itemPrice / item.weight_grams) * 1000 : 0)
+      );
+      const newPrice = Math.round((newWeight / 1000) * pricePerKg * 100) / 100;
 
       if (isLoggedIn) {
         try {
@@ -53,7 +75,7 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
       return;
     }
 
-    const newQty = item.quantity + delta;
+    const newQty = (item.quantity || 1) + delta;
     if (newQty <= 0) {
       await handleRemoveItem(index);
       return;
@@ -89,11 +111,12 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
     setCart(prev => prev.filter((_, i) => i !== index));
   };
 
-  const progressPercent = freeDeliveryOver > 0 
-    ? Math.min(100, Math.round((subTotal / freeDeliveryOver) * 100))
+  const numFreeDelivery = Number(freeDeliveryOver || 0);
+  const progressPercent = numFreeDelivery > 0 && !isNaN(subTotal)
+    ? Math.min(100, Math.round((subTotal / numFreeDelivery) * 100))
     : 0;
 
-  const remainingForFreeDelivery = Math.max(0, freeDeliveryOver - subTotal);
+  const remainingForFreeDelivery = Math.max(0, numFreeDelivery - subTotal);
 
   return (
     <AnimatePresence>
@@ -146,12 +169,12 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
             </div>
 
             {/* Free Delivery Bar (if configured) */}
-            {freeDeliveryOver > 0 && totalItems > 0 && (
+            {numFreeDelivery > 0 && totalItems > 0 && (
               <div className="bg-purple-50/80 border-b border-purple-100/60 px-5 py-2.5 shrink-0">
                 <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
                   <span className="flex items-center space-x-1.5 text-purple-900">
                     <Truck className="w-3.5 h-3.5 text-purple-600" />
-                    {subTotal >= freeDeliveryOver ? (
+                    {subTotal >= numFreeDelivery ? (
                       <span className="text-emerald-700 font-bold flex items-center space-x-1">
                         <span>¡Tenés Envío Gratis! 🎉</span>
                       </span>
@@ -195,16 +218,16 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
                 </div>
               ) : (
                 cart.map((item, idx) => {
-                  const itemPrice = item.itemPrice ?? item.product?.price ?? 0;
-                  const itemTotal = itemPrice * item.quantity;
+                  const itemPrice = getItemPrice(item);
+                  const itemTotal = itemPrice * (item.quantity || 1);
                   const imgSrc = item.product?.image_url || 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?auto=format&fit=crop&w=400&q=80';
 
                   return (
-                    <div key={`${item.product.id}-${item.selectedSize}-${idx}`} className="pt-3.5 first:pt-0 flex gap-3 items-start">
+                    <div key={`${item.product?.id || idx}-${item.selectedSize || 'std'}-${idx}`} className="pt-3.5 first:pt-0 flex gap-3 items-start">
                       {/* Product Thumbnail */}
                       <img
                         src={imgSrc}
-                        alt={item.product.name}
+                        alt={item.product?.name || 'Golosina'}
                         className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-slate-100 shadow-sm shrink-0 bg-slate-50"
                       />
 
@@ -212,7 +235,7 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex items-start justify-between gap-2">
                           <h4 className="font-headline font-bold text-slate-900 text-xs sm:text-sm line-clamp-2 leading-tight">
-                            {item.product.name}
+                            {item.product?.name || 'Golosina'}
                           </h4>
                           <button
                             onClick={() => handleRemoveItem(idx)}
@@ -265,8 +288,8 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
                             >
                               <Minus className="w-3 h-3" />
                             </button>
-                            <span className="w-8 text-center text-xs font-bold text-slate-800 font-mono">
-                              {item.quantity}
+                            <span className="min-w-[32px] px-1 text-center text-xs font-bold text-slate-800 font-mono">
+                              {item.weight_grams ? `${item.weight_grams}g` : item.quantity}
                             </span>
                             <button
                               onClick={() => handleUpdateQty(idx, 1)}
@@ -301,7 +324,7 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
                       ${subTotal.toLocaleString('es-AR')}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                  <div className="flex items-center justify-between text-slate-500 text-xs">
                     <span>Total acumulado:</span>
                     <span className="font-bold text-purple-700 text-base sm:text-lg font-mono">
                       ${subTotal.toLocaleString('es-AR')}
