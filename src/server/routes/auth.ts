@@ -28,10 +28,12 @@ router.post('/signup', async (req: Request, res: Response) => {
     return
   }
 
-  // Notificar al administrador al celular en segundo plano
-  notifyNewUser({ name: resolvedName, email }).catch((err) => {
+  // Notificar al administrador al celular directamente
+  try {
+    await notifyNewUser({ name: resolvedName, email })
+  } catch (err) {
     console.warn('[Signup Notification Error]:', err)
-  })
+  }
 
   res.status(201).json({
     user: data.user,

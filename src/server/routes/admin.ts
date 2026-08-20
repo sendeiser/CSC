@@ -117,7 +117,8 @@ export async function getStoreSettingsHelper() {
       .from('homepage_sections')
       .select('content')
       .eq('section_type', 'store_settings')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (data?.content) {
       settings = {
@@ -138,7 +139,16 @@ export async function getStoreSettingsHelper() {
         free_delivery_over: Number(parsed.free_delivery_over || 0),
       }
     }
-  } catch (_e) {}
+  } catch (err) {
+    console.warn('[getStoreSettingsHelper DB Warning]:', err)
+    if (fs.existsSync(STORE_SETTINGS_FILE)) {
+      try {
+        const raw = fs.readFileSync(STORE_SETTINGS_FILE, 'utf-8')
+        const parsed = JSON.parse(raw)
+        settings = { ...settings, ...parsed }
+      } catch (_e) {}
+    }
+  }
 
   const active_phone = settings.active_whatsapp_number === 'num2'
     ? settings.whatsapp_number_2
@@ -210,7 +220,8 @@ export async function saveStoreSettingsHelper(payload: any) {
       .from('homepage_sections')
       .select('id')
       .eq('section_type', 'store_settings')
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (existing?.id) {
       await db
