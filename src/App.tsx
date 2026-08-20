@@ -356,7 +356,6 @@ export default function App() {
         }
         return [...prev, newItem];
       })
-      setIsCartDrawerOpen(true);
       showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g de ' : product.is_combo ? '' : itemQty + 'x '}${product.name} a tu Bolsa!`)
       return
     }
@@ -385,7 +384,6 @@ export default function App() {
         comboSelections: i.combo_selections
       }))
       setCart(mapped)
-      setIsCartDrawerOpen(true);
       showToast(`¡Añadido ${product.unit_type === 'weight' ? weight_grams + 'g' : itemQty + 'x'} ${product.name} a tu Bolsa!`)
     } catch (err: any) {
       showToast(err.message || 'Error al añadir al carrito', 'info')

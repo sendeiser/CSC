@@ -371,6 +371,11 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                       </button>
                       <button
                         onClick={() => {
+                          if (product.is_combo) {
+                            setSelectedProductById(product.id);
+                            setActiveScreen('detalle');
+                            return;
+                          }
                           if (product.unit_type === 'weight') {
                             addToCart(product, 'Granel', 1, product.min_weight || 50);
                           } else {
@@ -381,9 +386,9 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                         className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shadow transition-all ${
                           product.stock === 0
                             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                            : 'candy-gradient-bg text-white hover:opacity-90 hover:scale-110 active:scale-95'
+                            : 'candy-gradient-bg text-white hover:opacity-90 hover:scale-110 active:scale-95 cursor-pointer'
                         }`}
-                        title={product.stock === 0 ? 'Agotado' : 'Añadir al carrito'}
+                        title={product.stock === 0 ? 'Agotado' : product.is_combo ? 'Elegir sabores' : 'Añadir al carrito'}
                       >
                         <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       </button>
