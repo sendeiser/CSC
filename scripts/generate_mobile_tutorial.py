@@ -25,67 +25,171 @@ def add_banner_annotation(
     step_number: str,
     title: str,
     instruction: str,
-    highlight_box: tuple = None
+    footer_tip: str = "",
+    highlight_box: tuple = None,
+    callout_text: str = "",
+    callout_pos: tuple = None
 ):
     """
-    Agrega un banner superior premium con estilo Candy Shop a la captura del celular.
+    Agrega un banner superior premium, barra inferior de tips y señaladores visuales interactivos
+    (cajas de enfoque y badges con flechas) para que el paso se entienda a simple vista.
     """
     img = Image.open(image_path).convert("RGBA")
     w, h = img.size
 
-    banner_height = int(150 * (w / 780))
-    banner_height = max(160, min(banner_height, 220))
+    # Altura del banner superior e inferior
+    banner_top_h = 240
+    banner_bottom_h = 100 if footer_tip else 0
 
-    canvas = Image.new("RGBA", (w, h + banner_height), (248, 250, 252, 255))
+    total_h = h + banner_top_h + banner_bottom_h
+    canvas = Image.new("RGBA", (w, total_h), (248, 250, 252, 255))
     draw = ImageDraw.Draw(canvas)
-    
-    for y in range(banner_height):
-        ratio = y / banner_height
-        r = int(236 * (1 - ratio * 0.4) + 139 * (ratio * 0.4))
-        g = int(72 * (1 - ratio * 0.4) + 92 * (ratio * 0.4))
-        b = int(153 * (1 - ratio * 0.4) + 246 * (ratio * 0.4))
+
+    # 1. Gradiente del Banner Superior
+    for y in range(banner_top_h):
+        ratio = y / banner_top_h
+        r = int(219 * (1 - ratio * 0.4) + 124 * (ratio * 0.4))
+        g = int(39 * (1 - ratio * 0.4) + 58 * (ratio * 0.4))
+        b = int(119 * (1 - ratio * 0.4) + 237 * (ratio * 0.4))
         draw.line([(0, y), (w, y)], fill=(r, g, b, 255))
 
+    # Línea inferior decorativa del banner
+    draw.line([(0, banner_top_h - 2), (w, banner_top_h - 2)], fill=(255, 255, 255, 120), width=2)
+
+    # Cargar tipografías seguras de Windows
     try:
-        font_badge = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", int(w * 0.032))
-        font_title = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", int(w * 0.040))
-        font_desc = ImageFont.truetype("C:/Windows/Fonts/segoeui.ttf", int(w * 0.029))
+        font_badge = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", 26)
+        font_title = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", 36)
+        font_desc = ImageFont.truetype("C:/Windows/Fonts/segoeui.ttf", 25)
+        font_callout = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", 23)
+        font_footer = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", 22)
     except Exception:
         font_badge = ImageFont.load_default()
         font_title = ImageFont.load_default()
         font_desc = ImageFont.load_default()
+        font_callout = ImageFont.load_default()
+        font_footer = ImageFont.load_default()
 
-    badge_text = f" PASO {step_number} "
-    badge_x = int(w * 0.05)
-    badge_y = int(banner_height * 0.15)
-    
+    # Badge de Paso (Píldora blanca destacada)
+    badge_text = f" PASO {step_number} DE 5 "
+    badge_x = 32
+    badge_y = 24
     draw.rounded_rectangle(
-        [(badge_x, badge_y), (badge_x + int(w * 0.25), badge_y + int(banner_height * 0.28))],
-        radius=int(w * 0.015),
-        fill=(255, 255, 255, 240)
+        [(badge_x, badge_y), (badge_x + 215, badge_y + 42)],
+        radius=12,
+        fill=(255, 255, 255, 255)
     )
-    draw.text((badge_x + int(w * 0.02), badge_y + int(banner_height * 0.04)), badge_text, fill=(190, 24, 93, 255), font=font_badge)
+    draw.text((badge_x + 14, badge_y + 6), badge_text, fill=(190, 24, 93, 255), font=font_badge)
 
-    title_x = badge_x + int(w * 0.28)
-    title_y = badge_y + int(banner_height * 0.02)
+    # Título principal del paso
+    title_x = 32
+    title_y = 78
+    # Sombra del título para alto contraste
+    draw.text((title_x + 2, title_y + 2), title, fill=(0, 0, 0, 120), font=font_title)
     draw.text((title_x, title_y), title, fill=(255, 255, 255, 255), font=font_title)
 
-    desc_x = int(w * 0.05)
-    desc_y = int(banner_height * 0.54)
-    draw.text((desc_x, desc_y), instruction, fill=(254, 242, 242, 255), font=font_desc)
+    # Instrucción con auto-wrap de 2 líneas
+    desc_x = 32
+    desc_y = 132
+    # Separar en líneas si es muy largo
+    import textwrap
+    lines = textwrap.wrap(instruction, width=48)
+    for idx, line in enumerate(lines[:2]):
+        draw.text((desc_x, desc_y + (idx * 34)), line, fill=(254, 242, 242, 255), font=font_desc)
 
-    canvas.paste(img, (0, banner_height), img)
+    # 2. Pegar la captura de pantalla del celular en el medio
+    canvas.paste(img, (0, banner_top_h), img)
 
+    # 3. Resaltados y Punteros en Pantalla (Highlight Box & Callout Badge)
     if highlight_box:
         x1, y1, x2, y2 = highlight_box
-        y1_adj = y1 + banner_height
-        y2_adj = y2 + banner_height
-        for offset in range(4):
+        y1_adj = y1 + banner_top_h
+        y2_adj = y2 + banner_top_h
+
+        # Resplandor exterior (Glow)
+        for offset in range(8, 0, -1):
+            alpha = int(35 * (1 - offset / 8))
             draw.rounded_rectangle(
                 [(x1 - offset, y1_adj - offset), (x2 + offset, y2_adj + offset)],
-                radius=12,
-                outline=(236, 72, 153, 255)
+                radius=18,
+                outline=(236, 72, 153, alpha),
+                width=2
             )
+
+        # Borde principal brillante neón
+        draw.rounded_rectangle(
+            [(x1, y1_adj), (x2, y2_adj)],
+            radius=16,
+            outline=(244, 63, 94, 255),
+            width=5
+        )
+
+    # Callout Badge con flecha/ícono
+    if callout_text and callout_pos:
+        cx, cy = callout_pos
+        cy_adj = cy + banner_top_h
+
+        # Limpiar emojis o caracteres no soportados por la fuente
+        clean_callout = (
+            callout_text
+            .replace("👇", "")
+            .replace("💡", "")
+            .replace("👉", "")
+            .replace("▶", "")
+            .replace("★", "")
+            .strip()
+        )
+
+        # Medir ancho del texto
+        text_w = len(clean_callout) * 14 + 60
+        badge_w = min(w - 40, max(320, text_w))
+        badge_h = 52
+
+        bx1 = max(20, min(cx - badge_w // 2, w - badge_w - 20))
+        by1 = cy_adj - badge_h // 2
+        bx2 = bx1 + badge_w
+        by2 = by1 + badge_h
+
+        # Sombra del badge
+        draw.rounded_rectangle(
+            [(bx1 + 3, by1 + 4), (bx2 + 3, by2 + 4)],
+            radius=16,
+            fill=(0, 0, 0, 140)
+        )
+        # Fondo del badge en rojo/fucsia sólido de alto contraste
+        draw.rounded_rectangle(
+            [(bx1, by1), (bx2, by2)],
+            radius=16,
+            fill=(225, 29, 72, 255),
+            outline=(255, 255, 255, 255),
+            width=3
+        )
+        # Texto del badge centrado
+        draw.text((bx1 + 20, by1 + 11), clean_callout, fill=(255, 255, 255, 255), font=font_callout)
+
+    # 4. Barra Inferior de Tips / Siguiente Acción
+    if footer_tip:
+        foot_y = total_h - banner_bottom_h
+        clean_foot = footer_tip.replace("💡", "").replace("👉", "").strip()
+        if not clean_foot.startswith("TIP:") and not clean_foot.startswith("Tip:"):
+            clean_foot = f"TIP: {clean_foot}"
+
+        # Fondo oscuro elegante
+        for y in range(banner_bottom_h):
+            ratio = y / banner_bottom_h
+            r = int(24 * (1 - ratio) + 15 * ratio)
+            g = int(18 * (1 - ratio) + 12 * ratio)
+            b = int(40 * (1 - ratio) + 30 * ratio)
+            draw.line([(0, foot_y + y), (w, foot_y + y)], fill=(r, g, b, 255))
+
+        # Línea superior de la barra
+        draw.line([(0, foot_y), (w, foot_y)], fill=(168, 85, 247, 180), width=2)
+        
+        # Texto del footer con auto-wrap si es largo
+        import textwrap
+        foot_lines = textwrap.wrap(clean_foot, width=54)
+        for f_idx, f_line in enumerate(foot_lines[:2]):
+            draw.text((32, foot_y + 22 + (f_idx * 28)), f_line, fill=(243, 232, 255, 255), font=font_footer)
 
     canvas.convert("RGB").save(output_path, "PNG", optimize=True)
     print(f" -> Editada y guardada: {output_path.name}")
@@ -117,6 +221,10 @@ async def capture_mobile_flow():
             await page.goto(f"{TARGET_URL}#catalogo", wait_until="domcontentloaded")
             
         await page.wait_for_timeout(2500)
+        # Scroll para centrar las tarjetas de productos y categorías
+        await page.evaluate("window.scrollTo(0, 460)")
+        await page.wait_for_timeout(600)
+
         raw1 = RAW_DIR / "01_catalogo_raw.png"
         await page.screenshot(path=raw1)
         print(" -> [Paso 1] Captura base del catálogo tomada.")
@@ -125,8 +233,12 @@ async def capture_mobile_flow():
             raw1,
             OUTPUT_DIR / "01_paso1_catalogo_celular.png",
             step_number="1",
-            title="Explorá las Golosinas",
-            instruction="Ingresá a la tienda, navegá por categorías y elegí lo que más te guste."
+            title="1. Explorá el Catálogo",
+            instruction="Navegá por categorías (Gomitas, Chocolates) y elegí tu golosina favorita.",
+            footer_tip="Tip: Podés usar el buscador superior para encontrar cualquier dulce rápido.",
+            highlight_box=(20, 320, 760, 1640),
+            callout_text="1. TOCA UNA GOLOSINA PARA ELEGIR SABORES O PESO",
+            callout_pos=(390, 280)
         )
 
         # -------------------------------------------------------------
@@ -151,6 +263,10 @@ async def capture_mobile_flow():
             except Exception:
                 pass
 
+        # Scroll para mostrar claramente los botones de peso y el botón de añadir a la bolsa
+        await page.evaluate("window.scrollTo(0, 360)")
+        await page.wait_for_timeout(600)
+
         raw2 = RAW_DIR / "02_detalle_raw.png"
         await page.screenshot(path=raw2)
         print(" -> [Paso 2] Captura base de detalle de producto tomada.")
@@ -159,8 +275,12 @@ async def capture_mobile_flow():
             raw2,
             OUTPUT_DIR / "02_paso2_elegir_producto.png",
             step_number="2",
-            title="Elegí Gramaje y Sabores",
-            instruction="Seleccioná los gramos o sabores y tocá 'Añadir a la bolsa'."
+            title="2. Elegí Gramaje y Añadí a la Bolsa",
+            instruction="Seleccioná la cantidad en gramos (50g, 100g, 250g) y tocá 'Añadir a la bolsa'.",
+            footer_tip="Tip: El precio se calcula automáticamente según los gramos que elijas.",
+            highlight_box=(20, 720, 760, 1600),
+            callout_text="2. ELEGI LOS GRAMOS Y TOCA 'AGREGAR A LA BOLSA'",
+            callout_pos=(390, 680)
         )
 
         # Añadir al carrito
@@ -185,8 +305,12 @@ async def capture_mobile_flow():
             raw3,
             OUTPUT_DIR / "03_paso3_carrito_lateral.png",
             step_number="3",
-            title="Revisá tu Carrito Lateral",
-            instruction="Mirá tus golosinas, ajustá cantidades y tocá 'Finalizar Pedido'."
+            title="3. Revisá tu Pedido en el Carrito",
+            instruction="Verificá tus productos, ajustá cantidades y tocá 'Finalizar Pedido'.",
+            footer_tip="Tip: Podés usar [+] y [-] para ajustar cantidades o seguir comprando.",
+            highlight_box=(20, 1280, 760, 1650),
+            callout_text="3. REVISA TU PEDIDO Y TOCA 'FINALIZAR PEDIDO'",
+            callout_pos=(390, 1230)
         )
 
         # -------------------------------------------------------------
@@ -239,8 +363,12 @@ async def capture_mobile_flow():
             raw4,
             OUTPUT_DIR / "04_paso4_datos_y_pago.png",
             step_number="4",
-            title="Datos de Envío y Forma de Pago",
-            instruction="Ingresá tus datos de contacto y elegí Efectivo o Transferencia."
+            title="4. Datos de Envío y Forma de Pago",
+            instruction="Elegí Retiro o Delivery, completá tu WhatsApp y seleccioná Transferencia.",
+            footer_tip="Tip: Podés pagar por Transferencia bancaria/CVU o en Efectivo al recibir.",
+            highlight_box=(20, 620, 760, 1650),
+            callout_text="4. CARGA TUS DATOS Y ELEGI TRANSFERENCIA",
+            callout_pos=(390, 580)
         )
 
         # -------------------------------------------------------------
@@ -265,8 +393,12 @@ async def capture_mobile_flow():
             raw5,
             OUTPUT_DIR / "05_paso5_confirmacion_whatsapp.png",
             step_number="5",
-            title="¡Pedido Confirmado y WhatsApp!",
-            instruction="Copiá el Alias o tocá el botón verde para enviar el comprobante."
+            title="5. Confirmación y Envío de Comprobante",
+            instruction="Copiá el Alias para transferir y tocá el botón verde para mandar el comprobante.",
+            footer_tip="Tip: Al tocar el botón verde, se abre WhatsApp con tu pedido ya armado.",
+            highlight_box=(20, 520, 760, 1650),
+            callout_text="5. COPIA EL ALIAS Y ENVIA EL COMPROBANTE",
+            callout_pos=(390, 480)
         )
 
         await browser.close()
