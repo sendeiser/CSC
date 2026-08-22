@@ -34,17 +34,19 @@ Tocá el **botón flotante del carrito** en la esquina inferior derecha o el íc
 ### 📝 Paso 4: Completá tus datos de entrega y medio de pago
 En la pantalla de compra:
 1. Seleccioná si querés **Retiro en el local** o **Envío a domicilio**.
-2. Ingresá tu **Nombre** y tu número de **WhatsApp / Celular**.
+2. Ingresá tu **Nombre y Apellido** y tu número de **WhatsApp / Celular**.
 3. Elegí tu medio de pago: **Efectivo** al recibir o **Transferencia bancaria** (con alias directo).
+4. Tocá en **"Confirmar pedido"**.
 
 ![Paso 4: Datos de Envío y Pago](docs/tutorial-mobile/04_paso4_datos_y_pago.png)
 
 ---
 
-### 📲 Paso 5: Confirmá tu pedido y envialo por WhatsApp
-Presioná **"Confirmar Pedido"**:
-- Tu pedido quedará registrado inmediatamente en nuestro sistema.
-- Se abrirá WhatsApp con el mensaje ya armado con todos los detalles para que nos llegue directamente y coordinemos la entrega en minutos.
+### 📲 Paso 5: ¡Pedido Confirmado y Envío por WhatsApp!
+¡Listo! Tu pedido quedó registrado:
+- Vas a ver tu **Número de Pedido** oficial (ej: `#3A89F12B`).
+- Si pagás por transferencia, tenés a mano el **Alias** y datos de la cuenta.
+- Presioná el botón **"Enviar comprobante por WhatsApp 💬"** para mandarnos el comprobante y coordinar la entrega en minutos.
 
 ![Paso 5: Confirmación y Envío](docs/tutorial-mobile/05_paso5_confirmacion_whatsapp.png)
 

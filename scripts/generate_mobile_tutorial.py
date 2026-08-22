@@ -33,14 +33,10 @@ def add_banner_annotation(
     img = Image.open(image_path).convert("RGBA")
     w, h = img.size
 
-    # Dimensiones del banner explicativo superior
     banner_height = int(150 * (w / 780))
     banner_height = max(160, min(banner_height, 220))
 
-    # Crear nueva imagen con espacio para el banner
     canvas = Image.new("RGBA", (w, h + banner_height), (248, 250, 252, 255))
-    
-    # Dibujar el banner con degradado candy (Rosa fucsia a Violeta púrpura)
     draw = ImageDraw.Draw(canvas)
     
     for y in range(banner_height):
@@ -50,7 +46,6 @@ def add_banner_annotation(
         b = int(153 * (1 - ratio * 0.4) + 246 * (ratio * 0.4))
         draw.line([(0, y), (w, y)], fill=(r, g, b, 255))
 
-    # Cargar fuentes
     try:
         font_badge = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", int(w * 0.032))
         font_title = ImageFont.truetype("C:/Windows/Fonts/segoeuib.ttf", int(w * 0.040))
@@ -60,7 +55,6 @@ def add_banner_annotation(
         font_title = ImageFont.load_default()
         font_desc = ImageFont.load_default()
 
-    # Pastilla de Paso (Badge blanco)
     badge_text = f" PASO {step_number} "
     badge_x = int(w * 0.05)
     badge_y = int(banner_height * 0.15)
@@ -72,20 +66,16 @@ def add_banner_annotation(
     )
     draw.text((badge_x + int(w * 0.02), badge_y + int(banner_height * 0.04)), badge_text, fill=(190, 24, 93, 255), font=font_badge)
 
-    # Título principal
     title_x = badge_x + int(w * 0.28)
     title_y = badge_y + int(banner_height * 0.02)
     draw.text((title_x, title_y), title, fill=(255, 255, 255, 255), font=font_title)
 
-    # Descripción / Instrucción
     desc_x = int(w * 0.05)
     desc_y = int(banner_height * 0.54)
     draw.text((desc_x, desc_y), instruction, fill=(254, 242, 242, 255), font=font_desc)
 
-    # Pegar captura del celular debajo del banner
     canvas.paste(img, (0, banner_height), img)
 
-    # Si hay recuadro de resaltado (highlight)
     if highlight_box:
         x1, y1, x2, y2 = highlight_box
         y1_adj = y1 + banner_height
@@ -97,7 +87,6 @@ def add_banner_annotation(
                 outline=(236, 72, 153, 255)
             )
 
-    # Guardar imagen final optimizada
     canvas.convert("RGB").save(output_path, "PNG", optimize=True)
     print(f" -> Editada y guardada: {output_path.name}")
 
@@ -107,7 +96,6 @@ async def capture_mobile_flow():
         is_headless = os.getenv("HEADLESS", "true").lower() != "false"
         browser = await p.chromium.launch(headless=is_headless, slow_mo=350)
         
-        # Emular Celular moderno (iPhone 14 / Pixel 7: 390x844 con device_scale_factor=2 para ultra nitidez)
         context = await browser.new_context(
             viewport={"width": 390, "height": 844},
             device_scale_factor=2,
@@ -121,7 +109,7 @@ async def capture_mobile_flow():
         print(f"[*] Navegando en vista celular a: {TARGET_URL}")
 
         # -------------------------------------------------------------
-        # PASO 1: Ingreso a la tienda y vista del catálogo en celular
+        # PASO 1: Ingreso a la tienda y catálogo
         # -------------------------------------------------------------
         try:
             await page.goto(f"{TARGET_URL}#catalogo", wait_until="networkidle", timeout=30000)
@@ -175,7 +163,7 @@ async def capture_mobile_flow():
             instruction="Seleccioná los gramos o sabores y tocá 'Añadir a la bolsa'."
         )
 
-        # Añadir al carrito usando el botón #addToCartDetail
+        # Añadir al carrito
         add_btn = page.locator("#addToCartDetail").first
         if await add_btn.count() > 0:
             await add_btn.click()
@@ -202,30 +190,45 @@ async def capture_mobile_flow():
         )
 
         # -------------------------------------------------------------
-        # PASO 4: Formulario de Checkout / Envío y Forma de Pago
+        # PASO 4: Formulario de Envío y Forma de Pago (Paso 'shipping')
         # -------------------------------------------------------------
         checkout_drawer_btn = page.locator("#drawer-checkout-btn").first
         if await checkout_drawer_btn.count() > 0:
             await checkout_drawer_btn.click()
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(1500)
 
-        # Llenar datos de prueba para que se vea completo y claro en la captura
-        name_input = page.locator("input[placeholder*='Nombre'], #buyer-name, input[name='name']").first
+        # En CartScreen, hacer clic en 'Proceder al Pago' para abrir el formulario
+        proceder_btn = page.locator("button:has-text('Proceder al Pago')").first
+        if await proceder_btn.count() > 0:
+            await proceder_btn.click()
+            await page.wait_for_timeout(1500)
+
+        # Llenar datos del cliente
+        name_input = page.locator("input[placeholder*='Tu nombre y apellido']").first
         if await name_input.count() > 0:
             try:
                 await name_input.fill("Camila Gómez")
             except Exception:
                 pass
 
-        phone_input = page.locator("input[placeholder*='Celular'], input[placeholder*='WhatsApp'], #buyer-phone, input[name='phone']").first
+        phone_input = page.locator("input[placeholder*='+54 9'], input[placeholder*='WhatsApp']").first
         if await phone_input.count() > 0:
             try:
-                await phone_input.fill("3826 123456")
+                await phone_input.fill("+54 9 3826 445566")
             except Exception:
                 pass
 
-        # Scroll hacia la sección de método de pago
-        await page.evaluate("window.scrollBy(0, 340)")
+        # Seleccionar método de pago Transferencia
+        transfer_opt = page.locator("label:has-text('Transferencia')").first
+        if await transfer_opt.count() > 0:
+            try:
+                await transfer_opt.click()
+                await page.wait_for_timeout(500)
+            except Exception:
+                pass
+
+        # Posicionar scroll para ver datos, métodos de pago y botón confirmar
+        await page.evaluate("window.scrollTo(0, 440)")
         await page.wait_for_timeout(800)
 
         raw4 = RAW_DIR / "04_checkout_raw.png"
@@ -236,21 +239,22 @@ async def capture_mobile_flow():
             raw4,
             OUTPUT_DIR / "04_paso4_datos_y_pago.png",
             step_number="4",
-            title="Datos de Envío y Pago",
-            instruction="Ingresá tu nombre, celular y seleccioná Efectivo o Transferencia."
+            title="Datos de Envío y Forma de Pago",
+            instruction="Ingresá tus datos de contacto y elegí Efectivo o Transferencia."
         )
 
         # -------------------------------------------------------------
-        # PASO 5: Confirmación de Pedido y Resumen
+        # PASO 5: Confirmación de Pedido y Envío por WhatsApp
         # -------------------------------------------------------------
-        # Hacer clic en Confirmar pedido
-        confirm_btn = page.locator("button:has-text('Confirmar pedido'), button:has-text('Confirmar')").first
+        confirm_btn = page.locator("button:has-text('Confirmar pedido')").first
         if await confirm_btn.count() > 0:
+            await confirm_btn.scroll_into_view_if_needed()
+            await page.wait_for_timeout(500)
             await confirm_btn.click()
             await page.wait_for_timeout(2500)
 
-        # Scroll al botón de WhatsApp
-        await page.evaluate("window.scrollTo(0, 0)")
+        # Scroll enfocado en la tarjeta de transferencia bancaria y botón de WhatsApp
+        await page.evaluate("window.scrollTo(0, 480)")
         await page.wait_for_timeout(800)
 
         raw5 = RAW_DIR / "05_confirmacion_raw.png"
@@ -261,14 +265,13 @@ async def capture_mobile_flow():
             raw5,
             OUTPUT_DIR / "05_paso5_confirmacion_whatsapp.png",
             step_number="5",
-            title="Confirmá y Coordiná por WhatsApp",
-            instruction="¡Listo! Tu pedido está registrado. Tocá el botón verde para enviar a WhatsApp."
+            title="¡Pedido Confirmado y WhatsApp!",
+            instruction="Copiá el Alias o tocá el botón verde para enviar el comprobante."
         )
 
         await browser.close()
         print("[OK] Flujo móvil completado y todas las imágenes editadas con éxito.")
 
-        # Generar Markdown tutorial
         generate_mobile_markdown_tutorial()
 
 
@@ -309,17 +312,19 @@ Tocá el **botón flotante del carrito** en la esquina inferior derecha o el íc
 ### 📝 Paso 4: Completá tus datos de entrega y medio de pago
 En la pantalla de compra:
 1. Seleccioná si querés **Retiro en el local** o **Envío a domicilio**.
-2. Ingresá tu **Nombre** y tu número de **WhatsApp / Celular**.
+2. Ingresá tu **Nombre y Apellido** y tu número de **WhatsApp / Celular**.
 3. Elegí tu medio de pago: **Efectivo** al recibir o **Transferencia bancaria** (con alias directo).
+4. Tocá en **"Confirmar pedido"**.
 
 ![Paso 4: Datos de Envío y Pago](docs/tutorial-mobile/04_paso4_datos_y_pago.png)
 
 ---
 
-### 📲 Paso 5: Confirmá tu pedido y envialo por WhatsApp
-Presioná **"Confirmar Pedido"**:
-- Tu pedido quedará registrado inmediatamente en nuestro sistema.
-- Se abrirá WhatsApp con el mensaje ya armado con todos los detalles para que nos llegue directamente y coordinemos la entrega en minutos.
+### 📲 Paso 5: ¡Pedido Confirmado y Envío por WhatsApp!
+¡Listo! Tu pedido quedó registrado:
+- Vas a ver tu **Número de Pedido** oficial (ej: `#3A89F12B`).
+- Si pagás por transferencia, tenés a mano el **Alias** y datos de la cuenta.
+- Presioná el botón **"Enviar comprobante por WhatsApp 💬"** para mandarnos el comprobante y coordinar la entrega en minutos.
 
 ![Paso 5: Confirmación y Envío](docs/tutorial-mobile/05_paso5_confirmacion_whatsapp.png)
 
