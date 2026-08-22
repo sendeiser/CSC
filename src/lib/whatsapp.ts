@@ -121,7 +121,7 @@ export function setWhatsAppNumbers(num1?: string, num2?: string) {
   if (num2) WHATSAPP_NUMERO_2 = num2;
 }
 
-export function setWhatsAppTemplates(templates?: Partial<WhatsAppTemplates>) {
+export function setWhatsAppTemplates(templates?: Partial<WhatsAppTemplates> & Partial<StoreSettings>) {
   if (!templates) return;
   currentTemplates = {
     msg_transfer: templates.msg_transfer || DEFAULT_WHATSAPP_TEMPLATES.msg_transfer,
@@ -132,6 +132,7 @@ export function setWhatsAppTemplates(templates?: Partial<WhatsAppTemplates>) {
     msg_preparing: templates.msg_preparing || DEFAULT_WHATSAPP_TEMPLATES.msg_preparing,
     msg_ready: templates.msg_ready || DEFAULT_WHATSAPP_TEMPLATES.msg_ready,
   };
+  setBankData(templates);
 }
 
 export function getWhatsAppTemplates(): WhatsAppTemplates {
@@ -144,6 +145,14 @@ export const DATOS_BANCO = {
   banco: 'MercadoPago',
   cbu: '',
 };
+
+export function setBankData(settings?: Partial<StoreSettings>) {
+  if (!settings) return;
+  if (settings.bank_alias) DATOS_BANCO.alias = settings.bank_alias;
+  if (settings.bank_name) DATOS_BANCO.banco = settings.bank_name;
+  if (settings.bank_holder) DATOS_BANCO.titular = settings.bank_holder;
+  if (settings.bank_cbu !== undefined) DATOS_BANCO.cbu = settings.bank_cbu;
+}
 
 export interface PedidoWhatsApp {
   orderId: string;

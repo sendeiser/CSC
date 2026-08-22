@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { ActiveScreen, UserSession } from '../types';
 import { orders as ordersApi, upload as uploadApi, homepage as homepageApi } from '../lib/api';
-import { DATOS_BANCO, WHATSAPP_NUMERO, waLink } from '../lib/whatsapp';
+import { DATOS_BANCO, WHATSAPP_NUMERO, waLink, setBankData } from '../lib/whatsapp';
 import { useModal } from '../context/ModalContext';
 
 interface MyOrdersScreenProps {
@@ -28,6 +28,21 @@ export const MyOrdersScreen: React.FC<MyOrdersScreenProps> = ({
   const [uploadingOrderId, setUploadingOrderId] = useState<string | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [bankData, setBankDataState] = useState(DATOS_BANCO);
+
+  useEffect(() => {
+    homepageApi.getSettings().then((st) => {
+      if (st) {
+        setBankData(st);
+        setBankDataState({
+          alias: st.bank_alias || DATOS_BANCO.alias,
+          banco: st.bank_name || DATOS_BANCO.banco,
+          titular: st.bank_holder || DATOS_BANCO.titular,
+          cbu: st.bank_cbu || DATOS_BANCO.cbu,
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (session.isLoggedIn) {
@@ -415,10 +430,10 @@ export const MyOrdersScreen: React.FC<MyOrdersScreenProps> = ({
                                 <div className="bg-white p-3 rounded-xl border border-purple-100 flex items-center justify-between">
                                   <div>
                                     <span className="text-slate-400 block text-[10px]">Alias CBU:</span>
-                                    <span className="font-extrabold text-purple-900 text-sm font-mono">{DATOS_BANCO.alias}</span>
+                                    <span className="font-extrabold text-purple-900 text-sm font-mono">{bankData.alias}</span>
                                   </div>
                                   <button
-                                    onClick={() => copyToClipboard(DATOS_BANCO.alias, 'alias')}
+                                    onClick={() => copyToClipboard(bankData.alias, 'alias')}
                                     className="p-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors cursor-pointer"
                                     title="Copiar Alias"
                                   >
@@ -429,9 +444,9 @@ export const MyOrdersScreen: React.FC<MyOrdersScreenProps> = ({
                                 <div className="bg-white p-3 rounded-xl border border-purple-100 flex items-center justify-between">
                                   <div>
                                     <span className="text-slate-400 block text-[10px]">Titular:</span>
-                                    <span className="font-extrabold text-slate-800">{DATOS_BANCO.titular}</span>
+                                    <span className="font-extrabold text-slate-800">{bankData.titular}</span>
                                   </div>
-                                  <span className="text-[10px] font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">{DATOS_BANCO.banco}</span>
+                                  <span className="text-[10px] font-bold bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">{bankData.banco}</span>
                                 </div>
                               </div>
                             </div>

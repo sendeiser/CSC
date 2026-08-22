@@ -22,6 +22,10 @@ export const AdminWhatsAppEditor: React.FC = () => {
     msg_preparing: string;
     msg_ready: string;
     custom_messages: CustomQuickMessage[];
+    bank_alias?: string;
+    bank_name?: string;
+    bank_holder?: string;
+    bank_cbu?: string;
   }>({
     whatsapp_number_1: '543826432180',
     whatsapp_number_2: '5493826432180',
@@ -33,6 +37,10 @@ export const AdminWhatsAppEditor: React.FC = () => {
     msg_preparing: DEFAULT_WHATSAPP_TEMPLATES.msg_preparing,
     msg_ready: DEFAULT_WHATSAPP_TEMPLATES.msg_ready,
     custom_messages: DEFAULT_CUSTOM_QUICK_MESSAGES,
+    bank_alias: 'martinchox33',
+    bank_name: 'MercadoPago',
+    bank_holder: 'Gonzalez Martin Gustavo',
+    bank_cbu: '',
   });
 
   const [copiedTag, setCopiedTag] = useState<string | null>(null);
@@ -69,6 +77,10 @@ export const AdminWhatsAppEditor: React.FC = () => {
           custom_messages: (Array.isArray(data.custom_messages) && data.custom_messages.length > 0)
             ? data.custom_messages
             : DEFAULT_CUSTOM_QUICK_MESSAGES,
+          bank_alias: data.bank_alias || 'martinchox33',
+          bank_name: data.bank_name || 'MercadoPago',
+          bank_holder: data.bank_holder || 'Gonzalez Martin Gustavo',
+          bank_cbu: data.bank_cbu || '',
         });
       }
     } catch (err: any) {

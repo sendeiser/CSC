@@ -371,10 +371,10 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                   Hacé la transferencia al alias y envianos el comprobante por WhatsApp para confirmar tu compra.
                 </p>
                 <div className="bg-white rounded-xl p-4 space-y-1.5 text-sm border border-pink-100">
-                  <div className="flex justify-between"><span className="text-gray-500">Banco</span><span className="font-semibold">{DATOS_BANCO.banco}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Alias</span><span className="font-mono font-bold text-purple-700">{DATOS_BANCO.alias}</span></div>
-                  <div className="flex justify-between"><span className="text-gray-500">Titular</span><span className="font-semibold">{DATOS_BANCO.titular}</span></div>
-                  {DATOS_BANCO.cbu && <div className="flex justify-between"><span className="text-gray-500">CBU</span><span className="font-mono">{DATOS_BANCO.cbu}</span></div>}
+                  <div className="flex justify-between"><span className="text-gray-500">Banco</span><span className="font-semibold">{storeSettings?.bank_name || DATOS_BANCO.banco}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Alias</span><span className="font-mono font-bold text-purple-700">{storeSettings?.bank_alias || DATOS_BANCO.alias}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Titular</span><span className="font-semibold">{storeSettings?.bank_holder || DATOS_BANCO.titular}</span></div>
+                  {(storeSettings?.bank_cbu || DATOS_BANCO.cbu) && <div className="flex justify-between"><span className="text-gray-500">CBU/CVU</span><span className="font-mono">{storeSettings?.bank_cbu || DATOS_BANCO.cbu}</span></div>}
                 </div>
                 <div className="flex justify-between bg-white rounded-xl px-4 py-2.5 border border-pink-100 text-sm">
                   <span className="text-gray-500">Total a transferir</span>
@@ -799,7 +799,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                       <input type="radio" name="payment-method" checked={paymentMethod === 'transferencia'} onChange={() => setPaymentMethod('transferencia')} className="accent-purple-600" />
                       <span>
                         <span className="block font-semibold text-gray-800">Transferencia</span>
-                        <span className="block text-[11px] text-gray-500">Alias {DATOS_BANCO.alias} — enviás comprobante</span>
+                        <span className="block text-[11px] text-gray-500">Alias {storeSettings?.bank_alias || DATOS_BANCO.alias} — enviás comprobante</span>
                       </span>
                     </span>
                     <span className="font-bold text-purple-700">${grandTotal.toFixed(2)}</span>

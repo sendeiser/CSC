@@ -97,6 +97,12 @@ export async function getStoreSettingsHelper() {
     pickup_schedule: 'Lunes a Sábado de 09:00 a 20:00 hs',
     delivery_notes: 'Envíos en el día dentro del radio urbano de Chamical.',
 
+    // Datos bancarios para transferencia
+    bank_alias: 'martinchox33',
+    bank_name: 'MercadoPago',
+    bank_holder: 'Gonzalez Martin Gustavo',
+    bank_cbu: '',
+
     // Notifications
     store_website_url: '',
     telegram_bot_token: '',
@@ -181,6 +187,12 @@ export async function saveStoreSettingsHelper(payload: any) {
     pickup_address: payload.pickup_address !== undefined ? String(payload.pickup_address).trim() : current.pickup_address,
     pickup_schedule: payload.pickup_schedule !== undefined ? String(payload.pickup_schedule).trim() : current.pickup_schedule,
     delivery_notes: payload.delivery_notes !== undefined ? String(payload.delivery_notes).trim() : current.delivery_notes,
+
+    // Datos bancarios para transferencia
+    bank_alias: payload.bank_alias !== undefined ? String(payload.bank_alias).trim() : (current.bank_alias || 'martinchox33'),
+    bank_name: payload.bank_name !== undefined ? String(payload.bank_name).trim() : (current.bank_name || 'MercadoPago'),
+    bank_holder: payload.bank_holder !== undefined ? String(payload.bank_holder).trim() : (current.bank_holder || 'Gonzalez Martin Gustavo'),
+    bank_cbu: payload.bank_cbu !== undefined ? String(payload.bank_cbu).trim() : (current.bank_cbu || ''),
 
     // Notifications: preservar siempre tokens existentes si no se pasan en el payload
     store_website_url: payload.store_website_url !== undefined ? String(payload.store_website_url).trim() : (current.store_website_url || ''),

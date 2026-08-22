@@ -691,7 +691,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     { id: 'about-page', label: 'Sobre Nosotros', icon: <FileText className="w-4.5 h-4.5" /> },
     { id: 'categories', label: 'Categorías', icon: <Layout className="w-4.5 h-4.5" /> },
     { id: 'whatsapp', label: 'Mensajes WhatsApp', icon: <MessageCircle className="w-4.5 h-4.5 text-emerald-400" /> },
-    { id: 'shipping', label: 'Envíos / Delivery', icon: <Truck className="w-4.5 h-4.5 text-pink-400" /> },
+    { id: 'shipping', label: 'Envíos & Datos Bancarios', icon: <Truck className="w-4.5 h-4.5 text-pink-400" /> },
   ]
 
   return (

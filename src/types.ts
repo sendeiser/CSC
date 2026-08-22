@@ -79,6 +79,12 @@ export interface StoreSettings {
   pickup_schedule: string;
   delivery_notes: string;
 
+  // Datos bancarios para transferencia
+  bank_alias?: string;
+  bank_name?: string;
+  bank_holder?: string;
+  bank_cbu?: string;
+
   // Mobile & Server Notifications
   store_website_url?: string;
   telegram_bot_token?: string;
