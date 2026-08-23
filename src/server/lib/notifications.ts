@@ -33,7 +33,9 @@ export function formatForWhatsApp(text: string): string {
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>');
+    .replace(/&gt;/g, '>')
+    // Evitar que PHP en CallMeBot interprete $1..$9 como backreferences regex / variables eliminando el primer dígito
+    .replace(/\$(\d)/g, '$ $1');
 }
 
 export async function sendTelegramMessage(token: string, chatId: string, text: string): Promise<{ success: boolean; error?: string; message?: string }> {
@@ -253,7 +255,7 @@ export async function notifyNewOrder(order: any, items: any[] = []) {
     const customer = escapeHtml(order.shipping_name || 'Cliente');
     const address = escapeHtml(order.shipping_address || 'Sin especificar');
     const city = escapeHtml(order.shipping_city || 'Chamical');
-    const totalVal = Number(order.total || 0).toFixed(2);
+    const totalVal = Number(order.total || 0).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const dateStr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 
     let itemsList = '';
@@ -270,7 +272,7 @@ export async function notifyNewOrder(order: any, items: any[] = []) {
       ``,
       `🛍️ <b>Pedido:</b> #${orderCode}`,
       `👤 <b>Cliente:</b> ${customer}`,
-      `💰 <b>Total:</b> $${totalVal}`,
+      `💰 <b>Total:</b> $ ${totalVal}`,
       `📍 <b>Detalle Entrega:</b> ${address}`,
       `🏙️ <b>Ciudad:</b> ${city}`,
       itemsList ? `\n📦 <b>Productos:</b>\n${itemsList}\n` : '',
