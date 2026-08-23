@@ -1,4 +1,4 @@
-import { CartItem } from '../types';
+import { CartItem, StoreSettings } from '../types';
 
 export let WHATSAPP_NUMERO_1 = '543826432180';
 export let WHATSAPP_NUMERO_2 = '5493826432180';

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, SlidersHorizontal, Star, Heart, ShoppingBag, Eye, Percent, RefreshCw, Scale, X, ChevronDown } from 'lucide-react';
 import { ActiveScreen, Product } from '../types';
-import { products as productsApi } from '../lib/api';
+import { products as productsApi, optimizeImageUrl } from '../lib/api';
 
 interface CatalogScreenProps {
   setActiveScreen: (screen: ActiveScreen) => void;
@@ -272,10 +272,10 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
           </motion.div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 pb-16">
-            {products.map((product) => (
+            {products.map((product, idx) => (
               <div
                 key={product.id}
-                className="group bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all duration-200 flex flex-col"
+                className="group bg-white rounded-2xl border border-pink-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-purple-100/50 transition-all duration-200 flex flex-col product-card-cv"
               >
                 {/* Image */}
                 <div className="relative overflow-hidden aspect-square bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50">
@@ -284,10 +284,10 @@ export const CatalogScreen: React.FC<CatalogScreenProps> = ({
                     className="w-full h-full block"
                   >
                     <img
-                      src={product.image_url}
+                      src={optimizeImageUrl(product.image_url, 400, 75)}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
-                      loading="lazy"
+                      loading={idx < 4 ? "eager" : "lazy"}
                       decoding="async"
                     />
                     {/* Overlay on hover */}

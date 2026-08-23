@@ -226,16 +226,64 @@ export const admin = {
     request<{ message: string }>('/admin/test-notification', { method: 'POST', body: JSON.stringify(data) }),
 }
 
+// Optimized Image URL helper for mobile performance
+export function optimizeImageUrl(url: string | undefined | null, width = 450, quality = 80): string {
+  if (!url) return '/logo.png';
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+
+  // Unsplash CDN dynamic optimization
+  if (url.includes('images.unsplash.com')) {
+    const base = url.split('?')[0];
+    return `${base}?auto=format&fit=crop&w=${width}&q=${quality}`;
+  }
+
+  return url;
+}
+
+// In-Memory Cache for fast mobile screen transitions (SWR style)
+const memCache = new Map<string, { data: any; expiresAt: number }>();
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+function getCached<T>(key: string): T | null {
+  const entry = memCache.get(key);
+  if (entry && entry.expiresAt > Date.now()) {
+    return entry.data as T;
+  }
+  return null;
+}
+
+function setCache(key: string, data: any) {
+  memCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
 // Homepage (public)
 export const homepage = {
-  get: () => request<any[]>('/homepage'),
+  get: async () => {
+    const cached = getCached<any[]>('homepage_sections');
+    if (cached) return cached;
+    const data = await request<any[]>('/homepage');
+    setCache('homepage_sections', data);
+    return data;
+  },
   getAbout: () => request<any>('/homepage/about'),
-  getSettings: () => request<StoreSettings>('/homepage/settings'),
+  getSettings: async () => {
+    const cached = getCached<StoreSettings>('homepage_settings');
+    if (cached) return cached;
+    const data = await request<StoreSettings>('/homepage/settings');
+    setCache('homepage_settings', data);
+    return data;
+  },
 }
 
 // Categories (public)
 export const categories = {
-  list: () => request<any[]>('/categories'),
+  list: async () => {
+    const cached = getCached<any[]>('public_categories');
+    if (cached) return cached;
+    const data = await request<any[]>('/categories');
+    setCache('public_categories', data);
+    return data;
+  },
 }
 
 // Upload (Admin)

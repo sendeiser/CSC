@@ -36,6 +36,18 @@
     content-visibility: auto;
   }
 
+  .product-card-cv {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 360px;
+  }
+
+  /* GPU acceleration helper for mobile smooth 60fps animations */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
   /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;

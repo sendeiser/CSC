@@ -1,16 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, CheckCircle, Sparkles } from 'lucide-react';
 import { Header } from './components/Header';
 import { LandingScreen } from './components/LandingScreen';
 import { CatalogScreen } from './components/CatalogScreen';
-import { ProductDetailScreen } from './components/ProductDetailScreen';
-import { CartScreen } from './components/CartScreen';
-import { AuthScreens } from './components/AuthScreens';
-import { AdminPanel } from './components/AdminPanel';
-import { AboutUsScreen } from './components/AboutUsScreen';
-import { HowToBuyScreen } from './components/HowToBuyScreen';
-import { MyOrdersScreen } from './components/MyOrdersScreen';
 import { CartSlideDrawer } from './components/CartSlideDrawer';
 import { ActiveScreen, CartItem, Product, UserSession } from './types';
 import { PRODUCTS } from './data';
@@ -19,6 +12,24 @@ import { supabase } from './lib/supabase';
 import { getLocalCart, saveLocalCart, clearLocalCart } from './lib/localCart';
 import { waLink, setWhatsAppNumbers, setWhatsAppTemplates } from './lib/whatsapp';
 import { MessageCircle, Instagram, ShoppingBag } from 'lucide-react';
+
+// Lazy loading de pantallas pesadas para máxima velocidad y reducción del bundle en celulares
+const ProductDetailScreen = lazy(() => import('./components/ProductDetailScreen').then(m => ({ default: m.ProductDetailScreen })));
+const CartScreen = lazy(() => import('./components/CartScreen').then(m => ({ default: m.CartScreen })));
+const AuthScreens = lazy(() => import('./components/AuthScreens').then(m => ({ default: m.AuthScreens })));
+const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const AboutUsScreen = lazy(() => import('./components/AboutUsScreen').then(m => ({ default: m.AboutUsScreen })));
+const HowToBuyScreen = lazy(() => import('./components/HowToBuyScreen').then(m => ({ default: m.HowToBuyScreen })));
+const MyOrdersScreen = lazy(() => import('./components/MyOrdersScreen').then(m => ({ default: m.MyOrdersScreen })));
+
+function ScreenLoadingFallback() {
+  return (
+    <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-4 py-20">
+      <div className="w-10 h-10 rounded-full border-3 border-pink-200 border-t-pink-500 animate-spin" />
+      <p className="text-xs font-bold text-purple-600/70 tracking-widest uppercase animate-pulse">Cargando...</p>
+    </div>
+  );
+}
 
 const VALID_SCREENS: ActiveScreen[] = ['inicio', 'catalogo', 'detalle', 'carrito', 'login', 'registro', 'admin', 'nosotros', 'como-comprar', 'mis-pedidos'];
 
@@ -462,65 +473,67 @@ export default function App() {
           </div>
         )}
 
-        {activeScreen === 'detalle' && activeProduct && (
-          <div key="detalle">
-            <ProductDetailScreen
-              product={activeProduct}
-              allProducts={allProducts}
-              setActiveScreen={handleSetActiveScreen}
-              setSelectedProductById={handleSetSelectedProductId}
-              addToCart={addToCart}
-              favorites={favorites}
-              toggleFavorite={toggleFavorite}
-            />
-          </div>
-        )}
+        <Suspense fallback={<ScreenLoadingFallback />}>
+          {activeScreen === 'detalle' && activeProduct && (
+            <div key="detalle">
+              <ProductDetailScreen
+                product={activeProduct}
+                allProducts={allProducts}
+                setActiveScreen={handleSetActiveScreen}
+                setSelectedProductById={handleSetSelectedProductId}
+                addToCart={addToCart}
+                favorites={favorites}
+                toggleFavorite={toggleFavorite}
+              />
+            </div>
+          )}
 
-        {activeScreen === 'carrito' && (
-          <div key="carrito">
-            <CartScreen
-              cart={cart}
-              setCart={setCart}
-              setActiveScreen={handleSetActiveScreen}
-              isLoggedIn={session.isLoggedIn}
-              userSession={session}
-            />
-          </div>
-        )}
+          {activeScreen === 'carrito' && (
+            <div key="carrito">
+              <CartScreen
+                cart={cart}
+                setCart={setCart}
+                setActiveScreen={handleSetActiveScreen}
+                isLoggedIn={session.isLoggedIn}
+                userSession={session}
+              />
+            </div>
+          )}
 
-        {activeScreen === 'login' && (
-          <div key="login">
-            <AuthScreens type="login" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
-          </div>
-        )}
+          {activeScreen === 'login' && (
+            <div key="login">
+              <AuthScreens type="login" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
+            </div>
+          )}
 
-        {activeScreen === 'registro' && (
-          <div key="registro">
-            <AuthScreens type="register" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
-          </div>
-        )}
+          {activeScreen === 'registro' && (
+            <div key="registro">
+              <AuthScreens type="register" setActiveScreen={handleSetActiveScreen} setSession={setSession} />
+            </div>
+          )}
 
-        {activeScreen === 'admin' && session.role === 'admin' && (
-          <AdminPanel setActiveScreen={handleSetActiveScreen} setSession={setSession} onProductsUpdated={refreshProducts} />
-        )}
+          {activeScreen === 'admin' && session.role === 'admin' && (
+            <AdminPanel setActiveScreen={handleSetActiveScreen} setSession={setSession} onProductsUpdated={refreshProducts} />
+          )}
 
-        {activeScreen === 'nosotros' && (
-          <div key="nosotros">
-            <AboutUsScreen setActiveScreen={handleSetActiveScreen} />
-          </div>
-        )}
+          {activeScreen === 'nosotros' && (
+            <div key="nosotros">
+              <AboutUsScreen setActiveScreen={handleSetActiveScreen} />
+            </div>
+          )}
 
-        {activeScreen === 'como-comprar' && (
-          <div key="como-comprar">
-            <HowToBuyScreen setActiveScreen={handleSetActiveScreen} />
-          </div>
-        )}
+          {activeScreen === 'como-comprar' && (
+            <div key="como-comprar">
+              <HowToBuyScreen setActiveScreen={handleSetActiveScreen} />
+            </div>
+          )}
 
-        {activeScreen === 'mis-pedidos' && (
-          <div key="mis-pedidos">
-            <MyOrdersScreen setActiveScreen={handleSetActiveScreen} session={session} />
-          </div>
-        )}
+          {activeScreen === 'mis-pedidos' && (
+            <div key="mis-pedidos">
+              <MyOrdersScreen setActiveScreen={handleSetActiveScreen} session={session} />
+            </div>
+          )}
+        </Suspense>
       </main>
 
       {activeScreen !== 'admin' && (

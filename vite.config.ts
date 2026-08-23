@@ -29,5 +29,31 @@ export default defineConfig(() => {
         ignored: ['**/public/uploads/**', '**/public/uploads/*'],
       },
     },
+    build: {
+      target: 'es2020',
+      cssCodeSplit: true,
+      minify: 'esbuild',
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react') || id.includes('react-dom')) {
+                return 'vendor-react';
+              }
+              if (id.includes('@supabase')) {
+                return 'vendor-supabase';
+              }
+              if (id.includes('lucide-react')) {
+                return 'vendor-icons';
+              }
+              if (id.includes('motion')) {
+                return 'vendor-motion';
+              }
+            }
+          },
+        },
+      },
+      chunkSizeWarningLimit: 600,
+    },
   };
 });
