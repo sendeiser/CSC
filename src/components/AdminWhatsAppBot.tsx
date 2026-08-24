@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   QrCode, Smartphone, MessageCircle, Bot, Sparkles, RefreshCw, 
   CheckCircle2, AlertCircle, LogOut, Send, Eye, ShieldCheck, 
-  Sliders, Copy, Check, Info, HelpCircle
+  Sliders, Copy, Check, Info, HelpCircle, UserX, Plus, Trash2, 
+  Clock, ShieldAlert, Search, PhoneOff, UserCheck
 } from 'lucide-react';
 import { whatsappBotApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
+
+export interface IgnoredNumber {
+  id: string;
+  phone: string;
+  label: string;
+  created_at: string;
+}
 
 export const AdminWhatsAppBot: React.FC = () => {
   const { showAlert, showConfirm } = useModal();
@@ -22,6 +30,9 @@ export const AdminWhatsAppBot: React.FC = () => {
     auto_notify_new_order: true,
     auto_notify_status_change: true,
     auto_chatbot_menu: true,
+    ignored_numbers: [] as IgnoredNumber[],
+    pause_on_manual_reply: true,
+    pause_duration_minutes: 120,
     template_new_order: '',
     template_order_preparing: '',
     template_order_ready: '',
@@ -31,6 +42,11 @@ export const AdminWhatsAppBot: React.FC = () => {
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [activeTemplateTab, setActiveTemplateTab] = useState<'new_order' | 'preparing' | 'ready' | 'shipped' | 'menu' | 'proof'>('new_order');
+
+  // New Ignored Number form
+  const [newIgnoredPhone, setNewIgnoredPhone] = useState('');
+  const [newIgnoredLabel, setNewIgnoredLabel] = useState('');
+  const [searchIgnored, setSearchIgnored] = useState('');
 
   // Test message
   const [testPhone, setTestPhone] = useState('');
@@ -51,7 +67,14 @@ export const AdminWhatsAppBot: React.FC = () => {
   const fetchSettings = async () => {
     try {
       const data = await whatsappBotApi.getSettings();
-      if (data) setSettings(data);
+      if (data) {
+        setSettings({
+          ...data,
+          ignored_numbers: Array.isArray(data.ignored_numbers) ? data.ignored_numbers : [],
+          pause_on_manual_reply: data.pause_on_manual_reply ?? true,
+          pause_duration_minutes: data.pause_duration_minutes ?? 120,
+        });
+      }
     } catch (_e) {}
   };
 
@@ -107,12 +130,62 @@ export const AdminWhatsAppBot: React.FC = () => {
     try {
       const updated = await whatsappBotApi.updateSettings(settings);
       setSettings(updated);
-      showAlert({ title: 'Guardado', message: 'Configuración y plantillas actualizadas correctamente.', type: 'success' });
+      showAlert({ title: 'Guardado', message: 'Configuración y restricciones actualizadas correctamente.', type: 'success' });
     } catch (err: any) {
       showAlert({ title: 'Error', message: err.message || 'Error al guardar configuración', type: 'error' });
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const handleAddIgnoredNumber = () => {
+    const clean = newIgnoredPhone.replace(/\D/g, '');
+    if (!clean || clean.length < 6) {
+      showAlert({
+        title: 'Número incompleto',
+        message: 'Por favor ingresa un número de teléfono válido (ej: 3826123456).',
+        type: 'warning'
+      });
+      return;
+    }
+
+    const currentList: IgnoredNumber[] = Array.isArray(settings.ignored_numbers) ? settings.ignored_numbers : [];
+    if (currentList.some((item) => String(item.phone || item).replace(/\D/g, '') === clean)) {
+      showAlert({
+        title: 'Ya existe',
+        message: 'Este número ya se encuentra en la lista de excluidos.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    const newItem: IgnoredNumber = {
+      id: 'ign_' + Date.now(),
+      phone: clean,
+      label: newIgnoredLabel.trim() || 'Contacto Personal',
+      created_at: new Date().toISOString()
+    };
+
+    const updated = [newItem, ...currentList];
+    setSettings({
+      ...settings,
+      ignored_numbers: updated
+    });
+
+    setNewIgnoredPhone('');
+    setNewIgnoredLabel('');
+  };
+
+  const handleRemoveIgnoredNumber = (idOrPhone: string) => {
+    const currentList: any[] = Array.isArray(settings.ignored_numbers) ? settings.ignored_numbers : [];
+    const updated = currentList.filter((item) => {
+      if (typeof item === 'string') return item !== idOrPhone;
+      return item.id !== idOrPhone && item.phone !== idOrPhone;
+    });
+    setSettings({
+      ...settings,
+      ignored_numbers: updated
+    });
   };
 
   const handleSendTest = async () => {
@@ -184,6 +257,13 @@ export const AdminWhatsAppBot: React.FC = () => {
     return text;
   };
 
+  const filteredIgnoredNumbers = (Array.isArray(settings.ignored_numbers) ? settings.ignored_numbers : []).filter((item: any) => {
+    const q = searchIgnored.toLowerCase();
+    const phone = typeof item === 'string' ? item : item.phone;
+    const label = typeof item === 'string' ? '' : (item.label || '');
+    return phone.includes(q) || label.toLowerCase().includes(q);
+  });
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       {/* Header */}
@@ -201,7 +281,7 @@ export const AdminWhatsAppBot: React.FC = () => {
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-slate-500">
-                Envía confirmaciones automáticas de compra, estados de pedidos y activa un menú inteligente 24/7.
+                Envía confirmaciones automáticas de compra, estados de pedidos y activa un menú inteligente 24/7 con restricciones de números personales.
               </p>
             </div>
           </div>
@@ -219,6 +299,11 @@ export const AdminWhatsAppBot: React.FC = () => {
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
               <span>Esperando Escaneo QR</span>
             </div>
+          ) : status === 'connecting' ? (
+            <div className="flex items-center space-x-2 px-4 py-2 bg-sky-50 border border-sky-200 rounded-2xl text-sky-700 text-xs font-bold shadow-2xs">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <span>Conectando...</span>
+            </div>
           ) : (
             <div className="flex items-center space-x-2 px-4 py-2 bg-slate-100 border border-slate-200 rounded-2xl text-slate-600 text-xs font-bold">
               <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
@@ -228,25 +313,27 @@ export const AdminWhatsAppBot: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid: Vinculación QR & Interruptores */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Columna Izquierda: Tarjeta QR o Conexión */}
+        {/* Columna Izquierda: Conexión QR & Probador */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm text-center">
-            <h2 className="text-base font-bold text-slate-900 mb-1 flex items-center justify-center gap-2">
-              <Smartphone className="w-5 h-5 text-emerald-600" />
+          {/* Tarjeta de Código QR */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm text-center space-y-4">
+            <h2 className="text-base font-bold text-slate-900 flex items-center justify-center gap-2">
+              <QrCode className="w-5 h-5 text-emerald-600" />
               <span>Vincular WhatsApp de la Tienda</span>
             </h2>
-            <p className="text-xs text-slate-500 mb-4">
-              Escanea el código con tu celular para que los mensajes salgan desde tu número oficial.
-            </p>
 
             {status === 'connected' ? (
-              <div className="py-8 px-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center space-y-3">
+              <div className="py-8 px-4 bg-emerald-50/60 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center space-y-3">
                 <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-200">
-                  <ShieldCheck className="w-8 h-8" />
+                  <CheckCircle2 className="w-8 h-8" />
                 </div>
-                <h3 className="text-sm font-bold text-emerald-900">¡WhatsApp Vinculado con Éxito!</h3>
+                <div>
+                  <h3 className="text-base font-bold text-emerald-900">¡WhatsApp Vinculado con Éxito!</h3>
+                  <p className="text-xs text-emerald-700 mt-0.5">
+                    {connectedUser?.name || 'Línea de WhatsApp'} ({connectedUser?.id?.split(':')[0] || 'Conectado'})
+                  </p>
+                </div>
                 <p className="text-xs text-emerald-700 max-w-xs text-center">
                   El bot está listo para enviar confirmaciones a tus clientes y responder preguntas frecuentes automáticamente.
                 </p>
@@ -355,13 +442,200 @@ export const AdminWhatsAppBot: React.FC = () => {
           </div>
         </div>
 
-        {/* Columna Derecha: Interruptores y Editor de Plantillas */}
+        {/* Columna Derecha: Restricciones, Interruptores y Editor de Plantillas */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Interruptores de Automatización */}
+          {/* SECCIÓN 1: Restricciones de Números Personales & Pausa Inteligente */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                  <PhoneOff className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>Restricciones de Números y Contactos Personales</span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full">
+                      Privacidad
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Evita que el bot responda a tu familia, amigos, o cuando estés hablando vos manualmente.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveSettings}
+                disabled={savingSettings}
+                className="flex items-center space-x-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-200 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                <span>{savingSettings ? 'Guardando...' : 'Guardar'}</span>
+              </button>
+            </div>
+
+            {/* Pausa Automática por Respuesta Manual */}
+            <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/70 space-y-3">
+              <label className="flex items-start justify-between gap-3 cursor-pointer">
+                <div>
+                  <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <span>🤫 Pausar Bot Automáticamente si Yo Respondo en el Chat</span>
+                  </p>
+                  <p className="text-[11px] text-amber-800/80 mt-0.5">
+                    Si abrís WhatsApp y le escribís manualmente a alguien, el bot se pausará automáticamente para esa persona para no interrumpir tu conversación.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.pause_on_manual_reply}
+                  onChange={(e) => setSettings({ ...settings, pause_on_manual_reply: e.target.checked })}
+                  className="w-5 h-5 accent-amber-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              {settings.pause_on_manual_reply && (
+                <div className="pt-2 border-t border-amber-200/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                  <span className="text-amber-900 font-medium flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Tiempo de pausa tras tu último mensaje:</span>
+                  </span>
+                  <select
+                    value={settings.pause_duration_minutes || 120}
+                    onChange={(e) => setSettings({ ...settings, pause_duration_minutes: Number(e.target.value) })}
+                    className="px-3 py-1.5 bg-white border border-amber-300 rounded-xl text-xs font-bold text-amber-900 outline-none cursor-pointer"
+                  >
+                    <option value={30}>30 Minutos</option>
+                    <option value={60}>1 Hora</option>
+                    <option value={120}>2 Horas (Recomendado)</option>
+                    <option value={360}>6 Horas</option>
+                    <option value={720}>12 Horas</option>
+                    <option value={1440}>24 Horas</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Lista de Números Excluidos (Blacklist / Ignorar) */}
+            <div className="space-y-3 pt-1">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <UserX className="w-4 h-4 text-red-500" />
+                    <span>Lista Negra / Números Excluidos (Nunca responder)</span>
+                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono">
+                      {Array.isArray(settings.ignored_numbers) ? settings.ignored_numbers.length : 0}
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Añade números personales (mamá, pareja, amigos, proveedores) a los que el bot NUNCA les enviará el menú.
+                  </p>
+                </div>
+              </div>
+
+              {/* Formulario para Agregar Número Excluido */}
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <div className="sm:col-span-6">
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Teléfono a Excluir</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: 3826123456"
+                      value={newIgnoredPhone}
+                      onChange={(e) => setNewIgnoredPhone(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400 font-mono"
+                    />
+                  </div>
+                  <div className="sm:col-span-4">
+                    <label className="text-[10px] font-bold text-slate-600 block mb-1">Etiqueta / Nombre</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Mamá / Amigo"
+                      value={newIgnoredLabel}
+                      onChange={(e) => setNewIgnoredLabel(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 flex items-end">
+                    <button
+                      type="button"
+                      onClick={handleAddIgnoredNumber}
+                      className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Añadir</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Buscador y Listado de Números Excluidos */}
+              {Array.isArray(settings.ignored_numbers) && settings.ignored_numbers.length > 0 ? (
+                <div className="space-y-2">
+                  {settings.ignored_numbers.length > 4 && (
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Buscar número o nombre excluido..."
+                        value={searchIgnored}
+                        onChange={(e) => setSearchIgnored(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400"
+                      />
+                    </div>
+                  )}
+
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                    {filteredIgnoredNumbers.map((item: any) => {
+                      const id = typeof item === 'string' ? item : item.id;
+                      const phone = typeof item === 'string' ? item : item.phone;
+                      const label = typeof item === 'string' ? 'Contacto Personal' : (item.label || 'Contacto Personal');
+
+                      return (
+                        <div
+                          key={id}
+                          className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-red-50/40 border border-slate-200/80 rounded-xl text-xs transition-colors group"
+                        >
+                          <div className="flex items-center space-x-2.5">
+                            <span className="w-6 h-6 rounded-lg bg-red-100 text-red-700 flex items-center justify-center font-bold text-[11px]">
+                              🚫
+                            </span>
+                            <div>
+                              <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                                <span className="font-mono text-slate-900">{phone}</span>
+                                <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.2 rounded-md font-semibold">
+                                  {label}
+                                </span>
+                              </p>
+                              <p className="text-[10px] text-slate-500">El bot no le contestará automáticamente</p>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveIgnoredNumber(id)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-200"
+                            title="Eliminar de la lista de excluidos"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 rounded-xl text-center border border-dashed border-slate-200 text-xs text-slate-400">
+                  No hay números excluidos aún. Agrega los teléfonos personales arriba para que el bot no les conteste.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECCIÓN 2: Interruptores de Automatización */}
           <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
             <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <Sliders className="w-5 h-5 text-emerald-600" />
-              <span>Opciones de Automatización</span>
+              <span>Opciones de Automatización de Pedidos</span>
             </h2>
 
             <div className="space-y-3">
@@ -412,7 +686,7 @@ export const AdminWhatsAppBot: React.FC = () => {
             </div>
           </div>
 
-          {/* Editor de Plantillas */}
+          {/* SECCIÓN 3: Editor de Plantillas */}
           <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
               <div>
@@ -450,7 +724,7 @@ export const AdminWhatsAppBot: React.FC = () => {
                   onClick={() => setActiveTemplateTab(tab.id as any)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeTemplateTab === tab.id
-                      ? 'bg-purple-100 text-purple-800 shadow-2xs'
+                      ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
@@ -459,37 +733,42 @@ export const AdminWhatsAppBot: React.FC = () => {
               ))}
             </div>
 
-            {/* Chips de Variables Dinámicas */}
-            <div>
-              <p className="text-[11px] font-bold text-slate-600 mb-1.5">
-                Toca una variable para insertarla en el texto:
-              </p>
+            {/* Variables Dinámicas Insertables */}
+            <div className="p-3 bg-purple-50/60 rounded-2xl border border-purple-100 space-y-1.5">
+              <div className="flex items-center space-x-1 text-purple-900 font-bold text-xs">
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span>Variables Dinámicas Disponibles (haz clic para insertar):</span>
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { tag: '{cliente}', desc: 'Nombre' },
-                  { tag: '{pedido_id}', desc: 'ID Pedido' },
-                  { tag: '{total}', desc: 'Total $' },
-                  { tag: '{productos}', desc: 'Lista golosinas' },
-                  { tag: '{alias_banco}', desc: 'Alias' },
-                  { tag: '{banco}', desc: 'Banco' },
-                  { tag: '{titular}', desc: 'Titular' },
-                  { tag: '{cbu}', desc: 'CBU' },
-                  { tag: '{direccion}', desc: 'Dirección' },
+                  { tag: '{cliente}', label: 'Nombre Cliente' },
+                  { tag: '{pedido_id}', label: 'ID Pedido' },
+                  { tag: '{total}', label: 'Monto Total' },
+                  { tag: '{productos}', label: 'Lista de Golosinas' },
+                  { tag: '{direccion}', label: 'Dirección' },
+                  { tag: '{alias_banco}', label: 'Alias Bancario' },
+                  { tag: '{banco}', label: 'Nombre Banco' },
+                  { tag: '{titular}', label: 'Titular' },
+                  { tag: '{cbu}', label: 'CBU' },
                 ].map((v) => (
                   <button
                     key={v.tag}
+                    type="button"
                     onClick={() => insertVariable(v.tag)}
-                    className="inline-flex items-center space-x-1 px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
+                    className="px-2.5 py-1 bg-white hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-mono font-bold transition-colors cursor-pointer"
                   >
-                    <span>{v.tag}</span>
-                    <span className="text-[10px] text-purple-400">({v.desc})</span>
-                    {copiedVar === v.tag && <Check className="w-3 h-3 text-emerald-600 ml-0.5" />}
+                    {v.tag}
                   </button>
                 ))}
               </div>
+              {copiedVar && (
+                <p className="text-[10px] text-emerald-600 font-semibold mt-1">
+                  ✓ Variable {copiedVar} insertada en el mensaje.
+                </p>
+              )}
             </div>
 
-            {/* Editor de Texto */}
+            {/* Campo de Texto del Template */}
             <div>
               <textarea
                 rows={8}
@@ -502,7 +781,6 @@ export const AdminWhatsAppBot: React.FC = () => {
                   settings.template_payment_proof
                 }
                 onChange={(e) => {
-                  const val = e.target.value;
                   const fieldMap: Record<string, string> = {
                     new_order: 'template_new_order',
                     preparing: 'template_order_preparing',
@@ -511,26 +789,27 @@ export const AdminWhatsAppBot: React.FC = () => {
                     menu: 'template_menu',
                     proof: 'template_payment_proof'
                   };
-                  setSettings({ ...settings, [fieldMap[activeTemplateTab]]: val });
+                  const key = fieldMap[activeTemplateTab];
+                  setSettings({ ...settings, [key]: e.target.value });
                 }}
-                className="w-full p-4 border border-slate-200 rounded-2xl text-xs font-mono bg-slate-50 focus:bg-white outline-none focus:ring-2 focus:ring-purple-400 transition-all leading-relaxed"
-                placeholder="Escribe la plantilla del mensaje aquí..."
+                className="w-full p-4 border border-slate-200 rounded-2xl text-xs font-mono leading-relaxed outline-none focus:ring-2 focus:ring-purple-400 bg-slate-50/50"
+                placeholder="Escribe aquí el contenido del mensaje de WhatsApp..."
               />
             </div>
 
-            {/* Previsualización en Burbuja de WhatsApp */}
-            <div className="pt-2">
-              <div className="flex items-center space-x-2 text-xs font-bold text-slate-700 mb-2">
+            {/* Vista Previa Estilo WhatsApp */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-700">
                 <Eye className="w-4 h-4 text-emerald-600" />
-                <span>Previsualización en vivo (Cómo lo ve el cliente en su WhatsApp):</span>
+                <span>Vista Previa del Mensaje en WhatsApp:</span>
               </div>
 
-              <div className="p-4 bg-[#e5ddd5] rounded-2xl border border-slate-300 flex flex-col items-start max-w-lg">
-                <div className="bg-[#dcf8c6] text-slate-800 p-3 rounded-2xl rounded-tl-none shadow-sm text-xs leading-relaxed max-w-full whitespace-pre-wrap">
+              <div className="bg-[#efeae2] p-4 rounded-2xl border border-slate-200 shadow-inner max-w-lg">
+                <div className="bg-[#d9fdd3] text-slate-900 p-3 rounded-2xl rounded-tr-none shadow-sm ml-auto max-w-[90%] border border-emerald-100 text-xs leading-relaxed whitespace-pre-wrap font-sans">
                   {getPreviewText()}
-                  <div className="flex items-center justify-end space-x-1 mt-1 text-[10px] text-slate-500">
-                    <span>14:32</span>
-                    <span className="text-[#34B7F1] font-bold">✓✓</span>
+                  <div className="mt-1 flex items-center justify-end space-x-1 text-[10px] text-emerald-800">
+                    <span>{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-sky-600 font-bold">✓✓</span>
                   </div>
                 </div>
               </div>

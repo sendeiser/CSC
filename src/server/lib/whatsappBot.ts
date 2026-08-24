@@ -19,11 +19,22 @@ function ensureDir(dirPath: string) {
   } catch (_e) {}
 }
 
+export interface IgnoredNumber {
+  id: string;
+  phone: string;
+  label: string;
+  created_at: string;
+}
+
 export interface WhatsAppBotSettings {
   enabled: boolean;
   auto_notify_new_order: boolean;
   auto_notify_status_change: boolean;
   auto_chatbot_menu: boolean;
+  // Restricciones de números y contactos personales
+  ignored_numbers: IgnoredNumber[];
+  pause_on_manual_reply: boolean;
+  pause_duration_minutes: number;
   // Soporte para pasarelas HTTP (UltraMsg, Evolution API, etc.) opcional
   gateway_type?: 'baileys' | 'ultramsg' | 'evolution';
   ultramsg_instance_id?: string;
@@ -44,6 +55,9 @@ export const DEFAULT_BOT_SETTINGS: WhatsAppBotSettings = {
   auto_notify_new_order: true,
   auto_notify_status_change: true,
   auto_chatbot_menu: true,
+  ignored_numbers: [],
+  pause_on_manual_reply: true,
+  pause_duration_minutes: 120, // 2 horas por defecto
   gateway_type: 'baileys',
   template_new_order: `🍬 *¡Hola {cliente}! Gracias por tu compra en Chamical Candy Shop* 🍭\n\n📦 *Pedido:* #{pedido_id}\n💰 *Total:* \${total}\n📍 *Entrega:* {direccion}\n\n🛒 *Detalle de tus golosinas:*\n{productos}\n\n🏦 *Datos para Transferencia Bancaria:*\n• *Alias:* \`{alias_banco}\`\n• *Banco:* {banco}\n• *Titular:* {titular}\n• *CBU:* \`{cbu}\`\n\n📸 *Por favor envíanos una foto del comprobante de transferencia por aquí para comenzar a preparar tu pedido. ¡Muchas gracias!* 🎉`,
   template_order_preparing: `👨‍🍳 *¡Buenas noticias {cliente}!* 🍬\n\nTu pedido *#{pedido_id}* por *\${total}* ya está *EN PREPARACIÓN*. 🍭\nNuestros expertos están seleccionando y empacando tus golosinas con el mayor cuidado.\n\n¡Te avisaremos apenas esté listo! ⏱️`,
@@ -132,6 +146,8 @@ class WhatsAppBotService {
   private isInitializing: boolean = false;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 3;
+  // Registro en memoria de chats temporalmente pausados: remoteJid -> timestamp fin de pausa
+  private pausedChats: Map<string, number> = new Map();
 
   constructor() {
     // Si no es serverless y hay sesión guardada previa, iniciar conexión
@@ -226,14 +242,28 @@ class WhatsAppBotService {
         }
       });
 
-      // Escuchar mensajes entrantes para el Menú Interactivo (Chatbot)
+      // Escuchar mensajes entrantes y salientes para el Menú Interactivo y Pausa Inteligente
       this.sock.ev.on('messages.upsert', async ({ messages, type }: any) => {
         if (type !== 'notify') return;
         const settings = await getBotSettings();
-        if (!settings.enabled || !settings.auto_chatbot_menu) return;
+        if (!settings.enabled) return;
 
         for (const msg of messages) {
-          if (!msg.key.fromMe && msg.key.remoteJid && !msg.key.remoteJid.endsWith('@g.us')) {
+          if (!msg.key?.remoteJid || msg.key.remoteJid.endsWith('@g.us')) continue;
+
+          // Si el mensaje lo envié yo manualmente desde el WhatsApp de la tienda/personal
+          if (msg.key.fromMe) {
+            if (settings.pause_on_manual_reply) {
+              const minutes = Number(settings.pause_duration_minutes) || 120;
+              const pausedUntil = Date.now() + minutes * 60 * 1000;
+              this.pausedChats.set(msg.key.remoteJid, pausedUntil);
+              console.log(`[WhatsApp Bot]: ⏸️ Chat ${msg.key.remoteJid} pausado por respuesta manual del admin por ${minutes} minutos.`);
+            }
+            continue;
+          }
+
+          // Si el mensaje viene de un cliente y el chatbot está activo
+          if (settings.auto_chatbot_menu) {
             await this.handleIncomingMessage(msg);
           }
         }
@@ -431,6 +461,35 @@ class WhatsAppBotService {
       const from = msg.key.remoteJid;
       if (!from || !this.sock) return;
 
+      const settings = await getBotSettings();
+
+      // 1. Verificar si el chat está temporalmente pausado por respuesta manual del admin
+      const pausedUntil = this.pausedChats.get(from);
+      if (pausedUntil && pausedUntil > Date.now()) {
+        const remainingMinutes = Math.ceil((pausedUntil - Date.now()) / 60000);
+        console.log(`[WhatsApp Bot]: ⏸️ Chat ${from} está pausado manualmente (${remainingMinutes} min restantes). Omitiendo bot.`);
+        return;
+      }
+
+      // 2. Verificar si el número está en la lista de números excluidos / ignorados (Familia, Amigos, etc.)
+      const cleanFromDigits = from.replace(/\D/g, '');
+      if (Array.isArray(settings.ignored_numbers) && settings.ignored_numbers.length > 0) {
+        const isIgnored = settings.ignored_numbers.some((item: any) => {
+          const rawIgnored = typeof item === 'string' ? item : (item.phone || '');
+          const cleanIgnored = String(rawIgnored).replace(/\D/g, '');
+          if (!cleanIgnored) return false;
+          // Comparar números completos o últimos 8 a 10 dígitos para evitar diferencias de prefijos (549, 15, etc.)
+          const suffixFrom = cleanFromDigits.slice(-8);
+          const suffixIgnored = cleanIgnored.slice(-8);
+          return cleanFromDigits === cleanIgnored || cleanFromDigits.includes(cleanIgnored) || cleanIgnored.includes(cleanFromDigits) || (suffixFrom.length >= 8 && suffixFrom === suffixIgnored);
+        });
+
+        if (isIgnored) {
+          console.log(`[WhatsApp Bot]: 🚫 Número ${from} está en la Lista de Excluidos (Personal/Familiar). Omitiendo bot.`);
+          return;
+        }
+      }
+
       const pushName = msg.pushName || 'Hola';
       const body = (
         msg.message?.conversation ||
@@ -440,10 +499,9 @@ class WhatsAppBotService {
       ).trim().toLowerCase();
 
       const hasImage = !!msg.message?.imageMessage || !!msg.message?.documentMessage;
-      const settings = await getBotSettings();
       const storeSettings = await getStoreSettingsHelper();
 
-      // 1. Si el cliente envió una imagen (posible comprobante)
+      // 3. Si el cliente envió una imagen (posible comprobante)
       if (hasImage) {
         await this.sock.sendMessage(from, { text: settings.template_payment_proof });
         return;
