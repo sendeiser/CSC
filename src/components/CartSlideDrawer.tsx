@@ -57,7 +57,7 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
     return sum + (p * (item.quantity || 1));
   }, 0);
 
-  const handleUpdateQty = async (index: number, delta: number) => {
+  const handleUpdateQty = (index: number, delta: number) => {
     const item = cart[index];
     if (!item) return;
 
@@ -65,7 +65,7 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
       const step = 50; // Modificar de a 50 gramos
       const newWeight = (item.weight_grams || 0) + (delta > 0 ? step : -step);
       if (newWeight < 50) {
-        await handleRemoveItem(index);
+        handleRemoveItem(index);
         return;
       }
       const pricePerKg = Number(
@@ -75,55 +75,61 @@ export const CartSlideDrawer: React.FC<CartSlideDrawerProps> = ({
       );
       const newPrice = Math.round((newWeight / 1000) * pricePerKg * 100) / 100;
 
-      if (isLoggedIn) {
-        try {
-          const items = await cartApi.list();
-          const apiItem = items.find((i: any) => i.product_id === item.product.id);
-          if (apiItem) await cartApi.update(apiItem.id, { weight_grams: newWeight });
-        } catch { /* ignore */ }
-      }
+      // 1. Actualización optimista inmediata (0ms de latencia en la pantalla)
       setCart(prev => {
         const updated = [...prev];
+        if (!updated[index]) return prev;
         updated[index] = { ...updated[index], weight_grams: newWeight, itemPrice: newPrice };
         return updated;
       });
+
+      // 2. Sincronización en segundo plano sin bloquear la interfaz
+      if (isLoggedIn) {
+        cartApi.list().then(items => {
+          const apiItem = items.find((i: any) => i.product_id === item.product.id);
+          if (apiItem) cartApi.update(apiItem.id, { weight_grams: newWeight }).catch(() => {});
+        }).catch(() => {});
+      }
       return;
     }
 
     const newQty = (item.quantity || 1) + delta;
     if (newQty <= 0) {
-      await handleRemoveItem(index);
+      handleRemoveItem(index);
       return;
     }
 
-    if (isLoggedIn) {
-      try {
-        const items = await cartApi.list();
-        const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize);
-        if (apiItem) await cartApi.update(apiItem.id, { quantity: newQty });
-      } catch { /* ignore */ }
-    }
-
+    // 1. Actualización optimista inmediata (0ms de latencia en la pantalla)
     setCart(prev => {
       const updated = [...prev];
+      if (!updated[index]) return prev;
       updated[index] = { ...updated[index], quantity: newQty };
       return updated;
     });
+
+    // 2. Sincronización en segundo plano sin bloquear la interfaz
+    if (isLoggedIn) {
+      cartApi.list().then(items => {
+        const apiItem = items.find((i: any) => i.product_id === item.product.id && i.selected_size === item.selectedSize);
+        if (apiItem) cartApi.update(apiItem.id, { quantity: newQty }).catch(() => {});
+      }).catch(() => {});
+    }
   };
 
-  const handleRemoveItem = async (index: number) => {
+  const handleRemoveItem = (index: number) => {
     const item = cart[index];
     if (!item) return;
 
-    if (isLoggedIn) {
-      try {
-        const items = await cartApi.list();
-        const apiItem = items.find((i: any) => i.product_id === item.product.id && (item.weight_grams ? true : i.selected_size === item.selectedSize));
-        if (apiItem) await cartApi.remove(apiItem.id);
-      } catch { /* ignore */ }
-    }
-
+    // 1. Actualización optimista inmediata (0ms)
     setCart(prev => prev.filter((_, i) => i !== index));
+
+    // 2. Sincronización en segundo plano
+    if (isLoggedIn) {
+      cartApi.list().then(items => {
+        const apiItem = items.find((i: any) => i.product_id === item.product.id && (item.weight_grams ? true : i.selected_size === item.selectedSize));
+        if (apiItem) cartApi.remove(apiItem.id).catch(() => {});
+      }).catch(() => {});
+    }
   };
 
   const numFreeDelivery = Number(freeDeliveryOver || 0);
