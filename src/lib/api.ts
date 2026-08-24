@@ -188,6 +188,12 @@ export const admin = {
   getPromoCodes: () => request<any[]>('/admin/promo-codes'),
   createPromoCode: (data: any) =>
     request<any>('/admin/promo-codes', { method: 'POST', body: JSON.stringify(data) }),
+  updatePromoCode: (id: string, data: any) =>
+    request<any>(`/admin/promo-codes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  togglePromoCode: (id: string) =>
+    request<any>(`/admin/promo-codes/${id}/toggle`, { method: 'PATCH' }),
+  deletePromoCode: (id: string) =>
+    request<{ success: boolean; message?: string }>(`/admin/promo-codes/${id}`, { method: 'DELETE' }),
   getHomepageSections: () => request<any[]>('/admin/homepage'),
   createHomepageSection: (data: any) =>
     request<any>('/admin/homepage/sections', { method: 'POST', body: JSON.stringify(data) }),
@@ -284,6 +290,15 @@ export const categories = {
     setCache('public_categories', data);
     return data;
   },
+}
+
+// Promo codes (public validation)
+export const promoCodes = {
+  validate: (code: string) =>
+    request<{ valid: boolean; promo?: any; error?: string }>('/promo-codes/validate', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
 }
 
 // Upload (Admin)

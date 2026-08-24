@@ -55,14 +55,18 @@ router.post('/create-preference', optionalAuth, async (req: AuthenticatedRequest
       const { data: promo } = await serviceClient
         .from('promo_codes')
         .select('*')
-        .eq('code', promo_code.toUpperCase())
+        .eq('code', String(promo_code).trim().toUpperCase())
         .eq('active', true)
         .single()
 
       if (promo) {
-        discountAmount = subTotal * (promo.percent / 100)
-        promoCodeId = promo.id
-        await serviceClient.from('promo_codes').update({ used_count: promo.used_count + 1 }).eq('id', promo.id)
+        const isNotExhausted = !promo.max_uses || (promo.used_count || 0) < promo.max_uses
+        const isNotExpired = !promo.expires_at || new Date(promo.expires_at).getTime() >= Date.now()
+        if (isNotExhausted && isNotExpired) {
+          discountAmount = subTotal * (promo.percent / 100)
+          promoCodeId = promo.id
+          await serviceClient.from('promo_codes').update({ used_count: (promo.used_count || 0) + 1 }).eq('id', promo.id)
+        }
       }
     }
 

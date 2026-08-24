@@ -11,6 +11,7 @@ import { AdminOrdersSection } from './AdminOrdersSection';
 import { AdminShippingEditor } from './AdminShippingEditor';
 import { AdminFinancesSection } from './AdminFinancesSection';
 import { AdminNotificationSettings } from './AdminNotificationSettings';
+import { AdminPromoCodes } from './AdminPromoCodes';
 import { playNotificationSound, showBrowserNotification } from '../lib/soundAlerts';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { useModal } from '../context/ModalContext';
@@ -2045,41 +2046,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
                 </div>
               )}
 
-              {section === 'promos' && (
-                <div className="space-y-4">
-                  <h1 className="text-2xl font-headline font-bold text-slate-900">Cupones</h1>
-                  <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-3">
-                    <h3 className="text-sm font-semibold text-slate-700">Nuevo Cupón</h3>
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <input type="text" placeholder="Código" value={newPromo.code} onChange={e => setNewPromo(p => ({ ...p, code: e.target.value.toUpperCase() }))} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                      <div className="flex gap-3">
-                        <input type="number" placeholder="%" value={newPromo.percent} onChange={e => setNewPromo(p => ({ ...p, percent: Number(e.target.value) }))} className="w-20 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                        <input type="number" placeholder="Usos" value={newPromo.max_uses} onChange={e => setNewPromo(p => ({ ...p, max_uses: Number(e.target.value) }))} className="w-24 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-                        <button onClick={createPromo} className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"><Plus className="w-4 h-4" /></button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-                          <tr><th className="text-left px-4 py-3">Código</th><th className="text-left px-4 py-3">%</th><th className="text-left px-4 py-3">Usos</th><th className="text-left px-4 py-3">Activo</th></tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {promos.map((p: any) => (
-                            <tr key={p.id} className="hover:bg-slate-50">
-                              <td className="px-4 py-3 font-mono font-bold text-slate-900">{p.code}</td>
-                              <td className="px-4 py-3">{p.percent}%</td>
-                              <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{p.used_count}/{p.max_uses || '∞'}</td>
-                              <td className="px-4 py-3">{p.active ? <Check className="w-4 h-4 text-emerald-500" /> : <X className="w-4 h-4 text-red-500" />}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {section === 'promos' && <AdminPromoCodes />}
 
               {section === 'notifications' && <AdminNotificationSettings />}
               {section === 'finances' && <AdminFinancesSection />}

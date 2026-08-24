@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingBag, Trash2, ArrowRight, AlertCircle, MapPin, CreditCard, PartyPopper, Landmark, MessageCircle, Check, Phone, Store, Truck, Copy, Info, Search, Banknote } from 'lucide-react';
 import { ActiveScreen, CartItem, UserSession } from '../types';
-import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi } from '../lib/api';
+import { cart as cartApi, orders as ordersApi, payments as paymentsApi, homepage as homepageApi, promoCodes } from '../lib/api';
 import { getAuthToken } from '../lib/api';
 import { clearLocalCart } from '../lib/localCart';
 import { buildMensajePedido, waLink, DATOS_BANCO, WHATSAPP_NUMERO, WHATSAPP_NUMERO_1, WHATSAPP_NUMERO_2, setWhatsAppNumbers, setWhatsAppTemplates } from '../lib/whatsapp';
@@ -23,6 +23,8 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const [promoCode, setPromoCode] = React.useState('');
   const [activeDiscount, setActiveDiscount] = React.useState<{ code: string; percent: number } | null>(null);
   const [promoError, setPromoError] = React.useState('');
+  const [promoSuccess, setPromoSuccess] = React.useState('');
+  const [isApplyingPromo, setIsApplyingPromo] = React.useState(false);
 
   const [fullName, setFullName] = React.useState('');
   const [addressLine, setAddressLine] = React.useState('');
@@ -85,19 +87,48 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
   const deliveryFee = deliveryMode === 'delivery' ? (isFreeDelivery ? 0 : Number(storeSettings?.delivery_cost || 0)) : 0;
   const grandTotal = baseGrandTotal + deliveryFee;
 
-  const handleApplyPromo = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    if (step === 'checkout') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const el = document.getElementById('checkout-main-content');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [step]);
+
+  const handleApplyPromo = async (e: React.FormEvent) => {
     e.preventDefault();
     setPromoError('');
+    setPromoSuccess('');
     const typed = promoCode.trim().toUpperCase();
 
-    if (typed === 'DULCE2024') {
-      setActiveDiscount({ code: 'DULCE2024', percent: 15 });
-      setPromoCode('');
-    } else if (typed === '') {
-      setPromoError('Ingresa un cupón primero.');
-    } else {
-      setPromoError('Cupón inválido o expirado en el hiperespacio.');
+    if (!typed) {
+      setPromoError('Por favor ingresá un cupón de descuento.');
+      return;
     }
+
+    setIsApplyingPromo(true);
+    try {
+      const res = await promoCodes.validate(typed);
+      if (res.valid && res.promo) {
+        setActiveDiscount({ code: res.promo.code, percent: res.promo.percent });
+        setPromoSuccess(`¡Cupón "${res.promo.code}" aplicado! (${res.promo.percent}% de descuento)`);
+        setPromoCode('');
+      } else {
+        setPromoError(res.error || 'Cupón inválido o expirado.');
+      }
+    } catch (err: any) {
+      setPromoError(err.message || 'Error al verificar el cupón.');
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setActiveDiscount(null);
+    setPromoSuccess('');
+    setPromoError('');
   };
 
   const handleQuantityChange = async (index: number, delta: number) => {
@@ -560,23 +591,48 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
 
                   {/* Promo Code */}
                   {!activeDiscount ? (
-                    <form onSubmit={handleApplyPromo} className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value)}
-                        placeholder="Cupón de descuento"
-                        className="flex-1 px-3.5 py-2.5 border border-pink-200 rounded-xl text-xs focus:ring-2 focus:ring-purple-400 outline-none bg-white"
-                      />
-                      <button type="submit" className="px-4 py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 transition-colors">Aplicar</button>
+                    <form onSubmit={handleApplyPromo} className="space-y-1.5">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={promoCode}
+                          onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                          placeholder="CÓDIGO DE CUPÓN"
+                          disabled={isApplyingPromo}
+                          className="flex-1 px-3.5 py-2.5 border border-pink-200 rounded-xl text-xs font-mono font-bold tracking-wider uppercase focus:ring-2 focus:ring-purple-400 outline-none bg-white disabled:opacity-50"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isApplyingPromo}
+                          className="px-4 py-2.5 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-700 active:scale-95 transition-all disabled:opacity-50 flex items-center space-x-1"
+                        >
+                          {isApplyingPromo ? (
+                            <span className="inline-block w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <span>Aplicar</span>
+                          )}
+                        </button>
+                      </div>
+                      {promoSuccess && <p className="text-[11px] font-semibold text-emerald-600">✅ {promoSuccess}</p>}
+                      {promoError && <p className="text-[11px] font-semibold text-red-500">⚠️ {promoError}</p>}
                     </form>
                   ) : (
-                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
-                      <span className="text-xs font-bold text-emerald-700">✅ {activeDiscount.code} (-{activeDiscount.percent}%)</span>
-                      <button onClick={() => setActiveDiscount(null)} className="text-emerald-500 hover:text-emerald-700"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5">
+                        <span className="text-xs font-black text-emerald-800 flex items-center space-x-1">
+                          <span>🎉 Cupón: {activeDiscount.code} (-{activeDiscount.percent}%)</span>
+                        </span>
+                        <button
+                          onClick={handleRemovePromo}
+                          className="text-slate-400 hover:text-red-600 p-1 transition-colors"
+                          title="Remover cupón"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      {promoSuccess && <p className="text-[10px] text-emerald-600 font-medium">{promoSuccess}</p>}
                     </div>
                   )}
-                  {promoError && <p className="text-[11px] text-red-500">{promoError}</p>}
 
                   <div className="space-y-2.5 text-sm pt-1">
                     <div className="flex justify-between text-gray-600"><span>Subtotal</span><span className="font-semibold text-gray-800">${subTotal.toFixed(2)}</span></div>
@@ -588,8 +644,11 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
                   </div>
 
                   <button
-                    onClick={() => setStep('checkout')}
-                    className="w-full py-3.5 candy-gradient-bg text-white font-bold rounded-xl shadow-lg shadow-purple-300/40 hover:shadow-purple-400/50 hover:opacity-95 transition-all flex items-center justify-center space-x-2 text-sm"
+                    onClick={() => {
+                      setStep('checkout');
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="w-full py-3.5 candy-gradient-bg text-white font-bold rounded-xl shadow-lg shadow-purple-300/40 hover:shadow-purple-400/50 hover:opacity-95 active:scale-98 transition-all flex items-center justify-center space-x-2 text-sm cursor-pointer"
                   >
                     <span>Proceder al Pago</span>
                     <ArrowRight className="w-4 h-4" />
@@ -604,7 +663,7 @@ export const CartScreen: React.FC<CartScreenProps> = ({ cart, setCart, setActive
 
         {/* Checkout step */}
         {step === 'checkout' && (
-          <div className="max-w-lg mx-auto space-y-6">
+          <div id="checkout-main-content" className="max-w-lg mx-auto space-y-6 pt-1">
             <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-100 rounded-2xl p-6 sm:p-8 space-y-5">
               
               {!isLoggedIn && (

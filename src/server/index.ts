@@ -12,6 +12,7 @@ import categoriesRouter from './routes/categories'
 import paymentRoutes from './routes/payments'
 import path from 'path'
 import uploadRoutes from './routes/upload'
+import promoRoutes from './routes/promos'
 
 dotenv.config()
 
@@ -37,6 +38,7 @@ app.use('/api/homepage', homepageRoutes)
 app.use('/api/categories', categoriesRouter)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/upload', uploadRoutes)
+app.use('/api/promo-codes', promoRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

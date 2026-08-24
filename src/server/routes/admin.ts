@@ -1275,21 +1275,55 @@ router.post('/test-notification', requireAdmin, async (req: AuthenticatedRequest
   }
 })
 
+function parseDateOrNull(val: any): string | null {
+  if (!val || typeof val !== 'string' || val.trim() === '') return null
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return null
+  return d.toISOString()
+}
+
 router.get('/promo-codes', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false })
+  const db = adminDb(res)
+  if (!db) return
+  const { data, error } = await db.from('promo_codes').select('*').order('created_at', { ascending: false })
 
   if (error) {
     res.status(500).json({ error: error.message })
     return
   }
 
-  res.json(data)
+  res.json(data || [])
 })
 
 router.post('/promo-codes', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
-  const { data, error } = await supabase.from('promo_codes').insert(req.body).select().single()
+  const db = adminDb(res)
+  if (!db) return
+  const { code, percent, max_uses, expires_at, active } = req.body
+
+  if (!code || percent === undefined) {
+    res.status(400).json({ error: 'El código y el porcentaje de descuento son obligatorios.' })
+    return
+  }
+
+  const cleanCode = String(code).trim().toUpperCase()
+  const numPercent = Math.min(100, Math.max(1, Number(percent) || 10))
+  const numMaxUses = max_uses !== '' && max_uses !== null && max_uses !== undefined && !isNaN(Number(max_uses)) ? Number(max_uses) : null
+
+  const payload: any = {
+    code: cleanCode,
+    percent: numPercent,
+    max_uses: numMaxUses,
+    active: active !== undefined ? Boolean(active) : true,
+    expires_at: parseDateOrNull(expires_at),
+  }
+
+  const { data, error } = await db.from('promo_codes').insert(payload).select().single()
 
   if (error) {
+    if (error.code === '23505' || error.message?.includes('unique') || error.message?.includes('duplicate')) {
+      res.status(400).json({ error: `Ya existe un cupón con el código "${cleanCode}".` })
+      return
+    }
     res.status(400).json({ error: error.message })
     return
   }
@@ -1297,14 +1331,76 @@ router.post('/promo-codes', requireAdmin, async (req: AuthenticatedRequest, res:
   res.status(201).json(data)
 })
 
+router.put('/promo-codes/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const db = adminDb(res)
+  if (!db) return
+  const { id } = req.params
+  const { code, percent, max_uses, expires_at, active } = req.body
+
+  const payload: any = {}
+  if (code !== undefined) payload.code = String(code).trim().toUpperCase()
+  if (percent !== undefined) payload.percent = Math.min(100, Math.max(1, Number(percent) || 10))
+  if (max_uses !== undefined) {
+    payload.max_uses = max_uses !== '' && max_uses !== null && !isNaN(Number(max_uses)) ? Number(max_uses) : null
+  }
+  if (expires_at !== undefined) {
+    payload.expires_at = parseDateOrNull(expires_at)
+  }
+  if (active !== undefined) payload.active = Boolean(active)
+
+  const { data, error } = await db.from('promo_codes').update(payload).eq('id', id).select().single()
+
+  if (error) {
+    res.status(400).json({ error: error.message })
+    return
+  }
+
+  res.json(data)
+})
+
+router.patch('/promo-codes/:id/toggle', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const db = adminDb(res)
+  if (!db) return
+  const { id } = req.params
+
+  const { data: current, error: getErr } = await db.from('promo_codes').select('active').eq('id', id).single()
+  if (getErr || !current) {
+    res.status(404).json({ error: 'Cupón no encontrado' })
+    return
+  }
+
+  const { data, error } = await db.from('promo_codes').update({ active: !current.active }).eq('id', id).select().single()
+  if (error) {
+    res.status(400).json({ error: error.message })
+    return
+  }
+
+  res.json(data)
+})
+
+router.delete('/promo-codes/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  const db = adminDb(res)
+  if (!db) return
+  const { id } = req.params
+
+  const { error } = await db.from('promo_codes').delete().eq('id', id)
+  if (error) {
+    res.status(400).json({ error: error.message })
+    return
+  }
+
+  res.json({ success: true, message: 'Cupón eliminado correctamente' })
+})
+
 // ── helpers ────────────────────────────────────────────────
 
 function adminDb(res: Response) {
-  if (!serviceClient) {
-    res.status(500).json({ error: 'SUPABASE_SERVICE_KEY no configurada en el servidor' })
+  const db = serviceClient || supabase
+  if (!db) {
+    res.status(500).json({ error: 'Supabase no configurado en el servidor' })
     return null
   }
-  return serviceClient
+  return db
 }
 
 function wrap(fn: (req: AuthenticatedRequest, res: Response) => Promise<void>) {
