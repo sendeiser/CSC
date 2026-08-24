@@ -1,6 +1,16 @@
 import { StoreSettings } from '../types'
+import { supabase } from './supabase'
 
-const API_BASE = (import.meta.env.VITE_API_URL ? String(import.meta.env.VITE_API_URL).replace(/\/$/, '') : '') + '/api'
+const getApiBase = () => {
+  const envUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+    ? String(import.meta.env.VITE_API_URL).trim()
+    : ''
+  if (!envUrl) return '/api'
+  if (envUrl.endsWith('/api')) return envUrl.replace(/\/$/, '')
+  return envUrl.replace(/\/$/, '') + '/api'
+}
+
+const API_BASE = getApiBase()
 
 let authToken: string | null = null
 
@@ -89,13 +99,44 @@ export const auth = {
 
 // Products
 export const products = {
-  list: (params?: Record<string, string>) => {
-    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
-    return request<any[]>('/products' + qs)
+  list: async (params?: Record<string, string>): Promise<any[]> => {
+    try {
+      const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+      const data = await request<any[]>('/products' + qs)
+      if (Array.isArray(data) && data.length > 0) {
+        setCache('products_list', data)
+        return data
+      }
+      if (Array.isArray(data)) return data
+    } catch (_e) {
+      console.warn('[Products API error, falling back to Supabase client]:', _e)
+    }
+
+    // Direct Supabase fallback
+    try {
+      let query = supabase.from('products').select('*').order('created_at', { ascending: false })
+      if (params?.category && params.category !== 'all') {
+        query = query.eq('category_id', params.category)
+      }
+      const { data, error } = await query
+      if (!error && Array.isArray(data) && data.length > 0) {
+        setCache('products_list', data)
+        return data
+      }
+    } catch (_e) {}
+
+    return getCached<any[]>('products_list') || []
   },
 
-  get: (slug: string) =>
-    request<any>('/products/' + slug),
+  get: async (slug: string) => {
+    try {
+      return await request<any>('/products/' + slug)
+    } catch (_e) {
+      const { data } = await supabase.from('products').select('*').or(`slug.eq.${slug},id.eq.${slug}`).limit(1).maybeSingle()
+      if (data) return data
+      throw _e
+    }
+  },
 
   create: (data: any) =>
     request<any>('/products', { method: 'POST', body: JSON.stringify(data) }),
@@ -267,17 +308,42 @@ export const homepage = {
   get: async () => {
     const cached = getCached<any[]>('homepage_sections');
     if (cached) return cached;
-    const data = await request<any[]>('/homepage');
-    setCache('homepage_sections', data);
-    return data;
+    try {
+      const data = await request<any[]>('/homepage');
+      setCache('homepage_sections', data);
+      return data;
+    } catch (_e) {
+      const { data } = await supabase.from('homepage_sections').select('*').eq('visible', true).order('order_index', { ascending: true });
+      if (data) {
+        setCache('homepage_sections', data);
+        return data;
+      }
+      return [];
+    }
   },
-  getAbout: () => request<any>('/homepage/about'),
+  getAbout: async () => {
+    try {
+      return await request<any>('/homepage/about');
+    } catch (_e) {
+      const { data } = await supabase.from('about_page').select('*').limit(1).single();
+      return data || null;
+    }
+  },
   getSettings: async () => {
     const cached = getCached<StoreSettings>('homepage_settings');
     if (cached) return cached;
-    const data = await request<StoreSettings>('/homepage/settings');
-    setCache('homepage_settings', data);
-    return data;
+    try {
+      const data = await request<StoreSettings>('/homepage/settings');
+      setCache('homepage_settings', data);
+      return data;
+    } catch (_e) {
+      const { data } = await supabase.from('homepage_sections').select('content').eq('section_type', 'store_settings').limit(1).maybeSingle();
+      if (data?.content) {
+        setCache('homepage_settings', data.content);
+        return data.content as StoreSettings;
+      }
+      return null;
+    }
   },
 }
 
@@ -286,9 +352,18 @@ export const categories = {
   list: async () => {
     const cached = getCached<any[]>('public_categories');
     if (cached) return cached;
-    const data = await request<any[]>('/categories');
-    setCache('public_categories', data);
-    return data;
+    try {
+      const data = await request<any[]>('/categories');
+      setCache('public_categories', data);
+      return data;
+    } catch (_e) {
+      const { data } = await supabase.from('categories').select('*').order('name');
+      if (data) {
+        setCache('public_categories', data);
+        return data;
+      }
+      return [];
+    }
   },
 }
 
