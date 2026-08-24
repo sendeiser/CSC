@@ -33,6 +33,8 @@ export const AdminWhatsAppBot: React.FC = () => {
     ignored_numbers: [] as IgnoredNumber[],
     pause_on_manual_reply: true,
     pause_duration_minutes: 120,
+    only_reply_to_customers: false,
+    customer_filter_mode: 'any_order',
     template_new_order: '',
     template_order_preparing: '',
     template_order_ready: '',
@@ -510,6 +512,44 @@ export const AdminWhatsAppBot: React.FC = () => {
                     <option value={360}>6 Horas</option>
                     <option value={720}>12 Horas</option>
                     <option value={1440}>24 Horas</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* OPCIÓN 3: Responder ÚNICAMENTE a Clientes de la Tienda */}
+            <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200/80 space-y-3">
+              <label className="flex items-start justify-between gap-3 cursor-pointer">
+                <div>
+                  <p className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
+                    <UserCheck className="w-4 h-4 text-indigo-600" />
+                    <span>👥 Opción 3: Responder ÚNICAMENTE a Clientes de la Tienda</span>
+                  </p>
+                  <p className="text-[11px] text-indigo-900/80 mt-0.5 leading-relaxed">
+                    El bot solo contestará de forma automática a números que tengan al menos una orden de compra registrada en la tienda. A contactos personales, amigos o números desconocidos no les enviará el menú ni respuestas automáticas.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.only_reply_to_customers}
+                  onChange={(e) => setSettings({ ...settings, only_reply_to_customers: e.target.checked })}
+                  className="w-5 h-5 accent-indigo-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              {settings.only_reply_to_customers && (
+                <div className="pt-2.5 border-t border-indigo-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                  <span className="text-indigo-950 font-medium flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Criterio de filtro de cliente:</span>
+                  </span>
+                  <select
+                    value={settings.customer_filter_mode || 'any_order'}
+                    onChange={(e) => setSettings({ ...settings, customer_filter_mode: e.target.value })}
+                    className="px-3 py-1.5 bg-white border border-indigo-300 rounded-xl text-xs font-bold text-indigo-900 outline-none cursor-pointer"
+                  >
+                    <option value="any_order">Cualquier cliente con al menos 1 pedido histórico</option>
+                    <option value="pending_order">Solo clientes con pedidos activos / pendientes</option>
                   </select>
                 </div>
               )}

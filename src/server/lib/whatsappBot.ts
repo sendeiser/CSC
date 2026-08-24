@@ -35,6 +35,9 @@ export interface WhatsAppBotSettings {
   ignored_numbers: IgnoredNumber[];
   pause_on_manual_reply: boolean;
   pause_duration_minutes: number;
+  // Opción 3: Responder únicamente a clientes con pedidos registrados
+  only_reply_to_customers: boolean;
+  customer_filter_mode: 'any_order' | 'pending_order';
   // Soporte para pasarelas HTTP (UltraMsg, Evolution API, etc.) opcional
   gateway_type?: 'baileys' | 'ultramsg' | 'evolution';
   ultramsg_instance_id?: string;
@@ -58,6 +61,8 @@ export const DEFAULT_BOT_SETTINGS: WhatsAppBotSettings = {
   ignored_numbers: [],
   pause_on_manual_reply: true,
   pause_duration_minutes: 120, // 2 horas por defecto
+  only_reply_to_customers: false,
+  customer_filter_mode: 'any_order',
   gateway_type: 'baileys',
   template_new_order: `🍬 *¡Hola {cliente}! Gracias por tu compra en Chamical Candy Shop* 🍭\n\n📦 *Pedido:* #{pedido_id}\n💰 *Total:* \${total}\n📍 *Entrega:* {direccion}\n\n🛒 *Detalle de tus golosinas:*\n{productos}\n\n🏦 *Datos para Transferencia Bancaria:*\n• *Alias:* \`{alias_banco}\`\n• *Banco:* {banco}\n• *Titular:* {titular}\n• *CBU:* \`{cbu}\`\n\n📸 *Por favor envíanos una foto del comprobante de transferencia por aquí para comenzar a preparar tu pedido. ¡Muchas gracias!* 🎉`,
   template_order_preparing: `👨‍🍳 *¡Buenas noticias {cliente}!* 🍬\n\nTu pedido *#{pedido_id}* por *\${total}* ya está *EN PREPARACIÓN*. 🍭\nNuestros expertos están seleccionando y empacando tus golosinas con el mayor cuidado.\n\n¡Te avisaremos apenas esté listo! ⏱️`,
@@ -487,6 +492,37 @@ class WhatsAppBotService {
         if (isIgnored) {
           console.log(`[WhatsApp Bot]: 🚫 Número ${from} está en la Lista de Excluidos (Personal/Familiar). Omitiendo bot.`);
           return;
+        }
+      }
+
+      // 3. Verificar si está activa la opción de "Responder ÚNICAMENTE a Clientes de la Tienda"
+      if (settings.only_reply_to_customers) {
+        const rawDigits = from.replace(/\D/g, '');
+        const suffixDigits = rawDigits.slice(-8);
+        const db = serviceClient || supabase;
+
+        try {
+          const { data: customerOrders } = await db
+            .from('orders')
+            .select('id, status, shipping_address, customer_phone')
+            .or(`customer_phone.ilike.%${suffixDigits}%,shipping_address.ilike.%${suffixDigits}%`)
+            .limit(5);
+
+          if (!customerOrders || customerOrders.length === 0) {
+            console.log(`[WhatsApp Bot]: 👥 Número ${from} (${rawDigits}) no tiene pedidos registrados en la tienda. Omitiendo bot (Filtro Solo Clientes activo).`);
+            return;
+          }
+
+          if (settings.customer_filter_mode === 'pending_order') {
+            const activeStatuses = ['pending', 'paid', 'preparing', 'en_preparacion', 'ready', 'listo', 'shipped', 'enviado'];
+            const hasActiveOrder = customerOrders.some((o: any) => activeStatuses.includes(o.status));
+            if (!hasActiveOrder) {
+              console.log(`[WhatsApp Bot]: 👥 Cliente ${from} no tiene pedidos activos/pendientes. Omitiendo bot.`);
+              return;
+            }
+          }
+        } catch (_err) {
+          console.warn('[WhatsApp Bot Customer Filter Error]:', _err);
         }
       }
 
