@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: csc-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npx tsx src/server/index.ts
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: MERCADO_PAGO_ACCESS_TOKEN
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://candyshopchamical.netlify.app
