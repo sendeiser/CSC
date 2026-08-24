@@ -47,7 +47,7 @@ router.post('/logout', requireAdmin, async (_req: AuthenticatedRequest, res: Res
 // Obtener configuración del bot y plantillas
 router.get('/settings', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
   try {
-    const settings = getBotSettings();
+    const settings = await getBotSettings();
     res.json(settings);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Error al obtener configuración' });
@@ -57,7 +57,7 @@ router.get('/settings', requireAdmin, async (_req: AuthenticatedRequest, res: Re
 // Guardar configuración y plantillas
 router.put('/settings', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const updated = saveBotSettings(req.body);
+    const updated = await saveBotSettings(req.body);
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: err.message || 'Error al guardar configuración' });
