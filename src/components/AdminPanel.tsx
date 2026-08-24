@@ -269,12 +269,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     recentOrders: [],
   });
 
-  // Detector en tiempo real con campana sonora y push browser
-  const prevOrdersCountRef = useRef<number | null>(null);
-  const prevUsersCountRef = useRef<number | null>(null);
-
+  // 🔔 Detector en tiempo real con Supabase Realtime (WebSockets puros)
   useEffect(() => {
-    // 1. Canal Supabase Realtime para detección instantánea (0ms)
     const channel = supabase
       .channel('admin_panel_realtime_orders')
       .on(
@@ -288,7 +284,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               tag: `csc-order-${(payload.new as any)?.id || Date.now()}`
             });
           }
-          // Recargar pedidos y estadísticas al instante
+          // Recargar pedidos y estadísticas al instante únicamente cuando hay eventos reales
           adminApi.getStats().then(setStats).catch(() => {});
           if (section === 'orders') {
             adminApi.getOrders().then(setOrders).catch(() => {});
@@ -297,47 +293,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
       )
       .subscribe();
 
-    const checkRealtimeUpdates = async () => {
-      try {
-        const currentStats = await adminApi.getStats();
-        if (currentStats) {
-          const ordersCount = Number(currentStats.totalOrders || 0);
-          const usersCount = Number(currentStats.totalUsers || 0);
-
-          if (prevOrdersCountRef.current !== null && ordersCount > prevOrdersCountRef.current) {
-            const diff = ordersCount - prevOrdersCountRef.current;
-            playNotificationSound();
-            showBrowserNotification(`🛍️ ¡${diff === 1 ? 'Nuevo Pedido' : `${diff} Nuevos Pedidos`} Recibido(s)!`, {
-              body: `Total ventas actualizado: $${Number(currentStats.totalRevenue || 0).toFixed(2)}. Hacé clic para ver pedidos.`,
-              tag: `csc-order-${Date.now()}`
-            });
-            setStats(currentStats);
-            if (section === 'orders') {
-              const ordersData = await adminApi.getOrders();
-              setOrders(ordersData);
-            }
-          }
-
-          if (prevUsersCountRef.current !== null && usersCount > prevUsersCountRef.current) {
-            const diff = usersCount - prevUsersCountRef.current;
-            playNotificationSound();
-            showBrowserNotification(`👤 ¡${diff === 1 ? 'Nuevo Usuario' : `${diff} Nuevos Usuarios`} Registrado(s)!`, {
-              body: `Total clientes registrados: ${usersCount}.`,
-              tag: `csc-user-${Date.now()}`
-            });
-          }
-
-          prevOrdersCountRef.current = ordersCount;
-          prevUsersCountRef.current = usersCount;
-        }
-      } catch (_e) {}
-    };
-
-    checkRealtimeUpdates();
-    const interval = setInterval(checkRealtimeUpdates, 8000);
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
   }, [section]);
 

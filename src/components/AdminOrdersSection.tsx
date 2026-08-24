@@ -42,9 +42,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
     }
   };
 
-  // 🔔 Actualización automática en tiempo real cuando entra un pedido
+  // 🔔 Actualización automática en tiempo real cuando entra un pedido vía Supabase Realtime (WebSockets)
   useEffect(() => {
-    // 1. Canal Realtime con Supabase
     const channel = supabase
       .channel('admin_orders_section_realtime')
       .on(
@@ -65,16 +64,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
       )
       .subscribe();
 
-    // 2. Polling activo (cada 8 segundos) como respaldo seguro
-    const interval = setInterval(() => {
-      if (onRefreshOrders) {
-        onRefreshOrders();
-      }
-    }, 8000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(interval);
     };
   }, [onRefreshOrders]);
 
