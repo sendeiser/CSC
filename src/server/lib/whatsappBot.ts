@@ -26,9 +26,16 @@ export interface IgnoredNumber {
   created_at: string;
 }
 
+export const DEFAULT_CHATBOT_KEYWORDS = [
+  'pedido', 'candy', 'comprar', 'precio', 'precios', 'gomitas', 
+  'catalogo', 'catálogo', 'envio', 'envío', 'local', 'horario', 
+  'horarios', 'transferencia', 'alias', 'cbu', 'menu', 'menú', 
+  'hola candy', 'promo', 'promos', 'stock', 'tienda', '#csc', 'consulta'
+];
+
 export interface WhatsAppBotSettings {
   enabled: boolean;
-  auto_notify_new_order: boolean;
+  auto_notify_new_order: boolean; // Enviar WhatsApp automático cuando el cliente termina el pedido
   auto_notify_status_change: boolean;
   auto_chatbot_menu: boolean;
   // Restricciones de números y contactos personales
@@ -38,6 +45,9 @@ export interface WhatsAppBotSettings {
   // Opción 3: Responder únicamente a clientes con pedidos registrados
   only_reply_to_customers: boolean;
   customer_filter_mode: 'any_order' | 'pending_order';
+  // Método 3: Detección inteligente por palabras clave de tienda
+  require_keywords_for_chatbot: boolean;
+  chatbot_keywords: string[];
   // Soporte para pasarelas HTTP (UltraMsg, Evolution API, etc.) opcional
   gateway_type?: 'baileys' | 'ultramsg' | 'evolution';
   ultramsg_instance_id?: string;
@@ -55,7 +65,7 @@ export interface WhatsAppBotSettings {
 
 export const DEFAULT_BOT_SETTINGS: WhatsAppBotSettings = {
   enabled: true,
-  auto_notify_new_order: true,
+  auto_notify_new_order: true, // ✅ Mensaje al terminar el pedido
   auto_notify_status_change: true,
   auto_chatbot_menu: true,
   ignored_numbers: [],
@@ -63,6 +73,8 @@ export const DEFAULT_BOT_SETTINGS: WhatsAppBotSettings = {
   pause_duration_minutes: 120, // 2 horas por defecto
   only_reply_to_customers: false,
   customer_filter_mode: 'any_order',
+  require_keywords_for_chatbot: true, // ✅ Método 3 activado por defecto
+  chatbot_keywords: DEFAULT_CHATBOT_KEYWORDS,
   gateway_type: 'baileys',
   template_new_order: `🍬 *¡Hola {cliente}! Gracias por tu compra en Chamical Candy Shop* 🍭\n\n📦 *Pedido:* #{pedido_id}\n💰 *Total:* \${total}\n📍 *Entrega:* {direccion}\n\n🛒 *Detalle de tus golosinas:*\n{productos}\n\n🏦 *Datos para Transferencia Bancaria:*\n• *Alias:* \`{alias_banco}\`\n• *Banco:* {banco}\n• *Titular:* {titular}\n• *CBU:* \`{cbu}\`\n\n📸 *Por favor envíanos una foto del comprobante de transferencia por aquí para comenzar a preparar tu pedido. ¡Muchas gracias!* 🎉`,
   template_order_preparing: `👨‍🍳 *¡Buenas noticias {cliente}!* 🍬\n\nTu pedido *#{pedido_id}* por *\${total}* ya está *EN PREPARACIÓN*. 🍭\nNuestros expertos están seleccionando y empacando tus golosinas con el mayor cuidado.\n\n¡Te avisaremos apenas esté listo! ⏱️`,
@@ -537,13 +549,36 @@ class WhatsAppBotService {
       const hasImage = !!msg.message?.imageMessage || !!msg.message?.documentMessage;
       const storeSettings = await getStoreSettingsHelper();
 
-      // 3. Si el cliente envió una imagen (posible comprobante)
+      // 4. Si el cliente envió una imagen (posible comprobante de pago)
       if (hasImage) {
         await this.sock.sendMessage(from, { text: settings.template_payment_proof });
         return;
       }
 
       if (!body) return;
+
+      // 5. Método 3: Detección Inteligente por Palabras Clave de la Tienda
+      if (settings.require_keywords_for_chatbot) {
+        const keywords = Array.isArray(settings.chatbot_keywords) && settings.chatbot_keywords.length > 0
+          ? settings.chatbot_keywords
+          : DEFAULT_CHATBOT_KEYWORDS;
+
+        // Normalizar quitando tildes y caracteres especiales
+        const normalizeText = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const normalizedBody = normalizeText(body);
+
+        // Permitir opciones numéricas (1, 2, 3, 4, 5) o palabras que coincidan con la lista
+        const isMenuOption = /^[1-5]$/.test(body.trim());
+        const hasMatchingKeyword = isMenuOption || keywords.some((kw) => {
+          const cleanKw = normalizeText(String(kw).trim());
+          return cleanKw.length > 0 && normalizedBody.includes(cleanKw);
+        });
+
+        if (!hasMatchingKeyword) {
+          console.log(`[WhatsApp Bot]: 💬 Mensaje de ${from} ("${body}") no contiene palabras clave de la tienda. Omitiendo bot (Método 3 activo).`);
+          return;
+        }
+      }
 
       // 2. Opción 1: Consultar estado de mi pedido
       if (body === '1' || body.includes('estado') || body.includes('mi pedido')) {

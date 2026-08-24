@@ -4,7 +4,7 @@ import {
   QrCode, Smartphone, MessageCircle, Bot, Sparkles, RefreshCw, 
   CheckCircle2, AlertCircle, LogOut, Send, Eye, ShieldCheck, 
   Sliders, Copy, Check, Info, HelpCircle, UserX, Plus, Trash2, 
-  Clock, ShieldAlert, Search, PhoneOff, UserCheck
+  Clock, ShieldAlert, Search, PhoneOff, UserCheck, Tag, X, RotateCcw
 } from 'lucide-react';
 import { whatsappBotApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
@@ -15,6 +15,13 @@ export interface IgnoredNumber {
   label: string;
   created_at: string;
 }
+
+export const DEFAULT_CHATBOT_KEYWORDS = [
+  'pedido', 'candy', 'comprar', 'precio', 'precios', 'gomitas', 
+  'catalogo', 'catálogo', 'envio', 'envío', 'local', 'horario', 
+  'horarios', 'transferencia', 'alias', 'cbu', 'menu', 'menú', 
+  'hola candy', 'promo', 'promos', 'stock', 'tienda', '#csc', 'consulta'
+];
 
 export const AdminWhatsAppBot: React.FC = () => {
   const { showAlert, showConfirm } = useModal();
@@ -35,6 +42,8 @@ export const AdminWhatsAppBot: React.FC = () => {
     pause_duration_minutes: 120,
     only_reply_to_customers: false,
     customer_filter_mode: 'any_order',
+    require_keywords_for_chatbot: true,
+    chatbot_keywords: DEFAULT_CHATBOT_KEYWORDS,
     template_new_order: '',
     template_order_preparing: '',
     template_order_ready: '',
@@ -49,6 +58,9 @@ export const AdminWhatsAppBot: React.FC = () => {
   const [newIgnoredPhone, setNewIgnoredPhone] = useState('');
   const [newIgnoredLabel, setNewIgnoredLabel] = useState('');
   const [searchIgnored, setSearchIgnored] = useState('');
+
+  // New Keyword form
+  const [newKeywordInput, setNewKeywordInput] = useState('');
 
   // Test message
   const [testPhone, setTestPhone] = useState('');
@@ -75,6 +87,12 @@ export const AdminWhatsAppBot: React.FC = () => {
           ignored_numbers: Array.isArray(data.ignored_numbers) ? data.ignored_numbers : [],
           pause_on_manual_reply: data.pause_on_manual_reply ?? true,
           pause_duration_minutes: data.pause_duration_minutes ?? 120,
+          only_reply_to_customers: data.only_reply_to_customers ?? false,
+          customer_filter_mode: data.customer_filter_mode || 'any_order',
+          require_keywords_for_chatbot: data.require_keywords_for_chatbot ?? true,
+          chatbot_keywords: Array.isArray(data.chatbot_keywords) && data.chatbot_keywords.length > 0 
+            ? data.chatbot_keywords 
+            : DEFAULT_CHATBOT_KEYWORDS,
         });
       }
     } catch (_e) {}
@@ -190,6 +208,36 @@ export const AdminWhatsAppBot: React.FC = () => {
     });
   };
 
+  const handleAddKeyword = () => {
+    const clean = newKeywordInput.trim().toLowerCase();
+    if (!clean) return;
+    const currentKw: string[] = Array.isArray(settings.chatbot_keywords) ? settings.chatbot_keywords : DEFAULT_CHATBOT_KEYWORDS;
+    if (currentKw.includes(clean)) {
+      setNewKeywordInput('');
+      return;
+    }
+    setSettings({
+      ...settings,
+      chatbot_keywords: [...currentKw, clean]
+    });
+    setNewKeywordInput('');
+  };
+
+  const handleRemoveKeyword = (kwToRemove: string) => {
+    const currentKw: string[] = Array.isArray(settings.chatbot_keywords) ? settings.chatbot_keywords : DEFAULT_CHATBOT_KEYWORDS;
+    setSettings({
+      ...settings,
+      chatbot_keywords: currentKw.filter((k) => k !== kwToRemove)
+    });
+  };
+
+  const handleRestoreDefaultKeywords = () => {
+    setSettings({
+      ...settings,
+      chatbot_keywords: DEFAULT_CHATBOT_KEYWORDS
+    });
+  };
+
   const handleSendTest = async () => {
     if (!testPhone) {
       showAlert({ title: 'Atención', message: 'Ingresa un número de teléfono para la prueba.', type: 'warning' });
@@ -283,7 +331,7 @@ export const AdminWhatsAppBot: React.FC = () => {
                 </span>
               </h1>
               <p className="text-xs sm:text-sm text-slate-500">
-                Envía confirmaciones automáticas de compra, estados de pedidos y activa un menú inteligente 24/7 con restricciones de números personales.
+                Envío automático de pedidos finalizados y chatbot inteligente por palabras clave (Método 3).
               </p>
             </div>
           </div>
@@ -446,25 +494,13 @@ export const AdminWhatsAppBot: React.FC = () => {
 
         {/* Columna Derecha: Restricciones, Interruptores y Editor de Plantillas */}
         <div className="lg:col-span-7 space-y-6">
-          {/* SECCIÓN 1: Restricciones de Números Personales & Pausa Inteligente */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
+          {/* SECCIÓN 1: Enviar WhatsApp Automático al Finalizar el Pedido */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
-                  <PhoneOff className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>Restricciones de Números y Contactos Personales</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 font-extrabold px-2 py-0.5 rounded-full">
-                      Privacidad
-                    </span>
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Evita que el bot responda a tu familia, amigos, o cuando estés hablando vos manualmente.
-                  </p>
-                </div>
-              </div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-emerald-600" />
+                <span>Envíos Automáticos de Pedidos</span>
+              </h2>
 
               <button
                 onClick={handleSaveSettings}
@@ -474,6 +510,166 @@ export const AdminWhatsAppBot: React.FC = () => {
                 <Check className="w-4 h-4" />
                 <span>{savingSettings ? 'Guardando...' : 'Guardar'}</span>
               </button>
+            </div>
+
+            <div className="space-y-3">
+              {/* REQUERIMIENTO 1: Enviar mensaje al terminar el pedido */}
+              <label className="flex items-start justify-between p-4 rounded-2xl border-2 border-emerald-200/80 bg-emerald-50/40 hover:bg-emerald-50/70 transition-colors cursor-pointer">
+                <div className="pr-3">
+                  <p className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                    <span>🛍️ Enviar WhatsApp Automático al Finalizar la Compra</span>
+                    <span className="text-[10px] bg-emerald-200 text-emerald-900 font-extrabold px-2 py-0.5 rounded-full">
+                      Principal
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-emerald-800/90 mt-0.5 leading-relaxed">
+                    Apenas el cliente termina su pedido en la tienda web, el bot le envía automáticamente un WhatsApp con el detalle de sus golosinas, el total y los datos de pago (Alias, Banco, Titular).
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.auto_notify_new_order}
+                  onChange={(e) => setSettings({ ...settings, auto_notify_new_order: e.target.checked })}
+                  className="w-5 h-5 accent-emerald-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              <label className="flex items-start justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 cursor-pointer">
+                <div className="pr-3">
+                  <p className="text-xs font-bold text-slate-800">📦 Notificar Cambios de Estado de Pedido</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Avisa al cliente automáticamente cuando marcas su pedido como "En preparación", "Listo para retirar" o "En camino".
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.auto_notify_status_change}
+                  onChange={(e) => setSettings({ ...settings, auto_notify_status_change: e.target.checked })}
+                  className="w-5 h-5 accent-emerald-500 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              <label className="flex items-start justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 cursor-pointer">
+                <div className="pr-3">
+                  <p className="text-xs font-bold text-slate-800">🤖 Chatbot Interactivo 24/7 (Menú 1 al 5)</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Responde preguntas frecuentes (estado de pedido, alias bancario, horarios y catálogo) cuando los clientes escriben.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.auto_chatbot_menu}
+                  onChange={(e) => setSettings({ ...settings, auto_chatbot_menu: e.target.checked })}
+                  className="w-5 h-5 accent-emerald-500 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* SECCIÓN 2: MÉTODO 3 (Detección por Palabras Clave) & Restricciones */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
+            <div>
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center font-bold">
+                  <Tag className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>Método 3: Detección por Palabras Clave de Tienda</span>
+                    <span className="text-[10px] bg-purple-100 text-purple-800 font-extrabold px-2 py-0.5 rounded-full">
+                      Recomendado
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    El chatbot SOLO responderá si el mensaje menciona términos de compra. Mensajes personales de familia y amigos son ignorados.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Switch de Método 3 */}
+            <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-200/80 space-y-3">
+              <label className="flex items-start justify-between gap-3 cursor-pointer">
+                <div>
+                  <p className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                    <span>🏷️ Activar Método 3 (Exigir Palabras Clave para Responder)</span>
+                  </p>
+                  <p className="text-[11px] text-purple-900/80 mt-0.5 leading-relaxed">
+                    Si un cliente o invitado escribe preguntando por <em>"pedido", "gomitas", "precio", "catálogo", "comprar"</em> o el código web <em>"#CSC"</em>, el bot le enviará el menú. Si un contacto personal escribe cualquier otra cosa, el bot se mantiene 100% en silencio.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.require_keywords_for_chatbot}
+                  onChange={(e) => setSettings({ ...settings, require_keywords_for_chatbot: e.target.checked })}
+                  className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              {settings.require_keywords_for_chatbot && (
+                <div className="pt-3 border-t border-purple-200/60 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Palabras clave activas ({settings.chatbot_keywords?.length || 0}):</span>
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={handleRestoreDefaultKeywords}
+                      className="text-[11px] font-bold text-purple-700 hover:text-purple-900 flex items-center space-x-1 cursor-pointer transition-colors"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Restaurar palabras sugeridas</span>
+                    </button>
+                  </div>
+
+                  {/* Input para agregar nueva palabra clave */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Escribe una palabra clave (ej: combo, alfajor, pago)..."
+                      value={newKeywordInput}
+                      onChange={(e) => setNewKeywordInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddKeyword();
+                        }
+                      }}
+                      className="flex-1 px-3 py-1.5 bg-white border border-purple-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddKeyword}
+                      className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1 transition-all active:scale-95 cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Agregar</span>
+                    </button>
+                  </div>
+
+                  {/* Lista de chips de palabras clave */}
+                  <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pt-1">
+                    {(settings.chatbot_keywords || []).map((kw: string) => (
+                      <span
+                        key={kw}
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 bg-white border border-purple-200 text-purple-800 rounded-lg text-[11px] font-medium shadow-2xs"
+                      >
+                        <span>{kw}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveKeyword(kw)}
+                          className="text-purple-400 hover:text-red-500 ml-1 cursor-pointer"
+                          title="Eliminar palabra clave"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Pausa Automática por Respuesta Manual */}
@@ -517,57 +713,19 @@ export const AdminWhatsAppBot: React.FC = () => {
               )}
             </div>
 
-            {/* OPCIÓN 3: Responder ÚNICAMENTE a Clientes de la Tienda */}
-            <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200/80 space-y-3">
-              <label className="flex items-start justify-between gap-3 cursor-pointer">
-                <div>
-                  <p className="text-xs font-bold text-indigo-950 flex items-center gap-1.5">
-                    <UserCheck className="w-4 h-4 text-indigo-600" />
-                    <span>👥 Opción 3: Responder ÚNICAMENTE a Clientes de la Tienda</span>
-                  </p>
-                  <p className="text-[11px] text-indigo-900/80 mt-0.5 leading-relaxed">
-                    El bot solo contestará de forma automática a números que tengan al menos una orden de compra registrada en la tienda. A contactos personales, amigos o números desconocidos no les enviará el menú ni respuestas automáticas.
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.only_reply_to_customers}
-                  onChange={(e) => setSettings({ ...settings, only_reply_to_customers: e.target.checked })}
-                  className="w-5 h-5 accent-indigo-600 rounded cursor-pointer shrink-0 mt-0.5"
-                />
-              </label>
-
-              {settings.only_reply_to_customers && (
-                <div className="pt-2.5 border-t border-indigo-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                  <span className="text-indigo-950 font-medium flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Criterio de filtro de cliente:</span>
-                  </span>
-                  <select
-                    value={settings.customer_filter_mode || 'any_order'}
-                    onChange={(e) => setSettings({ ...settings, customer_filter_mode: e.target.value })}
-                    className="px-3 py-1.5 bg-white border border-indigo-300 rounded-xl text-xs font-bold text-indigo-900 outline-none cursor-pointer"
-                  >
-                    <option value="any_order">Cualquier cliente con al menos 1 pedido histórico</option>
-                    <option value="pending_order">Solo clientes con pedidos activos / pendientes</option>
-                  </select>
-                </div>
-              )}
-            </div>
-
-            {/* Lista de Números Excluidos (Blacklist / Ignorar) */}
+            {/* Lista Negra / Números Excluidos */}
             <div className="space-y-3 pt-1">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
                   <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <UserX className="w-4 h-4 text-red-500" />
-                    <span>Lista Negra / Números Excluidos (Nunca responder)</span>
+                    <span>Lista Negra de Números Excluidos (Nunca responder)</span>
                     <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono">
                       {Array.isArray(settings.ignored_numbers) ? settings.ignored_numbers.length : 0}
                     </span>
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Añade números personales (mamá, pareja, amigos, proveedores) a los que el bot NUNCA les enviará el menú.
+                    Añade teléfonos personales específicos para que el bot jamás les conteste.
                   </p>
                 </div>
               </div>
@@ -608,121 +766,51 @@ export const AdminWhatsAppBot: React.FC = () => {
                 </div>
               </div>
 
-              {/* Buscador y Listado de Números Excluidos */}
+              {/* Listado de Números Excluidos */}
               {Array.isArray(settings.ignored_numbers) && settings.ignored_numbers.length > 0 ? (
-                <div className="space-y-2">
-                  {settings.ignored_numbers.length > 4 && (
-                    <div className="relative">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Buscar número o nombre excluido..."
-                        value={searchIgnored}
-                        onChange={(e) => setSearchIgnored(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400"
-                      />
-                    </div>
-                  )}
+                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
+                  {filteredIgnoredNumbers.map((item: any) => {
+                    const id = typeof item === 'string' ? item : item.id;
+                    const phone = typeof item === 'string' ? item : item.phone;
+                    const label = typeof item === 'string' ? 'Contacto Personal' : (item.label || 'Contacto Personal');
 
-                  <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
-                    {filteredIgnoredNumbers.map((item: any) => {
-                      const id = typeof item === 'string' ? item : item.id;
-                      const phone = typeof item === 'string' ? item : item.phone;
-                      const label = typeof item === 'string' ? 'Contacto Personal' : (item.label || 'Contacto Personal');
-
-                      return (
-                        <div
-                          key={id}
-                          className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-red-50/40 border border-slate-200/80 rounded-xl text-xs transition-colors group"
-                        >
-                          <div className="flex items-center space-x-2.5">
-                            <span className="w-6 h-6 rounded-lg bg-red-100 text-red-700 flex items-center justify-center font-bold text-[11px]">
-                              🚫
-                            </span>
-                            <div>
-                              <p className="font-bold text-slate-800 flex items-center gap-1.5">
-                                <span className="font-mono text-slate-900">{phone}</span>
-                                <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.2 rounded-md font-semibold">
-                                  {label}
-                                </span>
-                              </p>
-                              <p className="text-[10px] text-slate-500">El bot no le contestará automáticamente</p>
-                            </div>
+                    return (
+                      <div
+                        key={id}
+                        className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-red-50/40 border border-slate-200/80 rounded-xl text-xs transition-colors group"
+                      >
+                        <div className="flex items-center space-x-2.5">
+                          <span className="w-6 h-6 rounded-lg bg-red-100 text-red-700 flex items-center justify-center font-bold text-[11px]">
+                            🚫
+                          </span>
+                          <div>
+                            <p className="font-bold text-slate-800 flex items-center gap-1.5">
+                              <span className="font-mono text-slate-900">{phone}</span>
+                              <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.2 rounded-md font-semibold">
+                                {label}
+                              </span>
+                            </p>
+                            <p className="text-[10px] text-slate-500">El bot no le contestará automáticamente</p>
                           </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveIgnoredNumber(id)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-200"
-                            title="Eliminar de la lista de excluidos"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveIgnoredNumber(id)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-colors cursor-pointer border border-transparent hover:border-red-200"
+                          title="Eliminar de la lista de excluidos"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="p-3 bg-slate-50 rounded-xl text-center border border-dashed border-slate-200 text-xs text-slate-400">
-                  No hay números excluidos aún. Agrega los teléfonos personales arriba para que el bot no les conteste.
+                  No hay números excluidos aún.
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* SECCIÓN 2: Interruptores de Automatización */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Sliders className="w-5 h-5 text-emerald-600" />
-              <span>Opciones de Automatización de Pedidos</span>
-            </h2>
-
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 cursor-pointer">
-                <div>
-                  <p className="text-xs font-bold text-slate-800">🛍️ Notificación de Compra al Cliente</p>
-                  <p className="text-[11px] text-slate-500">
-                    Envía automáticamente el recibo y Alias de transferencia al WhatsApp del cliente al finalizar la compra.
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.auto_notify_new_order}
-                  onChange={(e) => setSettings({ ...settings, auto_notify_new_order: e.target.checked })}
-                  className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 cursor-pointer">
-                <div>
-                  <p className="text-xs font-bold text-slate-800">📦 Notificación de Estado de Pedido</p>
-                  <p className="text-[11px] text-slate-500">
-                    Avisa al cliente automáticamente cuando marcas su pedido como "En preparación", "Listo" o "En camino".
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.auto_notify_status_change}
-                  onChange={(e) => setSettings({ ...settings, auto_notify_status_change: e.target.checked })}
-                  className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-3.5 rounded-2xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 cursor-pointer">
-                <div>
-                  <p className="text-xs font-bold text-slate-800">🤖 Chatbot Interactivo 24/7 (Menú 1 al 5)</p>
-                  <p className="text-[11px] text-slate-500">
-                    Responde automáticamente cuando un cliente escribe para consultar su pedido, datos de pago o catálogo.
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.auto_chatbot_menu}
-                  onChange={(e) => setSettings({ ...settings, auto_chatbot_menu: e.target.checked })}
-                  className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
-                />
-              </label>
             </div>
           </div>
 
