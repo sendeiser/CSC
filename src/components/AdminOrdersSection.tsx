@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus, Clock, Sparkles } from 'lucide-react';
+import { Search, Eye, Trash2, X, MessageCircle, AlertCircle, ShoppingBag, User, Calendar, CheckCircle2, Filter, ArrowUpDown, Plus, DollarSign, Check, Minus, Clock, Sparkles, RefreshCw } from 'lucide-react';
 import { WHATSAPP_NUMERO, buildMensajeEstadoPedido, buildMensajeEnPreparacion, buildMensajeListo, extractCustomerPhone, waLink, DEFAULT_CUSTOM_QUICK_MESSAGES, buildMensajePersonalizado, CustomQuickMessage } from '../lib/whatsapp';
 import { admin as adminApi, products as productsApi, homepage as homepageApi } from '../lib/api';
+import { supabase } from '../lib/supabase';
+import { playNotificationSound, showBrowserNotification } from '../lib/soundAlerts';
 import { useModal } from '../context/ModalContext';
 
 interface AdminOrdersSectionProps {
@@ -26,8 +28,55 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
   const [sortBy, setSortBy] = useState<string>('newest');
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [storeSettings, setStoreSettings] = useState<any>(null);
+
+  const handleManualRefresh = async () => {
+    if (isRefreshing || !onRefreshOrders) return;
+    setIsRefreshing(true);
+    try {
+      await onRefreshOrders();
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
+  // 🔔 Actualización automática en tiempo real cuando entra un pedido
+  useEffect(() => {
+    // 1. Canal Realtime con Supabase
+    const channel = supabase
+      .channel('admin_orders_section_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            playNotificationSound();
+            showBrowserNotification('🛍️ ¡Nuevo Pedido Recibido!', {
+              body: `Pedido por $${Number((payload.new as any)?.total || 0).toLocaleString('es-AR')}`,
+              tag: `order-${(payload.new as any)?.id || Date.now()}`
+            });
+          }
+          if (onRefreshOrders) {
+            onRefreshOrders();
+          }
+        }
+      )
+      .subscribe();
+
+    // 2. Polling activo (cada 8 segundos) como respaldo seguro
+    const interval = setInterval(() => {
+      if (onRefreshOrders) {
+        onRefreshOrders();
+      }
+    }, 8000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [onRefreshOrders]);
 
   useEffect(() => {
     homepageApi.getSettings().then(data => {
@@ -271,16 +320,37 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-headline font-bold text-slate-900">Pedidos <span className="text-purple-600">({orders.length})</span></h1>
+          <div className="flex items-center space-x-2.5">
+            <h1 className="text-xl sm:text-2xl font-headline font-bold text-slate-900">
+              Pedidos <span className="text-purple-600">({orders.length})</span>
+            </h1>
+            <span className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>En vivo</span>
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-0.5">{orders.length} pedidos registrados en total</p>
         </div>
-        <button
-          onClick={() => setShowManualSaleModal(true)}
-          className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-200/60 transition-all hover:-translate-y-0.5 w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Venta Presencial / Manual</span>
-        </button>
+
+        <div className="flex items-center space-x-2.5 w-full sm:w-auto">
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="flex items-center justify-center space-x-1.5 px-4 py-2.5 bg-white border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-purple-700 rounded-xl text-xs font-bold shadow-xs transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+            title="Actualizar lista de pedidos"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-purple-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Actualizando...' : 'Actualizar'}</span>
+          </button>
+
+          <button
+            onClick={() => setShowManualSaleModal(true)}
+            className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-200/60 transition-all hover:-translate-y-0.5 w-full sm:w-auto cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Venta Presencial / Manual</span>
+          </button>
+        </div>
       </div>
 
       {/* Search and Filters */}

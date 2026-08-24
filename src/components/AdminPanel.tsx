@@ -13,6 +13,7 @@ import { AdminFinancesSection } from './AdminFinancesSection';
 import { AdminNotificationSettings } from './AdminNotificationSettings';
 import { AdminPromoCodes } from './AdminPromoCodes';
 import { playNotificationSound, showBrowserNotification } from '../lib/soundAlerts';
+import { supabase } from '../lib/supabase';
 import { getCategoryIcon } from '../lib/categoryIcons';
 import { useModal } from '../context/ModalContext';
 import { WHATSAPP_NUMERO } from '../lib/whatsapp';
@@ -273,6 +274,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
   const prevUsersCountRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // 1. Canal Supabase Realtime para detección instantánea (0ms)
+    const channel = supabase
+      .channel('admin_panel_realtime_orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            playNotificationSound();
+            showBrowserNotification('🛍️ ¡Nuevo Pedido Recibido!', {
+              body: `Total: $${Number((payload.new as any)?.total || 0).toLocaleString('es-AR')}. Hacé clic para ver pedidos.`,
+              tag: `csc-order-${(payload.new as any)?.id || Date.now()}`
+            });
+          }
+          // Recargar pedidos y estadísticas al instante
+          adminApi.getStats().then(setStats).catch(() => {});
+          if (section === 'orders') {
+            adminApi.getOrders().then(setOrders).catch(() => {});
+          }
+        }
+      )
+      .subscribe();
+
     const checkRealtimeUpdates = async () => {
       try {
         const currentStats = await adminApi.getStats();
@@ -288,6 +312,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               tag: `csc-order-${Date.now()}`
             });
             setStats(currentStats);
+            if (section === 'orders') {
+              const ordersData = await adminApi.getOrders();
+              setOrders(ordersData);
+            }
           }
 
           if (prevUsersCountRef.current !== null && usersCount > prevUsersCountRef.current) {
@@ -306,9 +334,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     };
 
     checkRealtimeUpdates();
-    const interval = setInterval(checkRealtimeUpdates, 20000);
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(checkRealtimeUpdates, 8000);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [section]);
 
   const [showFinancialModal, setShowFinancialModal] = useState(false);
   const [financialForm, setFinancialForm] = useState({
