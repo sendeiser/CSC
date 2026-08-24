@@ -4,6 +4,7 @@ import { requireAuth, optionalAuth, AuthenticatedRequest } from '../lib/auth'
 import { getPayment } from '../lib/mercadopago'
 import { adjustOrderStock, isPaidOrActiveStatus } from '../lib/stock'
 import { notifyNewOrder } from '../lib/notifications'
+import { whatsappBot } from '../lib/whatsappBot'
 
 const router = Router()
 
@@ -404,6 +405,11 @@ router.post('/', optionalAuth, async (req: AuthenticatedRequest, res: Response) 
       name: productsMap[i.product_id] || 'Golosina',
     }))
     await notifyNewOrder(order, detailedItems)
+
+    // 🍬 Enviar WhatsApp automático al cliente con Baileys
+    whatsappBot.notifyNewOrder({ ...order, items: detailedItems }).catch((err) => {
+      console.warn('[WhatsApp Bot Auto Notify Customer Error]:', err);
+    });
   } catch (err) {
     console.warn('[Order Notification Error]:', err)
   }

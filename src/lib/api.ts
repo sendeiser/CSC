@@ -334,3 +334,23 @@ export const upload = {
     return res.json()
   },
 }
+
+// WhatsApp Bot (Admin)
+export const whatsappBotApi = {
+  getStatus: () =>
+    request<{ status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected'; qrCode?: string | null; user?: any }>('/whatsapp-bot/status'),
+  start: () =>
+    request<{ message: string; status: string; qrCode?: string | null }>('/whatsapp-bot/start', { method: 'POST' }),
+  logout: () =>
+    request<{ message: string; status: string }>('/whatsapp-bot/logout', { method: 'POST' }),
+  getSettings: () =>
+    request<any>('/whatsapp-bot/settings'),
+  updateSettings: (settings: any) =>
+    request<any>('/whatsapp-bot/settings', { method: 'PUT', body: JSON.stringify(settings) }),
+  sendTest: (phone: string, message?: string) =>
+    request<{ success: boolean; message: string }>('/whatsapp-bot/send-test', {
+      method: 'POST',
+      body: JSON.stringify({ phone, message }),
+    }),
+}
+

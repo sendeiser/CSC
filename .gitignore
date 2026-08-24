@@ -15,3 +15,8 @@ opencode.json
 test_*.ts
 scratch*
 scratch_*
+
+# WhatsApp Baileys session data
+data/baileys_auth/
+baileys_auth/
+

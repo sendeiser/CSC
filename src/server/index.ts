@@ -13,6 +13,7 @@ import paymentRoutes from './routes/payments'
 import path from 'path'
 import uploadRoutes from './routes/upload'
 import promoRoutes from './routes/promos'
+import whatsappBotRoutes from './routes/whatsappBot'
 
 dotenv.config()
 
@@ -39,6 +40,7 @@ app.use('/api/categories', categoriesRouter)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/promo-codes', promoRoutes)
+app.use('/api/whatsapp-bot', whatsappBotRoutes)
 
 app.get('/api/health', (_, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })

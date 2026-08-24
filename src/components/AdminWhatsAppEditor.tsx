@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Save, RefreshCw, HelpCircle, Check, Info, Phone, MessageCircle, RotateCcw, Copy, Sparkles, Smartphone, Plus, Trash2, Edit3, X } from 'lucide-react';
+import { MessageSquare, Save, RefreshCw, HelpCircle, Check, Info, Phone, MessageCircle, RotateCcw, Copy, Sparkles, Smartphone, Plus, Trash2, Edit3, X, Bot } from 'lucide-react';
 import { admin as adminApi, homepage as homepageApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 import { DEFAULT_WHATSAPP_TEMPLATES, DEFAULT_CUSTOM_QUICK_MESSAGES, CustomQuickMessage, setWhatsAppNumbers, setWhatsAppTemplates, waLink } from '../lib/whatsapp';
+import { AdminWhatsAppBot } from './AdminWhatsAppBot';
 
 export const AdminWhatsAppEditor: React.FC = () => {
   const { showAlert } = useModal();
+  const [mainView, setMainView] = useState<'bot' | 'templates'>('bot');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'transfer' | 'mercadopago' | 'preparing' | 'ready' | 'general' | 'numbers' | 'custom_quick'>('transfer');
@@ -301,34 +303,65 @@ export const AdminWhatsAppEditor: React.FC = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_rgba(16,185,129,0.25),transparent_50%)] pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full text-xs font-bold text-emerald-300">
-              <MessageCircle className="w-4 h-4 text-emerald-400" />
-              <span>Personalización de Mensajes Automáticos</span>
-            </div>
-            <h2 className="font-headline font-black text-2xl sm:text-3xl text-white">
-              Mensajes de WhatsApp por Defecto
-            </h2>
-            <p className="text-emerald-100/80 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Configurá los mensajes predeterminados que se envían cuando un cliente hace un pedido por transferencia bancaria, Mercado Pago o al consultar a la tienda.
-            </p>
-          </div>
+      {/* Selector Principal de Modo */}
+      <div className="bg-slate-200/70 p-1.5 rounded-2xl flex items-center gap-1.5 border border-slate-200 shadow-xs">
+        <button
+          onClick={() => setMainView('bot')}
+          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+            mainView === 'bot'
+              ? 'bg-white text-emerald-800 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Bot className="w-4.5 h-4.5 text-emerald-600" />
+          <span>🤖 WhatsApp Bot & Envíos Automáticos (Baileys)</span>
+        </button>
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-500/30 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            {saving ? <RefreshCw className="w-4.5 h-4.5 animate-spin" /> : <Save className="w-4.5 h-4.5" />}
-            <span>{saving ? 'Guardando...' : 'Guardar Mensajes'}</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setMainView('templates')}
+          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+            mainView === 'templates'
+              ? 'bg-white text-emerald-800 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <MessageSquare className="w-4.5 h-4.5 text-purple-600" />
+          <span>💬 Plantillas y Enlaces de WhatsApp Web</span>
+        </button>
       </div>
+
+      {mainView === 'bot' ? (
+        <AdminWhatsAppBot />
+      ) : (
+        <>
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_rgba(16,185,129,0.25),transparent_50%)] pointer-events-none" />
+            
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full text-xs font-bold text-emerald-300">
+                  <MessageCircle className="w-4 h-4 text-emerald-400" />
+                  <span>Personalización de Mensajes</span>
+                </div>
+                <h2 className="font-headline font-black text-2xl sm:text-3xl text-white">
+                  Mensajes de WhatsApp por Defecto
+                </h2>
+                <p className="text-emerald-100/80 text-xs sm:text-sm max-w-2xl leading-relaxed">
+                  Configurá los mensajes predeterminados que se envían cuando un cliente hace un pedido por transferencia bancaria, Mercado Pago o al consultar a la tienda.
+                </p>
+              </div>
+
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="inline-flex items-center space-x-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-500/30 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                {saving ? <RefreshCw className="w-4.5 h-4.5 animate-spin" /> : <Save className="w-4.5 h-4.5" />}
+                <span>{saving ? 'Guardando...' : 'Guardar Mensajes'}</span>
+              </button>
+            </div>
+          </div>
 
       {/* Tabs Navigation */}
       <div className="flex items-center space-x-2 border-b border-slate-200 pb-2 overflow-x-auto scrollbar-none">
@@ -1004,6 +1037,8 @@ export const AdminWhatsAppEditor: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { supabase, serviceClient } from '../lib/supabase'
 import { requireAdmin, AuthenticatedRequest } from '../lib/auth'
 import { adjustOrderStock, isPaidOrActiveStatus, isUnpaidStatus } from '../lib/stock'
 import { sendTelegramMessage, sendCallMeBotWhatsApp, sendDiscordWebhook } from '../lib/notifications'
+import { whatsappBot } from '../lib/whatsappBot'
 
 const FINANCIAL_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'financial_settings.json')
 const STORE_SETTINGS_FILE = path.join(process.cwd(), 'public', 'uploads', 'store_settings.json')
@@ -646,6 +647,13 @@ router.put('/orders/:id/status', requireAdmin, async (req: AuthenticatedRequest,
   if (error) {
     res.status(400).json({ error: error.message })
     return
+  }
+
+  // Notificar al cliente automáticamente por WhatsApp
+  if (data) {
+    whatsappBot.notifyOrderStatus(data, status).catch((err) => {
+      console.warn('[WhatsApp Bot Auto Notify Status Error]:', err);
+    });
   }
 
   res.json(data)
