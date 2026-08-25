@@ -181,6 +181,100 @@ export async function saveBotSettings(settings: Partial<WhatsAppBotSettings>): P
   return updated;
 }
 
+export interface BotOrderItem {
+  productId: string;
+  name: string;
+  quantity: number;
+  weightGrams?: number;
+  unitPrice: number;
+}
+
+export interface PendingProduct {
+  id: string;
+  name: string;
+  unit_type?: 'weight' | 'piece';
+  price_per_kg?: number;
+  base_price?: number;
+  price?: number;
+  min_weight?: number;
+  max_weight?: number;
+  weight_step?: number;
+  sizes?: any;
+  options: Array<{ label: string; grams: number; price: number }>;
+}
+
+export interface BotOrderSession {
+  step: 'SELECTING_PRODUCTS' | 'SELECTING_WEIGHT' | 'SELECTING_QUANTITY' | 'ASK_SHIPPING_METHOD' | 'ASK_ADDRESS' | 'ASK_NAME' | 'ASK_COUPON' | 'ASK_PAYMENT_METHOD' | 'CONFIRMING';
+  pendingProduct?: PendingProduct;
+  items: BotOrderItem[];
+  subtotal: number;
+  couponCode?: string;
+  discountAmount: number;
+  shippingCost: number;
+  total: number;
+  shippingMethod?: 'pickup' | 'delivery';
+  shippingAddress?: string;
+  shippingName?: string;
+  paymentMethod?: 'transfer' | 'cash' | 'mercadopago';
+  lastActivity: number;
+}
+
+export function buildWeightOptionsForProduct(p: any): Array<{ label: string; grams: number; price: number }> {
+  const minWeight = Number(p.min_weight) || 25;
+  const maxWeight = Number(p.max_weight) || 1000;
+  const step = Number(p.weight_step) || 25;
+  const pricePerKg = Number(p.price_per_kg || p.base_price || p.price || 10000);
+
+  let standardPoints: number[] = [];
+  if (step <= 25) {
+    standardPoints = [25, 50, 100, 250, 500];
+  } else if (step <= 50) {
+    standardPoints = [50, 100, 250, 500, 1000];
+  } else {
+    standardPoints = [100, 250, 500, 1000];
+  }
+
+  const validPoints = Array.from(new Set([minWeight, ...standardPoints]))
+    .filter((g) => g >= minWeight && g <= maxWeight && (g - minWeight) % step === 0)
+    .sort((a, b) => a - b)
+    .slice(0, 5);
+
+  return validPoints.map((g) => {
+    let price = 0;
+    if (p.sizes && typeof p.sizes === 'object' && p.sizes[`${g}g`]) {
+      price = Number(p.sizes[`${g}g`]);
+    } else {
+      price = Math.round((g / 1000) * pricePerKg);
+    }
+    const label = g >= 1000 ? `${g / 1000} Kilo (${g}g)` : `${g}g`;
+    return { label, grams: g, price };
+  });
+}
+
+export function calculateGramPrice(p: any, grams: number): number {
+  const pricePerKg = Number(p.price_per_kg || p.base_price || p.price || 10000);
+  if (p.sizes && typeof p.sizes === 'object' && p.sizes[`${grams}g`]) {
+    return Number(p.sizes[`${grams}g`]);
+  }
+  return Math.round((grams / 1000) * pricePerKg);
+}
+
+export function parseGramsFromText(input: string): number | null {
+  const t = input.toLowerCase().trim();
+  if (t.includes('medio kilo') || t.includes('medio kg') || t.includes('1/2 kilo') || t.includes('1/2kg')) return 500;
+  if (t.includes('cuarto kilo') || t.includes('cuarto kg') || t.includes('1/4 kilo') || t.includes('1/4kg')) return 250;
+  if (t.includes('kilo y medio') || t.includes('1.5 kg') || t.includes('1,5 kg')) return 1500;
+  if (t.includes('2 kilos') || t.includes('2kg')) return 2000;
+  if (t.includes('1 kilo') || t.includes('un kilo') || t.includes('1kg')) return 1000;
+
+  const matchGrams = t.match(/(\d+)\s*(?:g|gr|gramos|grs)?\b/i);
+  if (matchGrams) {
+    const num = parseInt(matchGrams[1], 10);
+    if (!isNaN(num) && num > 0) return num;
+  }
+  return null;
+}
+
 class WhatsAppBotService {
   private sock: any = null;
   public status: 'disconnected' | 'connecting' | 'qr_ready' | 'connected' = 'disconnected';
@@ -192,21 +286,7 @@ class WhatsAppBotService {
   // Registro en memoria de chats temporalmente pausados: remoteJid -> timestamp fin de pausa
   private pausedChats: Map<string, number> = new Map();
   // Registro en memoria de sesiones de compra activas por WhatsApp
-  private orderSessions: Map<string, {
-    step: 'SELECTING_PRODUCTS' | 'ASK_SHIPPING_METHOD' | 'ASK_ADDRESS' | 'ASK_NAME' | 'CONFIRMING';
-    items: Array<{
-      productId: string;
-      name: string;
-      quantity: number;
-      weightGrams?: number;
-      unitPrice: number;
-    }>;
-    shippingName?: string;
-    shippingAddress?: string;
-    shippingMethod?: 'pickup' | 'delivery';
-    total: number;
-    lastActivity: number;
-  }> = new Map();
+  private orderSessions: Map<string, BotOrderSession> = new Map();
 
   constructor() {
     // Si no es serverless y hay sesión guardada previa, iniciar conexión
@@ -639,7 +719,7 @@ class WhatsAppBotService {
         catalogo_url: storeSettings?.store_website_url || 'https://candyshopchamical.netlify.app'
       };
 
-      // 5. FLUJO DE COMPRA CONVERSACIONAL
+      // 5. FLUJO DE COMPRA CONVERSACIONAL Y GESTIÓN DE CARRITO
       const activeSession = this.orderSessions.get(from);
       if (activeSession && settings.allow_chat_orders) {
         if (Date.now() - activeSession.lastActivity > 30 * 60 * 1000) {
@@ -647,32 +727,82 @@ class WhatsAppBotService {
         } else {
           activeSession.lastActivity = Date.now();
 
+          // Comando cancelar
           if (body === 'cancelar' || body === 'salir' || body === 'menu' || body === 'menú') {
             this.orderSessions.delete(from);
-            await this.sock.sendMessage(from, { text: '❌ *Proceso de compra cancelado.* ¿En qué más podemos ayudarte?\n\n' + this.formatTemplate(settings.template_menu, commonVars) });
+            await this.sock.sendMessage(from, {
+              text: '❌ *Proceso de compra cancelado.* ¿En qué más podemos ayudarte?\n\n' + this.formatTemplate(settings.template_menu, commonVars)
+            });
             return;
           }
 
-          // PASO 1: SELECCIONANDO PRODUCTOS
-          if (activeSession.step === 'SELECTING_PRODUCTS') {
-            if (body === 'listo' || body === 'continuar' || body === 'fin' || body === 'finalizar') {
+          // Comando Ver Carrito
+          if (body === 'carrito' || body === 'ver carrito' || body === 'ver') {
+            if (activeSession.items.length === 0) {
+              await this.sock.sendMessage(from, { text: '🛒 Tu carrito está vacío todavía. Escribí el *NÚMERO* del producto que querés agregar.' });
+              return;
+            }
+            const itemsList = activeSession.items.map((i, idx) => `${idx + 1}️⃣ ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
+            await this.sock.sendMessage(from, {
+              text: `🛒 *TU CARRITO ACTUAL:* 🍬\n\n${itemsList}\n\n💰 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}\n\n👉 Para sumar más productos, escribí su *NÚMERO*.\n👉 Para quitar un producto, escribí *QUITAR [número]* (ej: QUITAR 1).\n👉 O escribí *LISTO* para avanzar con la entrega y el pago.`
+            });
+            return;
+          }
+
+          // Comando Vaciar Carrito
+          if (body === 'vaciar' || body === 'borrar carrito') {
+            activeSession.items = [];
+            activeSession.subtotal = 0;
+            activeSession.total = 0;
+            activeSession.step = 'SELECTING_PRODUCTS';
+            activeSession.pendingProduct = undefined;
+            await this.sock.sendMessage(from, { text: '🗑️ *Vaciaste tu carrito.* Podés elegir nuevos productos de la lista escribiendo su *NÚMERO*.' });
+            return;
+          }
+
+          // Comando Quitar Item
+          if (body.startsWith('quitar') || body.startsWith('eliminar') || body.startsWith('borrar')) {
+            const numToRemove = parseInt(body.replace(/\D/g, ''), 10);
+            if (!isNaN(numToRemove) && numToRemove >= 1 && numToRemove <= activeSession.items.length) {
+              const removed = activeSession.items.splice(numToRemove - 1, 1)[0];
+              activeSession.subtotal = activeSession.items.reduce((sum, it) => sum + it.unitPrice, 0);
+              activeSession.total = Math.max(0, activeSession.subtotal - (activeSession.discountAmount || 0));
+              
               if (activeSession.items.length === 0) {
-                await this.sock.sendMessage(from, { text: '⚠️ Tu carrito está vacío todavía. Escribí el *NÚMERO* del producto que querés agregar o escribí *CANCELAR*.' });
+                await this.sock.sendMessage(from, { text: `🗑️ Quitaste *${removed.name}*. Tu carrito quedó vacío. Escribí el número de un producto para agregar.` });
+              } else {
+                const itemsList = activeSession.items.map((i, idx) => `${idx + 1}️⃣ ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
+                await this.sock.sendMessage(from, {
+                  text: `🗑️ Quitaste *${removed.name}*.\n\n🛒 *Carrito restante:*\n${itemsList}\n\n💰 *Total:* \$${activeSession.total.toLocaleString('es-AR')}\n\n👉 Escribí otro número o escribí *LISTO* para finalizar.`
+                });
+              }
+              return;
+            } else {
+              await this.sock.sendMessage(from, { text: '⚠️ Para quitar un producto escribí *QUITAR* seguido del número del ítem en tu carrito (ej: *QUITAR 1*).' });
+              return;
+            }
+          }
+
+          // PASO 1: SELECCIÓN DE PRODUCTOS DEL CATÁLOGO
+          if (activeSession.step === 'SELECTING_PRODUCTS') {
+            if (body === 'listo' || body === 'continuar' || body === 'fin' || body === 'finalizar' || body === 'pagar' || body === 'checkout') {
+              if (activeSession.items.length === 0) {
+                await this.sock.sendMessage(from, { text: '⚠️ Tu carrito está vacío. Escribí el *NÚMERO* del producto que querés agregar o escribí *CANCELAR*.' });
                 return;
               }
               activeSession.step = 'ASK_SHIPPING_METHOD';
               await this.sock.sendMessage(from, {
-                text: `🛵 *¿Cómo querés recibir tu pedido?*\n\nRespondé con el número de opción:\n1️⃣ *Retiro por el local (Chamical)*\n2️⃣ *Envío a domicilio con cadete*`
+                text: `🛵 *¿Cómo querés recibir tu pedido?*\n\nRespondé con el número de opción:\n1️⃣ *Retiro por el local (Chamical)* — Sin costo\n2️⃣ *Envío a domicilio con cadete (Chamical)*`
               });
               return;
             }
 
             const { data: availableProducts } = await db
               .from('products')
-              .select('id, name, price, stock, is_bulk, images, image_url')
+              .select('id, name, price, base_price, price_per_kg, unit_type, min_weight, max_weight, weight_step, sizes, stock, is_bulk, images, image_url')
               .gt('stock', 0)
               .order('created_at', { ascending: false })
-              .limit(10);
+              .limit(12);
 
             const numIdx = parseInt(body.replace(/\D/g, ''), 10);
             let selectedProd: any = null;
@@ -684,34 +814,174 @@ class WhatsAppBotService {
             }
 
             if (selectedProd) {
-              const itemPrice = Number(selectedProd.price || 0);
-              activeSession.items.push({
-                productId: selectedProd.id,
-                name: selectedProd.name,
-                quantity: 1,
-                unitPrice: itemPrice
+              const isWeight = selectedProd.unit_type === 'weight' || selectedProd.is_bulk;
+
+              if (isWeight) {
+                const options = buildWeightOptionsForProduct(selectedProd);
+                const minWeight = Number(selectedProd.min_weight) || 25;
+                const step = Number(selectedProd.weight_step) || 25;
+                const pricePerKg = Number(selectedProd.price_per_kg || selectedProd.base_price || selectedProd.price || 10000);
+
+                activeSession.step = 'SELECTING_WEIGHT';
+                activeSession.pendingProduct = {
+                  ...selectedProd,
+                  options
+                };
+
+                const optionsList = options.map((opt, i) => `${i + 1}️⃣ *${opt.label}* — \$${opt.price.toLocaleString('es-AR')}`).join('\n');
+
+                if (settings.send_product_images && selectedProd.image_url) {
+                  await this.sendImageMessage(
+                    from,
+                    selectedProd.image_url,
+                    `🍬 *${selectedProd.name}* (Venta al peso)\n💰 \$${pricePerKg.toLocaleString('es-AR')}/kg`
+                  );
+                }
+
+                await this.sock.sendMessage(from, {
+                  text: `🍬 *${selectedProd.name}* (Venta al peso) ⚖️\n💰 *Precio:* \$${pricePerKg.toLocaleString('es-AR')}/kg • Mínimo: *${minWeight}g* (Fraccionable de a *${step}g*)\n\n*¿Qué cantidad querés llevar?*\n${optionsList}\n\n👉 *Respondé con el número (1 a ${options.length})* o escribí tus gramos exactos (ej: *75g*, *150g*, *350g*).`
+                });
+                return;
+              } else {
+                // Producto por unidad
+                const unitPrice = Number(selectedProd.base_price || selectedProd.price || 0);
+                activeSession.step = 'SELECTING_QUANTITY';
+                activeSession.pendingProduct = {
+                  ...selectedProd,
+                  options: []
+                };
+
+                if (settings.send_product_images && selectedProd.image_url) {
+                  await this.sendImageMessage(
+                    from,
+                    selectedProd.image_url,
+                    `🍫 *${selectedProd.name}* — \$${unitPrice.toLocaleString('es-AR')}`
+                  );
+                }
+
+                await this.sock.sendMessage(from, {
+                  text: `🍫 *${selectedProd.name}*\n💰 *Precio:* \$${unitPrice.toLocaleString('es-AR')} por unidad\n\n👉 *¿Cuántas unidades querés llevar?* (Escribí la cantidad, ej: 1, 2, 3...)`
+                });
+                return;
+              }
+            } else {
+              await this.sock.sendMessage(from, {
+                text: `🔍 No entendimos la opción. Escribí el *NÚMERO* del producto de la lista (ej: 1, 2, 3...) o escribí *LISTO* para finalizar tu pedido.`
               });
-              activeSession.total += itemPrice;
+              return;
+            }
+          }
+
+          // PASO 1.B: SELECCIÓN DE GRAMAJE PARA GOMITAS AL PESO
+          if (activeSession.step === 'SELECTING_WEIGHT' && activeSession.pendingProduct) {
+            const p = activeSession.pendingProduct;
+            const options = p.options || [];
+            const minWeight = Number(p.min_weight) || 25;
+            const maxWeight = Number(p.max_weight) || 1000;
+            const step = Number(p.weight_step) || 25;
+
+            let chosenGrams: number | null = null;
+            let chosenPrice: number = 0;
+
+            const optIdx = parseInt(body.replace(/\D/g, ''), 10);
+            if (!isNaN(optIdx) && optIdx >= 1 && optIdx <= options.length && !body.includes('g') && !body.includes('kilo')) {
+              chosenGrams = options[optIdx - 1].grams;
+              chosenPrice = options[optIdx - 1].price;
+            } else {
+              const parsedGrams = parseGramsFromText(body);
+              if (parsedGrams) {
+                if (parsedGrams < minWeight) {
+                  const minPrice = calculateGramPrice(p, minWeight);
+                  await this.sock.sendMessage(from, {
+                    text: `⚠️ La cantidad mínima de compra para *${p.name}* es de *${minWeight}g* (\$${minPrice.toLocaleString('es-AR')}).\n\n👉 Respondé *1* para llevar ${minWeight}g o escribí otra cantidad superior a ${minWeight}g.`
+                  });
+                  return;
+                }
+                if (parsedGrams > maxWeight) {
+                  await this.sock.sendMessage(from, {
+                    text: `⚠️ El máximo disponible por bolsita es de *${maxWeight}g*. Podés pedir hasta ${maxWeight}g por porción.`
+                  });
+                  return;
+                }
+                // Validar múltiplos de step
+                if ((parsedGrams - minWeight) % step !== 0 && parsedGrams % step !== 0) {
+                  const lower = Math.floor(parsedGrams / step) * step || minWeight;
+                  const upper = lower + step;
+                  const priceLower = calculateGramPrice(p, lower);
+                  const priceUpper = calculateGramPrice(p, upper);
+                  await this.sock.sendMessage(from, {
+                    text: `⚠️ *${p.name}* se fracciona en pasos de *${step}g*.\n\n¿Te preparamos:\n1️⃣ *${lower}g* (\$${priceLower.toLocaleString('es-AR')})\n2️⃣ *${upper}g* (\$${priceUpper.toLocaleString('es-AR')})?\n\n👉 Respondé 1 o 2.`
+                  });
+                  return;
+                }
+
+                chosenGrams = parsedGrams;
+                chosenPrice = calculateGramPrice(p, parsedGrams);
+              }
+            }
+
+            if (chosenGrams && chosenPrice > 0) {
+              const formattedName = `${p.name} (${chosenGrams}g)`;
+              activeSession.items.push({
+                productId: p.id,
+                name: formattedName,
+                quantity: 1,
+                weightGrams: chosenGrams,
+                unitPrice: chosenPrice
+              });
+
+              activeSession.subtotal = activeSession.items.reduce((acc, it) => acc + it.unitPrice, 0);
+              activeSession.total = Math.max(0, activeSession.subtotal - (activeSession.discountAmount || 0));
+              activeSession.step = 'SELECTING_PRODUCTS';
+              activeSession.pendingProduct = undefined;
 
               const itemsList = activeSession.items.map((i, idx) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
 
               await this.sock.sendMessage(from, {
-                text: `✅ *¡Agregaste ${selectedProd.name}!* 🍬\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Total actual:* \$${activeSession.total.toLocaleString('es-AR')}\n\n👉 ¿Querés agregar otro producto? *(Escribí el número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`
+                text: `✅ *¡Agregaste ${formattedName}!* 🍬 (+\$${chosenPrice.toLocaleString('es-AR')})\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`
               });
               return;
             } else {
               await this.sock.sendMessage(from, {
-                text: `🔍 No entendimos el producto ingresado. Escribí el *NÚMERO* del producto de la lista (ej: 1, 2, 3...) o escribí *LISTO* para finalizar.`
+                text: `🔍 No entendimos la cantidad. Respondé con el número de opción (1 a ${options.length}) o escribí los gramos que querés (ej: *50g*, *100g*, *250g*).`
               });
               return;
             }
+          }
+
+          // PASO 1.C: SELECCIÓN DE CANTIDAD PARA PRODUCTOS POR UNIDAD
+          if (activeSession.step === 'SELECTING_QUANTITY' && activeSession.pendingProduct) {
+            const p = activeSession.pendingProduct;
+            const qty = parseInt(body.replace(/\D/g, ''), 10) || 1;
+            const unitPrice = Number(p.base_price || p.price || 0);
+            const totalPrice = unitPrice * qty;
+            const formattedName = `${p.name} (x${qty})`;
+
+            activeSession.items.push({
+              productId: p.id,
+              name: formattedName,
+              quantity: qty,
+              unitPrice: totalPrice
+            });
+
+            activeSession.subtotal = activeSession.items.reduce((acc, it) => acc + it.unitPrice, 0);
+            activeSession.total = Math.max(0, activeSession.subtotal - (activeSession.discountAmount || 0));
+            activeSession.step = 'SELECTING_PRODUCTS';
+            activeSession.pendingProduct = undefined;
+
+            const itemsList = activeSession.items.map((i) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
+
+            await this.sock.sendMessage(from, {
+              text: `✅ *¡Agregaste ${formattedName}!* 🍫 (+\$${totalPrice.toLocaleString('es-AR')})\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`
+            });
+            return;
           }
 
           // PASO 2: SELECCIÓN DE MÉTODO DE ENVÍO
           if (activeSession.step === 'ASK_SHIPPING_METHOD') {
             if (body === '1' || body.includes('retiro') || body.includes('local')) {
               activeSession.shippingMethod = 'pickup';
-              activeSession.shippingAddress = 'Retiro en Local (Chamical)';
+              activeSession.shippingAddress = commonVars.direccion || 'Retiro en Local (Chamical)';
               activeSession.step = 'ASK_NAME';
               await this.sock.sendMessage(from, { text: '👤 *¿A nombre de quién registramos el pedido?* (Escribí tu nombre y apellido):' });
               return;
@@ -737,19 +1007,94 @@ class WhatsAppBotService {
           // PASO 4: CAPTURA DE NOMBRE DEL CLIENTE
           if (activeSession.step === 'ASK_NAME') {
             activeSession.shippingName = body.trim();
-            activeSession.step = 'CONFIRMING';
-
-            const itemsList = activeSession.items.map((i) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
-
+            activeSession.step = 'ASK_COUPON';
             await this.sock.sendMessage(from, {
-              text: `🍬 *RESUMEN DE TU PEDIDO* 🍭\n\n🛒 *Golosinas:*\n${itemsList}\n\n💰 *Total a pagar:* \$${activeSession.total.toLocaleString('es-AR')}\n📍 *Entrega:* ${activeSession.shippingAddress}\n👤 *Cliente:* ${activeSession.shippingName}\n\n¿Está todo correcto?\nRespondé *SI* para confirmar tu pedido o *CANCELAR*.`
+              text: `🎟️ *¿Tenés algún Cupón de Descuento?*\n\n👉 Escribí el código de tu cupón (ej: *DULCE10*) o respondé *NO* para continuar sin cupón.`
             });
+            return;
+          }
+
+          // PASO 4.B: CAPTURA Y VALIDACIÓN DE CUPÓN
+          if (activeSession.step === 'ASK_COUPON') {
+            if (body === 'no' || body === 'ninguno' || body === 'paso' || body === '-' || body === 'n') {
+              activeSession.step = 'ASK_PAYMENT_METHOD';
+              await this.sock.sendMessage(from, {
+                text: `💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o al recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`
+              });
+              return;
+            } else {
+              // Validar cupón con Supabase
+              try {
+                const { data: promo } = await db
+                  .from('promo_codes')
+                  .select('*')
+                  .ilike('code', body.trim())
+                  .eq('active', true)
+                  .maybeSingle();
+
+                if (promo) {
+                  let discount = 0;
+                  if (promo.discount_percentage) {
+                    discount = Math.round((activeSession.subtotal * promo.discount_percentage) / 100);
+                  } else if (promo.discount_amount) {
+                    discount = Math.min(activeSession.subtotal, Number(promo.discount_amount));
+                  }
+                  if (promo.max_discount_amount) {
+                    discount = Math.min(discount, Number(promo.max_discount_amount));
+                  }
+
+                  activeSession.couponCode = promo.code;
+                  activeSession.discountAmount = discount;
+                  activeSession.total = Math.max(0, activeSession.subtotal - discount);
+
+                  await this.sock.sendMessage(from, {
+                    text: `🎉 *¡Cupón ${promo.code} aplicado con éxito!* Descuento: -\$${discount.toLocaleString('es-AR')} ✨`
+                  });
+                } else {
+                  await this.sock.sendMessage(from, {
+                    text: `ℹ️ El cupón ingresado no es válido o ya expiró. Continuamos con el valor regular.`
+                  });
+                }
+              } catch (_e) {}
+
+              activeSession.step = 'ASK_PAYMENT_METHOD';
+              await this.sock.sendMessage(from, {
+                text: `💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o al recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`
+              });
+              return;
+            }
+          }
+
+          // PASO 4.C: SELECCIÓN DE MÉTODO DE PAGO
+          if (activeSession.step === 'ASK_PAYMENT_METHOD') {
+            if (body === '1' || body.includes('transferencia') || body.includes('alias')) {
+              activeSession.paymentMethod = 'transfer';
+            } else if (body === '2' || body.includes('efectivo') || body.includes('cash')) {
+              activeSession.paymentMethod = 'cash';
+            } else if (body === '3' || body.includes('mercadopago') || body.includes('mp') || body.includes('tarjeta')) {
+              activeSession.paymentMethod = 'mercadopago';
+            } else {
+              activeSession.paymentMethod = 'transfer';
+            }
+
+            activeSession.step = 'CONFIRMING';
+            const itemsList = activeSession.items.map((i) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
+            const payLabel = activeSession.paymentMethod === 'transfer' ? '🏦 Transferencia Bancaria' : activeSession.paymentMethod === 'cash' ? '💵 Efectivo contra entrega' : '💳 Mercado Pago';
+            const shippingLabel = activeSession.shippingMethod === 'delivery' ? '🛵 Envío a Domicilio con cadete' : '🏠 Retiro en Local';
+
+            let summaryText = `🍬 *RESUMEN DE TU PEDIDO* 🍭\n\n🛒 *Golosinas:*\n${itemsList}\n\n💵 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}`;
+            if (activeSession.discountAmount > 0) {
+              summaryText += `\n🎟️ *Cupón (${activeSession.couponCode}):* -\$${activeSession.discountAmount.toLocaleString('es-AR')}`;
+            }
+            summaryText += `\n🛵 *Entrega:* ${shippingLabel}\n📍 *Dirección:* ${activeSession.shippingAddress}\n👤 *Cliente:* ${activeSession.shippingName}\n💳 *Forma de Pago:* ${payLabel}\n\n💰 *TOTAL A PAGAR:* \$${activeSession.total.toLocaleString('es-AR')}\n\n¿Está todo correcto?\n👉 Respondé *SI* para confirmar tu pedido o *CANCELAR*.`;
+
+            await this.sock.sendMessage(from, { text: summaryText });
             return;
           }
 
           // PASO 5: CONFIRMACIÓN Y REGISTRO EN BASE DE DATOS
           if (activeSession.step === 'CONFIRMING') {
-            if (body === 'si' || body === 'confirmar' || body === 'ok' || body === 'dale' || body === 's') {
+            if (body === 'si' || body === 'confirmar' || body === 'ok' || body === 'dale' || body === 's' || body === 'sí') {
               try {
                 const orderPayload = {
                   shipping_name: activeSession.shippingName || pushName,
@@ -757,8 +1102,9 @@ class WhatsAppBotService {
                   shipping_city: 'Chamical',
                   total: activeSession.total,
                   status: 'pending',
-                  discount_amount: 0,
+                  discount_amount: activeSession.discountAmount || 0,
                   shipping_cost: 0,
+                  payment_method: activeSession.paymentMethod || 'transfer',
                   customer_phone: from.replace('@s.whatsapp.net', '')
                 };
 
@@ -785,7 +1131,17 @@ class WhatsAppBotService {
 
                   const orderCode = newOrder.id ? newOrder.id.slice(0, 8).toUpperCase() : 'CSC-ORD';
                   const itemsList = activeSession.items.map((i) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
-                  const confirmMsg = `🎉 *¡PEDIDO #${orderCode} REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *${activeSession.shippingName}*, tu pedido ya fue cargado.\n\n💰 *Total:* \$${activeSession.total.toLocaleString('es-AR')}\n\n🏦 *Datos Transferencia:*\n• *Alias:* \`${commonVars.alias_banco}\`\n• *Banco:* ${commonVars.banco}\n\n📸 *Enviá el comprobante por acá para comenzar a preparar tus golosinas.* ✨`;
+
+                  let confirmMsg = `🎉 *¡PEDIDO #${orderCode} REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *${activeSession.shippingName}*, tu pedido ya fue cargado.\n\n📦 *Detalle:*\n${itemsList}\n💰 *Total:* \$${activeSession.total.toLocaleString('es-AR')}\n📍 *Entrega:* ${activeSession.shippingAddress}\n`;
+
+                  if (activeSession.paymentMethod === 'transfer') {
+                    confirmMsg += `\n🏦 *Datos para Transferencia:*\n• *Alias:* \`${commonVars.alias_banco}\`\n• *Banco:* ${commonVars.banco}\n• *Titular:* ${commonVars.titular}\n\n📸 *Enviá el comprobante de transferencia por acá para comenzar a preparar tus golosinas.* ✨`;
+                  } else if (activeSession.paymentMethod === 'cash') {
+                    confirmMsg += `\n💵 *Pago en Efectivo:* Abonás al recibir o retirar tu pedido. ¡Ya estamos preparando tus golosinas! ✨`;
+                  } else {
+                    confirmMsg += `\n💳 *Pago con Mercado Pago:* Podés transferir al Alias \`${commonVars.alias_banco}\` o coordinar el link con nuestro asesor. ✨`;
+                  }
+
                   await this.sock.sendMessage(from, { text: confirmMsg });
                   this.orderSessions.delete(from);
                   return;
@@ -805,8 +1161,13 @@ class WhatsAppBotService {
       }
 
       // 6. INICIAR PEDIDO DIRECTO POR WHATSAPP
-      if (settings.allow_chat_orders && (body === 'comprar' || body === 'hacer pedido' || body === 'pedir' || body === 'nuevo pedido')) {
-        const { data: products } = await db.from('products').select('id, name, price, stock, is_bulk, images, image_url').gt('stock', 0).order('created_at', { ascending: false }).limit(8);
+      if (settings.allow_chat_orders && (body === 'comprar' || body === 'hacer pedido' || body === 'pedir' || body === 'nuevo pedido' || body === 'quiero comprar' || body === 'quiero gomitas')) {
+        const { data: products } = await db
+          .from('products')
+          .select('id, name, price, base_price, price_per_kg, unit_type, min_weight, max_weight, weight_step, sizes, stock, is_bulk, images, image_url')
+          .gt('stock', 0)
+          .order('created_at', { ascending: false })
+          .limit(10);
 
         if (!products || products.length === 0) {
           await this.sock.sendMessage(from, { text: '🍬 En este momento no hay productos con stock disponible. Por favor consulta más tarde.' });
@@ -816,12 +1177,25 @@ class WhatsAppBotService {
         this.orderSessions.set(from, {
           step: 'SELECTING_PRODUCTS',
           items: [],
+          subtotal: 0,
+          discountAmount: 0,
+          shippingCost: 0,
           total: 0,
           lastActivity: Date.now()
         });
 
-        const productsList = products.map((p: any, idx: number) => `${idx + 1}️⃣ *${p.name}* - \$${Number(p.price || 0).toLocaleString('es-AR')}`).join('\n');
-        await this.sock.sendMessage(from, { text: `🛍️ *¡Vamos a armar tu pedido!* 🍬\n\n${productsList}\n\n👉 *Respondé con el NÚMERO del producto (ej: 1, 2, 3).*` });
+        const productsList = products.map((p: any, idx: number) => {
+          const isWeight = p.unit_type === 'weight' || p.is_bulk;
+          const minW = p.min_weight || 25;
+          const priceStr = isWeight
+            ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg (desde ${minW}g)`
+            : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')}`;
+          return `${idx + 1}️⃣ *${p.name}* — ${priceStr}`;
+        }).join('\n');
+
+        await this.sock.sendMessage(from, {
+          text: `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n${productsList}\n\n👉 *Respondé con el NÚMERO del producto (ej: 1, 2, 3).*`
+        });
         return;
       }
 

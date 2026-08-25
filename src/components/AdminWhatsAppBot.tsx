@@ -335,26 +335,47 @@ export const AdminWhatsAppBot: React.FC = () => {
     let botReply = '';
     let botImage: string | undefined = undefined;
 
-    if (lower === '1' || lower.includes('estado') || lower.includes('pedido')) {
+    if (lower === '1' && !simulatedChatHistory.some(m => m.text.includes('¿Qué cantidad querés llevar?') || m.text.includes('¿Cómo querés recibir') || m.text.includes('¿Cómo preferís abonar'))) {
       botReply = formatWithDummyData(settings.menu_response_1);
-    } else if (lower === '2' || lower.includes('alias') || lower.includes('transferencia') || lower.includes('banco')) {
+    } else if (lower === '2' && !simulatedChatHistory.some(m => m.text.includes('¿Qué cantidad querés llevar?') || m.text.includes('¿Cómo querés recibir') || m.text.includes('¿Cómo preferís abonar'))) {
       botReply = formatWithDummyData(settings.menu_response_2);
-    } else if (lower === '3' || lower.includes('horario') || lower.includes('donde') || lower.includes('ubicacion')) {
+    } else if (lower === '3' && !simulatedChatHistory.some(m => m.text.includes('¿Qué cantidad querés llevar?') || m.text.includes('¿Cómo preferís abonar'))) {
       botReply = formatWithDummyData(settings.menu_response_3);
-    } else if (lower === '4' || lower.includes('catalogo') || lower.includes('productos') || lower.includes('precios') || lower.includes('gomitas')) {
+    } else if (lower === '4' && !simulatedChatHistory.some(m => m.text.includes('¿Qué cantidad querés llevar?'))) {
       botReply = formatWithDummyData(settings.menu_response_4);
       if (settings.send_product_images) {
         botImage = 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80';
       }
-    } else if (lower === '5' || lower.includes('asesor') || lower.includes('humano') || lower.includes('ayuda')) {
+    } else if (lower === '5' && !simulatedChatHistory.some(m => m.text.includes('¿Qué cantidad querés llevar?'))) {
       botReply = formatWithDummyData(settings.menu_response_5);
-    } else if (lower === 'comprar' || lower === 'pedir' || lower.includes('nuevo pedido')) {
-      botReply = `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n1️⃣ *Gomitas Ácidas 250g* - $1.800\n2️⃣ *Conitos Dulce de Leche 500g* - $1.600\n3️⃣ *Mogul Moras 500g* - $2.100\n4️⃣ *Súper Combo Candy* - $5.400\n\n👉 *Respondé con el NÚMERO del producto que querés agregar (ej: 1, 2).*`;
+    } else if (lower === 'comprar' || lower === 'pedir' || lower.includes('nuevo pedido') || lower === 'quiero comprar' || lower === 'quiero gomitas') {
+      botReply = `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n1️⃣ *Moritas Ácidas* — $12.000/kg (desde 25g)\n2️⃣ *Ositos Frutales* — $10.000/kg (desde 50g)\n3️⃣ *Chocolate Block 38g* — $950 por unidad\n4️⃣ *Súper Combo Gomitas 500g* — $5.400\n\n👉 *Respondé con el NÚMERO del producto (ej: 1, 2).*`;
       if (settings.send_product_images) {
         botImage = 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80';
       }
-    } else if (lower === 'si' || lower === 'confirmar' || lower === 'dale') {
-      botReply = `🎉 *¡PEDIDO #A7F39C12 REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *Mariana Gómez*, tu pedido ya fue cargado automáticamente.\n\n📦 *Detalle:* Gomitas Ácidas 250g\n💰 *Total:* $1.800\n📍 *Entrega:* Castro Barros 245 (Envío a domicilio)\n\n🏦 *Datos Transferencia:*\n• *Alias:* \`CHAMICAL.CANDY.SHOP\`\n• *Banco:* MercadoPago\n\n📸 *Enviá el comprobante por acá para comenzar a prepararlo.* ✨`;
+    } else if (lower === '1' || lower.includes('moritas')) {
+      botReply = `🍬 *Moritas Ácidas* (Venta al peso) ⚖️\n💰 *Precio:* $12.000/kg • Mínimo: *25g* (Fraccionable de a *25g*)\n\n*¿Qué cantidad querés llevar?*\n1️⃣ *25g* — $300\n2️⃣ *50g* — $600\n3️⃣ *100g* — $1.200\n4️⃣ *250g* — $2.800\n5️⃣ *500g* — $5.400\n\n👉 *Respondé con el número (1 a 5)* o escribí tus gramos exactos (ej: *75g*, *150g*, *350g*).`;
+    } else if (lower === '2' || lower.includes('ositos')) {
+      botReply = `🍬 *Ositos Frutales* (Venta al peso) ⚖️\n💰 *Precio:* $10.000/kg • Mínimo: *50g* (Fraccionable de a *50g*)\n\n*¿Qué cantidad querés llevar?*\n1️⃣ *50g* — $500\n2️⃣ *100g* — $1.000\n3️⃣ *250g* — $2.500\n4️⃣ *500g* — $5.000\n5️⃣ *1 Kilo (1000g)* — $9.500\n\n👉 *Respondé con el número (1 a 5)* o escribí tus gramos exactos (ej: *150g*, *300g*).`;
+    } else if (lower.includes('25g') || lower.includes('50g') || lower.includes('100g') || lower.includes('250g') || lower.includes('500g') || lower.includes('75g') || lower.includes('150g')) {
+      const grams = lower.includes('25g') ? '25g' : lower.includes('75g') ? '75g' : lower.includes('50g') ? '50g' : lower.includes('100g') ? '100g' : lower.includes('250g') ? '250g' : lower.includes('500g') ? '500g' : '150g';
+      const price = grams === '25g' ? '300' : grams === '75g' ? '900' : grams === '50g' ? '600' : grams === '100g' ? '1.200' : grams === '250g' ? '2.800' : grams === '500g' ? '5.400' : '1.800';
+      botReply = `✅ *¡Agregaste Moritas Ácidas (${grams}) por \$${price}!* 🍬\n\n🛒 *Tu carrito actual:*\n• Moritas Ácidas (${grams}) - \$${price}\n\n💰 *Subtotal:* \$${price}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`;
+    } else if (lower === 'listo' || lower === 'finalizar' || lower === 'pagar') {
+      botReply = `🛵 *¿Cómo querés recibir tu pedido?*\n\nRespondé con el número de opción:\n1️⃣ *Retiro por el local (Chamical)* — Sin costo\n2️⃣ *Envío a domicilio con cadete (Chamical)*`;
+    } else if (lower.includes('retiro') || lower.includes('local') || lower.includes('domicilio') || lower.includes('cadete')) {
+      botReply = `🎟️ *¿Tenés algún Cupón de Descuento?*\n\n👉 Escribí el código de tu cupón (ej: *DULCE10*) o respondé *NO* para continuar sin cupón.`;
+    } else if (lower === 'dulce10') {
+      botReply = `🎉 *¡Cupón DULCE10 aplicado con éxito!* Descuento: -$300 ✨\n\n💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`;
+    } else if (lower === 'no' || lower === 'ninguno' || lower === 'paso') {
+      botReply = `💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`;
+    } else if (lower.includes('transferencia') || lower.includes('efectivo') || lower.includes('mercadopago') || lower === '1' || lower === '2' || lower === '3') {
+      const payLabel = lower.includes('efectivo') || lower === '2' ? '💵 Efectivo contra entrega' : '🏦 Transferencia Bancaria';
+      botReply = `🍬 *RESUMEN DE TU PEDIDO* 🍭\n\n🛒 *Golosinas:*\n• Moritas Ácidas (250g) - $2.800\n\n💵 *Subtotal:* $2.800\n🎟️ *Cupón (DULCE10):* -$300\n🛵 *Entrega:* 🏠 Retiro en Local (Chamical)\n👤 *Cliente:* Mariana Gómez\n💳 *Forma de Pago:* ${payLabel}\n\n💰 *TOTAL A PAGAR:* $2.500\n\n¿Está todo correcto?\n👉 Respondé *SI* para confirmar tu pedido o *CANCELAR*.`;
+    } else if (lower === 'si' || lower === 'confirmar' || lower === 'dale' || lower === 'sí') {
+      botReply = `🎉 *¡PEDIDO #A7F39C12 REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *Mariana Gómez*, tu pedido ya fue cargado automáticamente.\n\n📦 *Detalle:* Moritas Ácidas (250g)\n💰 *Total:* $2.500\n📍 *Entrega:* Retiro en Local (Castro Barros 245, Chamical)\n\n🏦 *Datos Transferencia:*\n• *Alias:* \`${settings.menu_response_2?.includes('martinchox33') ? 'martinchox33' : 'CHAMICAL.CANDY.SHOP'}\`\n• *Banco:* MercadoPago\n\n📸 *Enviá el comprobante por acá para comenzar a preparar tus golosinas.* ✨`;
+    } else if (lower === 'carrito' || lower === 'ver carrito' || lower === 'ver') {
+      botReply = `🛒 *TU CARRITO ACTUAL:* 🍬\n\n1️⃣ Moritas Ácidas (250g) - $2.800\n\n💰 *Subtotal:* $2.800\n\n👉 Para sumar más productos, escribí su número.\n👉 Escribí *LISTO* para avanzar con la entrega y el pago.`;
     } else {
       // Buscar en opciones personalizadas
       const customMatch = (settings.custom_menu_options || []).find((opt: any) => 
@@ -938,59 +959,124 @@ export const AdminWhatsAppBot: React.FC = () => {
                   </div>
 
                   {/* Botones de Respuesta Rápida para Probar con 1 Clic */}
-                  <div className="px-2 py-1.5 bg-slate-200/80 border-t border-slate-300 flex gap-1 overflow-x-auto scrollbar-none">
-                    <button
-                      type="button"
-                      onClick={() => handleSimulateSend('comprar')}
-                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
-                    >
-                      🛒 Comprar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSimulateSend('4')}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
-                    >
-                      🛍️ Catálogo
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSimulateSend('1')}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
-                    >
-                      📦 1. Pedido
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSimulateSend('2')}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
-                    >
-                      🏦 2. Banco
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSimulateSend('3')}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
-                    >
-                      📍 3. Horario
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSimulateSend('5')}
-                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
-                    >
-                      👤 5. Asesor
-                    </button>
-                    {(settings.custom_menu_options || []).map((c: any) => (
+                  <div className="px-2 py-1.5 bg-slate-200/90 border-t border-slate-300 space-y-1">
+                    <div className="flex gap-1 overflow-x-auto scrollbar-none">
                       <button
-                        key={c.id}
                         type="button"
-                        onClick={() => handleSimulateSend(c.option_number)}
-                        className="px-2.5 py-1 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                        onClick={() => handleSimulateSend('comprar')}
+                        className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
                       >
-                        ⭐ {c.option_number}
+                        🛒 Comprar
                       </button>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('1')}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
+                      >
+                        🍬 1. Moritas
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('2')}
+                        className="px-2 py-1 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
+                      >
+                        🐻 2. Ositos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('25g')}
+                        className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        ⚖️ 25g
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('50g')}
+                        className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        ⚖️ 50g
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('100g')}
+                        className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        ⚖️ 100g
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('250g')}
+                        className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        ⚖️ 250g
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('500g')}
+                        className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        ⚖️ 500g
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('75g')}
+                        className="px-2 py-1 bg-pink-700 hover:bg-pink-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        ✨ 75g lib.
+                      </button>
+                    </div>
+
+                    <div className="flex gap-1 overflow-x-auto scrollbar-none">
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('listo')}
+                        className="px-2 py-0.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        🛵 Listo / Enviar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('1')}
+                        className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
+                      >
+                        🏠 Retiro Local
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('dulce10')}
+                        className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        🎟️ DULCE10
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('transferencia')}
+                        className="px-2 py-0.5 bg-sky-700 hover:bg-sky-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        🏦 Transf.
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('efectivo')}
+                        className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        💵 Efectivo
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('si')}
+                        className="px-2 py-0.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
+                      >
+                        👍 Confirmar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateSend('carrito')}
+                        className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
+                      >
+                        🛒 Ver Carrito
+                      </button>
+                    </div>
                   </div>
 
                   {/* Input Footer */}
