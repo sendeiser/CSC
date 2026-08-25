@@ -205,7 +205,7 @@ export default function AdminAboutPageEditor() {
                   <button
                     onClick={() => moveSectionUp(i)}
                     disabled={i === 0}
-                    className="p-1 hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded disabled:opacity-30"
+                    className="p-1 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded disabled:opacity-30"
                     title="Subir sección"
                   >
                     <ArrowUp className="w-3.5 h-3.5" />
@@ -213,7 +213,7 @@ export default function AdminAboutPageEditor() {
                   <button
                     onClick={() => moveSectionDown(i)}
                     disabled={i === content.sections.length - 1}
-                    className="p-1 hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded disabled:opacity-30"
+                    className="p-1 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded disabled:opacity-30"
                     title="Bajar sección"
                   >
                     <ArrowDown className="w-3.5 h-3.5" />
@@ -258,7 +258,7 @@ export default function AdminAboutPageEditor() {
                     <button
                       onClick={() => moveStatUp(i)}
                       disabled={i === 0}
-                      className="p-0.5 hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded disabled:opacity-30"
+                      className="p-0.5 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded disabled:opacity-30"
                       title="Mover a la izquierda / arriba"
                     >
                       <ArrowUp className="w-3.5 h-3.5" />
@@ -266,7 +266,7 @@ export default function AdminAboutPageEditor() {
                     <button
                       onClick={() => moveStatDown(i)}
                       disabled={i === content.stats.length - 1}
-                      className="p-0.5 hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded disabled:opacity-30"
+                      className="p-0.5 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded disabled:opacity-30"
                       title="Mover a la derecha / abajo"
                     >
                       <ArrowDown className="w-3.5 h-3.5" />

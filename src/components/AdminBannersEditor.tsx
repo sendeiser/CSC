@@ -307,13 +307,13 @@ export const AdminBannersEditor: React.FC = () => {
                 }`}
               >
                 {/* Card Top Preview Gradient & Badge */}
-                <div className={`p-4 bg-gradient-to-r ${slide.bg_gradient || 'from-purple-600 to-indigo-800'} text-white relative min-h-[140px] flex flex-col justify-between`}>
+                <div className={`p-4 bg-gradient-to-r ${slide.bg_gradient || 'from-pink-600 to-rose-700'} text-white relative min-h-[140px] flex flex-col justify-between`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-white truncate max-w-[180px]">
                       {slide.badge || (slide.type === 'new_product' ? 'NUEVO PRODUCTO' : 'PUBLICIDAD')}
                     </span>
                     <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${
-                      slide.active ? 'bg-emerald-400 text-slate-950' : 'bg-slate-900/80 text-white'
+                      slide.active ? 'bg-emerald-600 text-white' : 'bg-slate-900/90 text-white'
                     }`}>
                       {slide.active ? 'Visible' : 'Oculto'}
                     </span>
@@ -340,7 +340,7 @@ export const AdminBannersEditor: React.FC = () => {
                     <button
                       onClick={() => handleMove(idx, 'up')}
                       disabled={idx === 0}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded-lg hover:bg-slate-100 cursor-pointer"
+                      className="p-1.5 text-slate-500 hover:text-slate-900 disabled:opacity-30 rounded-lg hover:bg-slate-100 cursor-pointer"
                       title="Mover arriba"
                     >
                       <ArrowUp className="w-4 h-4" />
@@ -348,7 +348,7 @@ export const AdminBannersEditor: React.FC = () => {
                     <button
                       onClick={() => handleMove(idx, 'down')}
                       disabled={idx === slides.length - 1}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded-lg hover:bg-slate-100 cursor-pointer"
+                      className="p-1.5 text-slate-500 hover:text-slate-900 disabled:opacity-30 rounded-lg hover:bg-slate-100 cursor-pointer"
                       title="Mover abajo"
                     >
                       <ArrowDown className="w-4 h-4" />
@@ -358,9 +358,7 @@ export const AdminBannersEditor: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleToggleActive(slide.id)}
-                      className={`p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                        slide.active ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'
-                      }`}
+                      className={slide.active ? 'p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer bg-emerald-100 text-emerald-900 hover:bg-emerald-200' : 'p-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer bg-emerald-50 text-emerald-950/60 hover:bg-emerald-100'}
                       title={slide.active ? 'Ocultar slide' : 'Mostrar slide'}
                     >
                       {slide.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -441,11 +439,11 @@ export const AdminBannersEditor: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSlideForm({ ...slideForm, type: 'ad' })}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all ${
+                    className={
                       slideForm.type === 'ad'
-                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-purple-50'
-                    }`}
+                        ? 'py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all bg-purple-700 text-white border-purple-700 shadow-sm'
+                        : 'py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all bg-white text-slate-800 border-slate-300 hover:bg-slate-100'
+                    }
                   >
                     <Sparkles className="w-4 h-4" />
                     <span>Publicidad / Banner General</span>
@@ -454,11 +452,11 @@ export const AdminBannersEditor: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setSlideForm({ ...slideForm, type: 'new_product' })}
-                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all ${
+                    className={
                       slideForm.type === 'new_product'
-                        ? 'bg-purple-700 text-white border-purple-700 shadow-sm'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-purple-50'
-                    }`}
+                        ? 'py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all bg-purple-700 text-white border-purple-700 shadow-sm'
+                        : 'py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center space-x-2 cursor-pointer transition-all bg-white text-slate-800 border-slate-300 hover:bg-slate-100'
+                    }
                   >
                     <Flame className="w-4 h-4" />
                     <span>Producto Nuevo / Novedad</span>

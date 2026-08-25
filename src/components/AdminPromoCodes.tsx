@@ -246,7 +246,7 @@ export const AdminPromoCodes: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-500 text-white flex items-center justify-center shadow-md shadow-purple-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-pink-600 text-white flex items-center justify-center shadow-sm">
               <Ticket className="w-5 h-5" />
             </div>
             <div>
@@ -403,11 +403,7 @@ export const AdminPromoCodes: React.FC = () => {
                       key={p}
                       type="button"
                       onClick={() => setNewPercent(p)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
-                        newPercent === p
-                          ? 'bg-purple-600 text-white shadow-xs'
-                          : 'bg-slate-100 text-slate-600 hover:bg-purple-50 hover:text-purple-600'
-                      }`}
+                      className={newPercent === p ? 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-purple-700 text-white shadow-xs' : 'px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-purple-50 text-purple-950 border border-purple-200 hover:bg-purple-100'}
                     >
                       {p}% OFF
                     </button>
@@ -529,7 +525,7 @@ export const AdminPromoCodes: React.FC = () => {
           </div>
         ) : filteredPromos.length === 0 ? (
           <div className="py-16 text-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-purple-50 text-purple-400 flex items-center justify-center mx-auto text-2xl">
+            <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center mx-auto text-2xl border border-slate-200">
               🎟️
             </div>
             <p className="text-base font-bold text-slate-700">No se encontraron cupones</p>
@@ -559,7 +555,7 @@ export const AdminPromoCodes: React.FC = () => {
                   const usagePercent = promo.max_uses ? Math.min(100, Math.round((promo.used_count / promo.max_uses) * 100)) : null;
 
                   return (
-                    <tr key={promo.id} className="hover:bg-purple-50/30 transition-colors">
+                    <tr key={promo.id} className="hover:bg-slate-50 transition-colors">
                       {/* Código + Copiar */}
                       <td className="px-5 py-4">
                         <div className="flex items-center space-x-2">
@@ -568,7 +564,7 @@ export const AdminPromoCodes: React.FC = () => {
                           </span>
                           <button
                             onClick={() => copyToClipboard(promo.code, promo.id)}
-                            className="p-1.5 text-slate-400 hover:text-purple-600 rounded-md hover:bg-purple-50 transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-purple-700 rounded-md hover:bg-slate-100 transition-colors"
                             title="Copiar código"
                           >
                             {copiedId === promo.id ? (
@@ -675,7 +671,7 @@ export const AdminPromoCodes: React.FC = () => {
                           {/* Edit */}
                           <button
                             onClick={() => openEditModal(promo)}
-                            className="p-1.5 text-slate-500 hover:text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-purple-700 rounded-lg hover:bg-slate-100 transition-colors"
                             title="Editar cupón"
                           >
                             <Edit2 className="w-4 h-4" />
@@ -684,7 +680,7 @@ export const AdminPromoCodes: React.FC = () => {
                           {/* Delete */}
                           <button
                             onClick={() => handleDeletePromo(promo.id, promo.code)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-red-700 rounded-lg hover:bg-slate-100 transition-colors"
                             title="Eliminar cupón"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -706,9 +702,9 @@ export const AdminPromoCodes: React.FC = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-purple-100 overflow-hidden"
+            className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden"
           >
-            <div className="px-6 py-4 bg-gradient-to-r from-purple-700 via-purple-800 to-pink-600 text-white flex items-center justify-between">
+            <div className="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Edit2 className="w-4 h-4" />
                 <h3 className="font-headline font-bold text-base">Editar Cupón: {editingPromo.code}</h3>

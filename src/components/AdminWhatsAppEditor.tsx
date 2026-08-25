@@ -467,7 +467,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleResetTemplate('msg_transfer')}
-                  className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-emerald-700 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 text-xs text-slate-700 hover:text-slate-950 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                   title="Restablecer al mensaje original"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -517,7 +517,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleResetTemplate('msg_mercadopago')}
-                  className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-emerald-700 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 text-xs text-slate-700 hover:text-slate-950 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Restablecer</span>
@@ -565,7 +565,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleResetTemplate('msg_preparing')}
-                  className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-emerald-700 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 text-xs text-slate-700 hover:text-slate-950 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Restablecer</span>
@@ -606,7 +606,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleResetTemplate('msg_ready')}
-                  className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-emerald-700 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 text-xs text-slate-700 hover:text-slate-950 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Restablecer</span>
@@ -647,7 +647,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleResetTemplate('msg_general_inquiry')}
-                  className="inline-flex items-center space-x-1.5 text-xs text-slate-500 hover:text-emerald-700 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 text-xs text-slate-700 hover:text-slate-950 font-semibold px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Restablecer</span>
@@ -792,7 +792,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
                               e.stopPropagation();
                               handleOpenEditCustomModal(msg);
                             }}
-                            className="p-1.5 text-slate-500 hover:text-purple-700 hover:bg-purple-100 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-purple-700 hover:bg-slate-100 rounded-lg transition-colors"
                             title="Editar mensaje"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -1010,7 +1010,7 @@ export const AdminWhatsAppEditor: React.FC = () => {
                       key={t.tag}
                       type="button"
                       onClick={() => setCustomMsgForm({ ...customMsgForm, content: customMsgForm.content + ' ' + t.tag })}
-                      className="px-2 py-1 bg-slate-100 hover:bg-purple-100 text-slate-700 hover:text-purple-700 rounded-lg text-[10px] font-mono font-bold transition-colors cursor-pointer border border-slate-200"
+                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[10px] font-mono font-bold transition-colors cursor-pointer border border-slate-200"
                     >
                       {t.tag}
                     </button>

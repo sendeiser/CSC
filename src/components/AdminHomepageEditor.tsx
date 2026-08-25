@@ -133,7 +133,7 @@ function StoreContentEditor({ content, onChange }: { content: any; onChange: (c:
         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Redes Sociales</p>
         <div className="space-y-2.5">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center flex-shrink-0 shadow-xs">
               <span className="text-white text-xs font-black">IG</span>
             </div>
             <div className="flex-1">
@@ -338,7 +338,7 @@ function SectionCard({
             <button
               onClick={onMoveUp}
               disabled={index === 0}
-              className="p-1 hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+              className="p-1 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded disabled:opacity-30 disabled:hover:bg-transparent"
               title="Subir posición"
             >
               <ArrowUp className="w-3.5 h-3.5" />
@@ -346,7 +346,7 @@ function SectionCard({
             <button
               onClick={onMoveDown}
               disabled={index === totalSections - 1}
-              className="p-1 hover:bg-purple-50 text-slate-600 hover:text-purple-700 rounded disabled:opacity-30 disabled:hover:bg-transparent"
+              className="p-1 hover:bg-slate-100 text-slate-700 hover:text-slate-900 rounded disabled:opacity-30 disabled:hover:bg-transparent"
               title="Bajar posición"
             >
               <ArrowDown className="w-3.5 h-3.5" />

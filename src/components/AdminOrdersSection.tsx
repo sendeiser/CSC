@@ -842,11 +842,11 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                           ? 'candy-gradient-bg text-white shadow-md shadow-purple-300 ring-4 ring-purple-100'
                           : currentStep > 1
                           ? 'candy-gradient-bg text-white'
-                          : 'bg-slate-200 text-slate-500 group-hover:bg-purple-200'
+                          : 'bg-purple-50 text-purple-900 border border-purple-200 group-hover:bg-purple-100'
                       }`}>
                         {currentStep > 1 ? <Check className="w-3.5 h-3.5" /> : '1'}
                       </div>
-                      <span className={`text-[10px] font-bold ${currentStep >= 1 ? 'text-purple-900' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-bold ${currentStep >= 1 ? 'text-purple-900' : 'text-purple-700/60'}`}>
                         Pagado
                       </span>
                     </button>
@@ -870,11 +870,11 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                           ? 'bg-indigo-600 text-white shadow-md shadow-indigo-300 ring-4 ring-indigo-100'
                           : currentStep > 2
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-200 text-slate-500 group-hover:bg-indigo-200'
+                          : 'bg-indigo-50 text-indigo-900 border border-indigo-200 group-hover:bg-indigo-100'
                       }`}>
                         {currentStep > 2 ? <Check className="w-3.5 h-3.5" /> : '2'}
                       </div>
-                      <span className={`text-[10px] font-bold ${currentStep >= 2 ? 'text-indigo-900' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-bold ${currentStep >= 2 ? 'text-indigo-900' : 'text-indigo-700/60'}`}>
                         En Preparación
                       </span>
                     </button>
@@ -898,11 +898,11 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                           ? 'bg-cyan-600 text-white shadow-md shadow-cyan-300 ring-4 ring-cyan-100'
                           : currentStep > 3
                           ? 'bg-cyan-600 text-white'
-                          : 'bg-slate-200 text-slate-500 group-hover:bg-cyan-200'
+                          : 'bg-cyan-50 text-cyan-900 border border-cyan-200 group-hover:bg-cyan-100'
                       }`}>
                         {currentStep > 3 ? <Check className="w-3.5 h-3.5" /> : '3'}
                       </div>
-                      <span className={`text-[10px] font-bold ${currentStep >= 3 ? 'text-cyan-900' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-bold ${currentStep >= 3 ? 'text-cyan-900' : 'text-cyan-700/60'}`}>
                         Listo / Camino
                       </span>
                     </button>
@@ -924,11 +924,11 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                       <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
                         selectedOrder.status === 'delivered'
                           ? 'bg-emerald-600 text-white shadow-md shadow-emerald-300 ring-4 ring-emerald-100'
-                          : 'bg-slate-200 text-slate-500 group-hover:bg-emerald-200'
+                          : 'bg-emerald-50 text-emerald-900 border border-emerald-200 group-hover:bg-emerald-100'
                       }`}>
                         {currentStep >= 4 ? <Check className="w-3.5 h-3.5" /> : '4'}
                       </div>
-                      <span className={`text-[10px] font-bold ${currentStep >= 4 ? 'text-emerald-900' : 'text-slate-400'}`}>
+                      <span className={`text-[10px] font-bold ${currentStep >= 4 ? 'text-emerald-900' : 'text-emerald-700/60'}`}>
                         Entregado
                       </span>
                     </button>
@@ -1065,8 +1065,8 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
             {/* Total Monto bar */}
             <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
               <div>
-                <span className="text-xs text-slate-500">Monto Total</span>
-                <p className="text-2xl font-black text-purple-700">${Number(selectedOrder.total || 0).toFixed(2)}</p>
+                <span className="text-xs font-semibold text-slate-500">Monto Total</span>
+                <p className="text-2xl font-black text-slate-900 tracking-tight">${Number(selectedOrder.total || 0).toFixed(2)}</p>
               </div>
             </div>
           </div>
@@ -1201,7 +1201,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                     className={`px-3 py-1 rounded-lg font-semibold whitespace-nowrap transition-all ${
                       manualCategoryFilter === 'all'
                         ? 'bg-purple-700 text-white shadow-sm'
-                        : 'bg-white text-slate-600 border border-purple-200 hover:bg-purple-100'
+                        : 'bg-white text-slate-900 border border-slate-300 hover:bg-slate-100'
                     }`}
                   >
                     Todas las categorías
@@ -1213,7 +1213,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                       className={`px-3 py-1 rounded-lg font-semibold whitespace-nowrap transition-all ${
                         manualCategoryFilter === cat
                           ? 'bg-purple-700 text-white shadow-sm'
-                          : 'bg-white text-slate-600 border border-purple-200 hover:bg-purple-100'
+                          : 'bg-white text-slate-900 border border-slate-300 hover:bg-slate-100'
                       }`}
                     >
                       {cat}
@@ -1314,7 +1314,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
                                   builderWeightGrams === grams
                                     ? 'bg-purple-700 text-white shadow-sm'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-purple-100'
+                                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
                                 }`}
                               >
                                 {grams >= 1000 ? `${grams / 1000}kg` : `${grams}g`}
@@ -1331,7 +1331,7 @@ export const AdminOrdersSection: React.FC<AdminOrdersSectionProps> = ({
                                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${
                                   builderQty === qty
                                     ? 'bg-purple-700 text-white shadow-sm'
-                                    : 'bg-slate-100 text-slate-700 hover:bg-purple-100'
+                                    : 'bg-slate-100 text-slate-900 hover:bg-slate-200'
                                 }`}
                               >
                                 {qty} {qty === 1 ? 'unidad' : 'unidades'}

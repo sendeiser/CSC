@@ -418,17 +418,17 @@ export const AdminFinancesSection: React.FC = () => {
         </div>
 
         {/* Packaging Expense Card */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-200/80 rounded-3xl p-5 shadow-sm space-y-2 hover:shadow-md transition-all">
+        <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-2 hover:border-slate-300 transition-all">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-purple-900">Inversión en Packaging</span>
-            <div className="w-9 h-9 rounded-2xl bg-pink-100 text-pink-600 flex items-center justify-center">
+            <span className="text-xs font-bold text-slate-700">Inversión en Packaging</span>
+            <div className="w-9 h-9 rounded-2xl bg-pink-50 text-pink-700 flex items-center justify-center border border-pink-100">
               <Package className="w-4.5 h-4.5" />
             </div>
           </div>
-          <p className="text-2xl sm:text-3xl font-black text-purple-950">
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             ${totalPackagingCost.toFixed(2)}
           </p>
-          <p className="text-[11px] text-purple-700 font-semibold">
+          <p className="text-[11px] text-slate-500 font-medium">
             Bandejas, bolsas, sellado y stickers
           </p>
         </div>
@@ -506,7 +506,7 @@ export const AdminFinancesSection: React.FC = () => {
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
                       <div
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-full rounded-full transition-all duration-500"
+                        className="bg-pink-500 h-full rounded-full transition-all duration-500"
                         style={{ width: `${Math.max(3, pct)}%` }}
                       />
                     </div>
@@ -532,19 +532,19 @@ export const AdminFinancesSection: React.FC = () => {
             <div className="inline-flex bg-slate-100 p-1 rounded-2xl text-xs font-semibold">
               <button
                 onClick={() => setTypeFilter('all')}
-                className={`px-3 py-1.5 rounded-xl transition-all ${typeFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={typeFilter === 'all' ? 'px-3 py-1.5 rounded-xl transition-all bg-white text-slate-900 shadow-sm' : 'px-3 py-1.5 rounded-xl transition-all text-slate-700 hover:text-slate-900'}
               >
                 Todos
               </button>
               <button
                 onClick={() => setTypeFilter('expense')}
-                className={`px-3 py-1.5 rounded-xl transition-all ${typeFilter === 'expense' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={typeFilter === 'expense' ? 'px-3 py-1.5 rounded-xl transition-all bg-rose-600 text-white shadow-sm' : 'px-3 py-1.5 rounded-xl transition-all text-rose-950/70 hover:text-rose-950'}
               >
                 Gastos
               </button>
               <button
                 onClick={() => setTypeFilter('income')}
-                className={`px-3 py-1.5 rounded-xl transition-all ${typeFilter === 'income' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={typeFilter === 'income' ? 'px-3 py-1.5 rounded-xl transition-all bg-emerald-600 text-white shadow-sm' : 'px-3 py-1.5 rounded-xl transition-all text-emerald-950/70 hover:text-emerald-950'}
               >
                 Ingresos Extras
               </button>
@@ -686,14 +686,14 @@ export const AdminFinancesSection: React.FC = () => {
                         <div className="inline-flex items-center space-x-1">
                           <button
                             onClick={() => openEditModal(item)}
-                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-500 hover:text-purple-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             title="Editar"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(item)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
                             title="Eliminar"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -772,7 +772,7 @@ export const AdminFinancesSection: React.FC = () => {
                     onClick={() => {
                       setFormData({ ...formData, type: 'expense', category: 'Packaging y Bandejas' });
                     }}
-                    className={`py-2 rounded-xl transition-all ${formData.type === 'expense' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                    className={formData.type === 'expense' ? 'py-2 rounded-xl transition-all bg-rose-600 text-white shadow-sm' : 'py-2 rounded-xl transition-all text-rose-950/70 hover:text-rose-950'}
                   >
                     💸 Gasto / Egreso
                   </button>
@@ -781,7 +781,7 @@ export const AdminFinancesSection: React.FC = () => {
                     onClick={() => {
                       setFormData({ ...formData, type: 'income', category: 'Venta Externa / Evento' });
                     }}
-                    className={`py-2 rounded-xl transition-all ${formData.type === 'income' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+                    className={formData.type === 'income' ? 'py-2 rounded-xl transition-all bg-emerald-600 text-white shadow-sm' : 'py-2 rounded-xl transition-all text-emerald-950/70 hover:text-emerald-950'}
                   >
                     💰 Ingreso Extra
                   </button>

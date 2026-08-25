@@ -135,7 +135,7 @@ export const AdminShippingEditor: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* ALIAS BANCARIO */}
-          <div className="md:col-span-2 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-2xl p-4.5 space-y-2">
+          <div className="md:col-span-2 bg-purple-50/60 border-2 border-purple-300 rounded-2xl p-4.5 space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-extrabold text-purple-950 uppercase tracking-wider flex items-center space-x-1.5">
                 <Sparkles className="w-4 h-4 text-pink-600" />
@@ -157,7 +157,7 @@ export const AdminShippingEditor: React.FC = () => {
               <button
                 type="button"
                 onClick={handleCopyAlias}
-                className="absolute right-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer shadow-sm"
+                className="absolute right-2 px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-bold transition-all flex items-center space-x-1 cursor-pointer shadow-sm"
               >
                 {copiedAlias ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedAlias ? '¡Copiado!' : 'Probar'}</span>
@@ -189,11 +189,11 @@ export const AdminShippingEditor: React.FC = () => {
                   key={b}
                   type="button"
                   onClick={() => setSettings(prev => ({ ...prev, bank_name: b }))}
-                  className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold transition-all cursor-pointer ${
+                  className={
                     settings.bank_name === b
-                      ? 'bg-purple-600 border-purple-600 text-white shadow-xs'
-                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-purple-50 hover:text-purple-700'
-                  }`}
+                      ? 'text-[10px] px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer bg-purple-700 border border-purple-700 text-white shadow-xs'
+                      : 'text-[10px] px-2 py-0.5 rounded-md font-semibold transition-all cursor-pointer bg-white border border-slate-200 text-slate-800 hover:bg-slate-100'
+                  }
                 >
                   {b}
                 </button>
@@ -236,11 +236,11 @@ export const AdminShippingEditor: React.FC = () => {
         </div>
 
         {/* LIVE PREVIEW DE LA TARJETA DE TRANSFERENCIA */}
-        <div className="bg-slate-50 border border-purple-100 rounded-2xl p-4 space-y-2">
-          <span className="text-[11px] font-bold text-purple-900 uppercase tracking-wider block flex items-center space-x-1">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+          <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block flex items-center space-x-1">
             <span>👁️ Vista previa de cómo lo verá tu cliente:</span>
           </span>
-          <div className="max-w-md mx-auto bg-gradient-to-br from-purple-50 to-pink-50 border border-pink-200 rounded-2xl p-4 space-y-3 shadow-sm">
+          <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-sm">
             <div className="flex items-center justify-between">
               <h4 className="font-headline font-bold text-slate-900 text-xs flex items-center space-x-1.5">
                 <Landmark className="w-4 h-4 text-purple-600" />
@@ -496,7 +496,7 @@ export const AdminShippingEditor: React.FC = () => {
         <button
           type="submit"
           disabled={saving}
-          className="inline-flex items-center space-x-2 px-8 py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-purple-500/30 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+          className="inline-flex items-center space-x-2 px-8 py-3.5 bg-slate-900 hover:bg-black disabled:opacity-50 text-white font-extrabold text-sm rounded-2xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-95 cursor-pointer"
         >
           {saving ? (
             <>
