@@ -623,14 +623,16 @@ export const AdminWhatsAppBot: React.FC = () => {
                       onClick={() => setSelectedMenuNode(node.id)}
                       className={`p-3 rounded-2xl text-left border transition-all cursor-pointer flex flex-col justify-between space-y-1 relative overflow-hidden ${
                         isSelected 
-                          ? 'bg-purple-50/80 border-purple-400 ring-2 ring-purple-300 shadow-sm' 
-                          : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200/80'
+                          ? 'bg-purple-50/90 border-purple-500 ring-2 ring-purple-300 shadow-sm' 
+                          : 'bg-white hover:bg-slate-50 border-slate-200'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs ${
-                          isSelected ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-700'
-                        }`}>
+                        <span className={
+                          isSelected 
+                            ? 'w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs bg-purple-700 text-white' 
+                            : 'w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-900 border border-slate-200'
+                        }>
                           {node.num}
                         </span>
                         {isSelected && <span className="w-2 h-2 rounded-full bg-purple-600 animate-ping" />}
@@ -936,46 +938,46 @@ export const AdminWhatsAppBot: React.FC = () => {
                   </div>
 
                   {/* Botones de Respuesta Rápida para Probar con 1 Clic */}
-                  <div className="px-2 py-1.5 bg-slate-200/70 border-t border-slate-300 flex gap-1 overflow-x-auto scrollbar-none">
+                  <div className="px-2 py-1.5 bg-slate-200/80 border-t border-slate-300 flex gap-1 overflow-x-auto scrollbar-none">
                     <button
                       type="button"
                       onClick={() => handleSimulateSend('comprar')}
-                      className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                      className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
                     >
                       🛒 Comprar
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSimulateSend('4')}
-                      className="px-2 py-1 bg-white hover:bg-emerald-50 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-200 cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
                     >
                       🛍️ Catálogo
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSimulateSend('1')}
-                      className="px-2 py-1 bg-white hover:bg-emerald-50 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-200 cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
                     >
                       📦 1. Pedido
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSimulateSend('2')}
-                      className="px-2 py-1 bg-white hover:bg-emerald-50 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-200 cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
                     >
                       🏦 2. Banco
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSimulateSend('3')}
-                      className="px-2 py-1 bg-white hover:bg-emerald-50 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-200 cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
                     >
                       📍 3. Horario
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSimulateSend('5')}
-                      className="px-2 py-1 bg-white hover:bg-emerald-50 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-200 cursor-pointer"
+                      className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
                     >
                       👤 5. Asesor
                     </button>
@@ -984,7 +986,7 @@ export const AdminWhatsAppBot: React.FC = () => {
                         key={c.id}
                         type="button"
                         onClick={() => handleSimulateSend(c.option_number)}
-                        className="px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-purple-200 cursor-pointer"
+                        className="px-2.5 py-1 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
                       >
                         ⭐ {c.option_number}
                       </button>
