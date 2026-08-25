@@ -33,6 +33,14 @@ export const DEFAULT_CHATBOT_KEYWORDS = [
   'hola candy', 'promo', 'promos', 'stock', 'tienda', '#csc', 'consulta'
 ];
 
+export interface CustomMenuOption {
+  id: string;
+  option_number: string;
+  title: string;
+  keywords: string[];
+  response: string;
+}
+
 export interface WhatsAppBotSettings {
   enabled: boolean;
   auto_notify_new_order: boolean; // Enviar WhatsApp automático cuando el cliente termina el pedido
@@ -61,6 +69,13 @@ export interface WhatsAppBotSettings {
   template_order_shipped: string;
   template_menu: string;
   template_payment_proof: string;
+  // Respuestas configurables del Menú Interactivo
+  menu_response_1: string;
+  menu_response_2: string;
+  menu_response_3: string;
+  menu_response_4: string;
+  menu_response_5: string;
+  custom_menu_options: CustomMenuOption[];
 }
 
 export const DEFAULT_BOT_SETTINGS: WhatsAppBotSettings = {
@@ -81,7 +96,13 @@ export const DEFAULT_BOT_SETTINGS: WhatsAppBotSettings = {
   template_order_ready: `✨ *¡Tu pedido está LISTO {cliente}!* 🎉\n\n📦 Pedido: *#{pedido_id}*\n📍 Ya podés pasar a retirarlo por nuestro local en los horarios habituales.\n\n¡Te esperamos con tus golosinas preparadas! 🍬`,
   template_order_shipped: `🛵 *¡Tu pedido va en camino {cliente}!* 🚀\n\n📦 Pedido: *#{pedido_id}*\n📍 Dirección de entrega: *{direccion}*\n\nEl cadete ya salió con tu pedido. ¡Mantenete atento para recibir tus golosinas! 🍭`,
   template_menu: `🍬 *¡Hola {cliente}! Bienvenido a Chamical Candy Shop* 🍭\n\n¿En qué podemos ayudarte hoy? *Respondé con el número de opción:*\n\n1️⃣ 📦 *Consultar estado de mi pedido*\n2️⃣ 🏦 *Ver datos de transferencia bancaria*\n3️⃣ 📍 *Horarios y ubicación del local*\n4️⃣ 🛍️ *Ver catálogo online*\n5️⃣ 👤 *Hablar con una persona del equipo*`,
-  template_payment_proof: `📸 *¡Comprobante de pago recibido!* 🎉\n\nMuchas gracias por enviarnos tu comprobante. Nuestro equipo lo verificará a la brevedad para confirmar tu pedido. 🍬`
+  template_payment_proof: `📸 *¡Comprobante de pago recibido!* 🎉\n\nMuchas gracias por enviarnos tu comprobante. Nuestro equipo lo verificará a la brevedad para confirmar tu pedido. 🍬`,
+  menu_response_1: `📦 *Estado de tu Pedido:* #{pedido_id}\n\n• *Estado:* {estado}\n• *Total:* \${total}\n• *Destino:* {direccion}\n\n_Para volver al menú, enviá la palabra *MENU*._`,
+  menu_response_2: `🏦 *Datos para Transferencia Bancaria:* 🍬\n\n• *Alias:* \`{alias_banco}\`\n• *Banco:* {banco}\n• *Titular:* {titular}\n• *CBU:* \`{cbu}\`\n\n📸 *Una vez realizada la transferencia, podés enviar la captura o comprobante por este mismo chat.*\n\n_Enviá *MENU* para ver más opciones._`,
+  menu_response_3: `📍 *Ubicación y Horarios de Atención:* 🍬\n\n🏠 *Dirección:* {direccion}\n🕒 *Horarios:* {horarios}\n\n¡Te esperamos con las golosinas más ricas! 🍭\n\n_Enviá *MENU* para volver al menú principal._`,
+  menu_response_4: `🛍️ *Catálogo Online de Chamical Candy Shop* 🍬\n\nPodés explorar todos nuestros productos, combos, gomitas por peso y armar tu carrito directamente en nuestra tienda web:\n👉 {catalogo_url}\n\n_Enviá *MENU* para ver más opciones._`,
+  menu_response_5: `👤 *¡Entendido {cliente}! Un asesor de nuestro equipo te responderá a la brevedad.* 🍬\n\nPor favor dejanos tu consulta detallada para poder ayudarte más rápido. ¡Muchas gracias por tu paciencia!`,
+  custom_menu_options: []
 };
 
 let inMemorySettings: WhatsAppBotSettings = { ...DEFAULT_BOT_SETTINGS };
@@ -567,9 +588,11 @@ class WhatsAppBotService {
         const normalizeText = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         const normalizedBody = normalizeText(body);
 
-        // Permitir opciones numéricas (1, 2, 3, 4, 5) o palabras que coincidan con la lista
-        const isMenuOption = /^[1-5]$/.test(body.trim());
-        const hasMatchingKeyword = isMenuOption || keywords.some((kw) => {
+        // Permitir opciones numéricas (1 a 9), palabras clave globales y palabras de opciones personalizadas
+        const isMenuOption = /^[1-9]$/.test(body.trim());
+        const customKeywords = (settings.custom_menu_options || []).flatMap((opt: any) => opt.keywords || [opt.option_number]);
+
+        const hasMatchingKeyword = isMenuOption || [...keywords, ...customKeywords].some((kw) => {
           const cleanKw = normalizeText(String(kw).trim());
           return cleanKw.length > 0 && normalizedBody.includes(cleanKw);
         });
@@ -580,7 +603,35 @@ class WhatsAppBotService {
         }
       }
 
-      // 2. Opción 1: Consultar estado de mi pedido
+      // Preparar variables comunes
+      const commonVars = {
+        cliente: pushName,
+        alias_banco: storeSettings?.bank_alias || 'martinchox33',
+        banco: storeSettings?.bank_name || 'MercadoPago',
+        titular: storeSettings?.bank_holder || 'Gonzalez Martin Gustavo',
+        cbu: storeSettings?.bank_cbu || '',
+        direccion: storeSettings?.pickup_address || storeSettings?.address || 'Chamical, La Rioja, Argentina',
+        horarios: storeSettings?.pickup_schedule || storeSettings?.opening_hours || 'Lunes a Sábados de 09:00 a 13:00 y de 17:30 a 22:00 hs.',
+        catalogo_url: storeSettings?.store_website_url || 'https://candyshopchamical.netlify.app'
+      };
+
+      // 6. Verificar si coincide con alguna opción personalizada creada por el admin
+      if (Array.isArray(settings.custom_menu_options) && settings.custom_menu_options.length > 0) {
+        const matchedCustom = settings.custom_menu_options.find((opt: any) => {
+          if (!opt) return false;
+          if (body === String(opt.option_number).trim().toLowerCase()) return true;
+          const kws = Array.isArray(opt.keywords) ? opt.keywords : [];
+          return kws.some((k: string) => body.includes(String(k).trim().toLowerCase()));
+        });
+
+        if (matchedCustom && matchedCustom.response) {
+          const reply = this.formatTemplate(matchedCustom.response, commonVars);
+          await this.sock.sendMessage(from, { text: reply });
+          return;
+        }
+      }
+
+      // 7. Opción 1: Consultar estado de mi pedido
       if (body === '1' || body.includes('estado') || body.includes('mi pedido')) {
         const rawPhone = from.replace('@s.whatsapp.net', '').replace(/^549/, '');
         const db = serviceClient || supabase;
@@ -609,7 +660,14 @@ class WhatsAppBotService {
           };
           const statusLabel = statusTextMap[customerOrder.status] || '⏳ Pendiente de confirmación';
 
-          const reply = `📦 *Estado de tu Pedido:* #${customerOrder.id?.slice(0, 8).toUpperCase()}\n\n• *Estado:* ${statusLabel}\n• *Total:* \$${Number(customerOrder.total || 0).toLocaleString('es-AR')}\n• *Destino:* ${customerOrder.shipping_address || 'Retiro en tienda'}\n\n_Para volver al menú, enviá la palabra *MENU*._`;
+          const templateToUse = settings.menu_response_1 || DEFAULT_BOT_SETTINGS.menu_response_1;
+          const reply = this.formatTemplate(templateToUse, {
+            ...commonVars,
+            pedido_id: customerOrder.id?.slice(0, 8).toUpperCase() || 'N/A',
+            estado: statusLabel,
+            total: Number(customerOrder.total || 0).toLocaleString('es-AR'),
+            direccion: customerOrder.shipping_address || commonVars.direccion
+          });
           await this.sock.sendMessage(from, { text: reply });
         } else {
           await this.sock.sendMessage(from, {
@@ -619,45 +677,40 @@ class WhatsAppBotService {
         return;
       }
 
-      // 3. Opción 2: Datos de transferencia bancaria
+      // 8. Opción 2: Datos de transferencia bancaria
       if (body === '2' || body.includes('alias') || body.includes('transferencia') || body.includes('cbu') || body.includes('banco')) {
-        const alias = storeSettings?.bank_alias || 'martinchox33';
-        const banco = storeSettings?.bank_name || 'MercadoPago';
-        const titular = storeSettings?.bank_holder || 'Gonzalez Martin Gustavo';
-        const cbu = storeSettings?.bank_cbu || '';
-
-        const reply = `🏦 *Datos para Transferencia Bancaria:* 🍬\n\n• *Alias:* \`${alias}\`\n• *Banco:* ${banco}\n• *Titular:* ${titular}${cbu ? `\n• *CBU:* \`${cbu}\`` : ''}\n\n📸 *Una vez realizada la transferencia, podés enviar la captura o comprobante por este mismo chat.*\n\n_Enviá *MENU* para ver más opciones._`;
+        const templateToUse = settings.menu_response_2 || DEFAULT_BOT_SETTINGS.menu_response_2;
+        const reply = this.formatTemplate(templateToUse, commonVars);
         await this.sock.sendMessage(from, { text: reply });
         return;
       }
 
-      // 4. Opción 3: Horarios y ubicación
+      // 9. Opción 3: Horarios y ubicación
       if (body === '3' || body.includes('horario') || body.includes('ubicacion') || body.includes('donde estan') || body.includes('direccion')) {
-        const direccion = storeSettings?.pickup_address || storeSettings?.address || 'Chamical, La Rioja, Argentina';
-        const horarios = storeSettings?.pickup_schedule || storeSettings?.opening_hours || 'Lunes a Sábados de 09:00 a 13:00 y de 17:30 a 22:00 hs.';
-
-        const reply = `📍 *Ubicación y Horarios de Atención:* 🍬\n\n🏠 *Dirección:* ${direccion}\n🕒 *Horarios:* ${horarios}\n\n¡Te esperamos con las golosinas más ricas! 🍭\n\n_Enviá *MENU* para volver al menú principal._`;
+        const templateToUse = settings.menu_response_3 || DEFAULT_BOT_SETTINGS.menu_response_3;
+        const reply = this.formatTemplate(templateToUse, commonVars);
         await this.sock.sendMessage(from, { text: reply });
         return;
       }
 
-      // 5. Opción 4: Catálogo online
+      // 10. Opción 4: Catálogo online
       if (body === '4' || body.includes('catalogo') || body.includes('productos') || body.includes('comprar')) {
-        const url = storeSettings?.store_website_url || 'https://candyshopchamical.netlify.app';
-        const reply = `🛍️ *Catálogo Online de Chamical Candy Shop* 🍬\n\nPodés explorar todos nuestros productos, combos, gomitas por peso y armar tu carrito directamente en nuestra tienda web:\n👉 ${url}\n\n_Enviá *MENU* para ver más opciones._`;
+        const templateToUse = settings.menu_response_4 || DEFAULT_BOT_SETTINGS.menu_response_4;
+        const reply = this.formatTemplate(templateToUse, commonVars);
         await this.sock.sendMessage(from, { text: reply });
         return;
       }
 
-      // 6. Opción 5: Hablar con persona / asesor
+      // 11. Opción 5: Hablar con persona / asesor
       if (body === '5' || body.includes('humano') || body.includes('asesor') || body.includes('persona') || body.includes('ayuda')) {
-        const reply = `👤 *¡Entendido! Un asesor de nuestro equipo te responderá a la brevedad.* 🍬\n\nPor favor dejanos tu consulta detallada para poder ayudarte más rápido. ¡Muchas gracias por tu paciencia!`;
+        const templateToUse = settings.menu_response_5 || DEFAULT_BOT_SETTINGS.menu_response_5;
+        const reply = this.formatTemplate(templateToUse, commonVars);
         await this.sock.sendMessage(from, { text: reply });
         return;
       }
 
-      // 7. Por defecto: Enviar el Menú Interactivo
-      const menuText = this.formatTemplate(settings.template_menu, { cliente: pushName });
+      // 12. Por defecto: Enviar el Menú Interactivo
+      const menuText = this.formatTemplate(settings.template_menu, commonVars);
       await this.sock.sendMessage(from, { text: menuText });
 
     } catch (err) {
