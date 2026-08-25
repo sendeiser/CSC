@@ -72,6 +72,8 @@ export const AdminWhatsAppBot: React.FC = () => {
     customer_filter_mode: 'any_order',
     require_keywords_for_chatbot: true,
     chatbot_keywords: DEFAULT_CHATBOT_KEYWORDS,
+    send_product_images: true,
+    allow_chat_orders: true,
     template_new_order: DEFAULT_TEMPLATES.template_new_order,
     template_order_preparing: DEFAULT_TEMPLATES.template_order_preparing,
     template_order_ready: DEFAULT_TEMPLATES.template_order_ready,
@@ -94,7 +96,7 @@ export const AdminWhatsAppBot: React.FC = () => {
   const [selectedNotifTab, setSelectedNotifTab] = useState<'new_order' | 'preparing' | 'ready' | 'shipped' | 'proof'>('new_order');
 
   // Interactive Live Phone Simulator State
-  const [simulatedChatHistory, setSimulatedChatHistory] = useState<Array<{ sender: 'bot' | 'user'; text: string; time: string }>>([
+  const [simulatedChatHistory, setSimulatedChatHistory] = useState<Array<{ sender: 'bot' | 'user'; text: string; time: string; image?: string }>>([
     {
       sender: 'bot',
       text: DEFAULT_TEMPLATES.template_menu.replace('{cliente}', 'Mariana'),
@@ -147,6 +149,8 @@ export const AdminWhatsAppBot: React.FC = () => {
           only_reply_to_customers: data.only_reply_to_customers ?? false,
           customer_filter_mode: data.customer_filter_mode || 'any_order',
           require_keywords_for_chatbot: data.require_keywords_for_chatbot ?? true,
+          send_product_images: data.send_product_images ?? true,
+          allow_chat_orders: data.allow_chat_orders ?? true,
           chatbot_keywords: Array.isArray(data.chatbot_keywords) && data.chatbot_keywords.length > 0 
             ? data.chatbot_keywords 
             : DEFAULT_CHATBOT_KEYWORDS,
@@ -329,6 +333,7 @@ export const AdminWhatsAppBot: React.FC = () => {
     // Determinar respuesta del bot
     const lower = textToSend.toLowerCase();
     let botReply = '';
+    let botImage: string | undefined = undefined;
 
     if (lower === '1' || lower.includes('estado') || lower.includes('pedido')) {
       botReply = formatWithDummyData(settings.menu_response_1);
@@ -336,10 +341,20 @@ export const AdminWhatsAppBot: React.FC = () => {
       botReply = formatWithDummyData(settings.menu_response_2);
     } else if (lower === '3' || lower.includes('horario') || lower.includes('donde') || lower.includes('ubicacion')) {
       botReply = formatWithDummyData(settings.menu_response_3);
-    } else if (lower === '4' || lower.includes('catalogo') || lower.includes('web') || lower.includes('tienda')) {
+    } else if (lower === '4' || lower.includes('catalogo') || lower.includes('productos') || lower.includes('precios') || lower.includes('gomitas')) {
       botReply = formatWithDummyData(settings.menu_response_4);
+      if (settings.send_product_images) {
+        botImage = 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80';
+      }
     } else if (lower === '5' || lower.includes('asesor') || lower.includes('humano') || lower.includes('ayuda')) {
       botReply = formatWithDummyData(settings.menu_response_5);
+    } else if (lower === 'comprar' || lower === 'pedir' || lower.includes('nuevo pedido')) {
+      botReply = `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n1️⃣ *Gomitas Ácidas 250g* - $1.800\n2️⃣ *Conitos Dulce de Leche 500g* - $1.600\n3️⃣ *Mogul Moras 500g* - $2.100\n4️⃣ *Súper Combo Candy* - $5.400\n\n👉 *Respondé con el NÚMERO del producto que querés agregar (ej: 1, 2).*`;
+      if (settings.send_product_images) {
+        botImage = 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80';
+      }
+    } else if (lower === 'si' || lower === 'confirmar' || lower === 'dale') {
+      botReply = `🎉 *¡PEDIDO #A7F39C12 REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *Mariana Gómez*, tu pedido ya fue cargado automáticamente.\n\n📦 *Detalle:* Gomitas Ácidas 250g\n💰 *Total:* $1.800\n📍 *Entrega:* Castro Barros 245 (Envío a domicilio)\n\n🏦 *Datos Transferencia:*\n• *Alias:* \`CHAMICAL.CANDY.SHOP\`\n• *Banco:* MercadoPago\n\n📸 *Enviá el comprobante por acá para comenzar a prepararlo.* ✨`;
     } else {
       // Buscar en opciones personalizadas
       const customMatch = (settings.custom_menu_options || []).find((opt: any) => 
@@ -356,7 +371,12 @@ export const AdminWhatsAppBot: React.FC = () => {
     setTimeout(() => {
       setSimulatedChatHistory([
         ...newHistory,
-        { sender: 'bot', text: botReply, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+        {
+          sender: 'bot',
+          text: botReply,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          image: botImage
+        }
       ]);
     }, 400);
 
@@ -555,6 +575,41 @@ export const AdminWhatsAppBot: React.FC = () => {
                   <Check className="w-4 h-4" />
                   <span>{savingSettings ? 'Guardando...' : 'Guardar Cambios'}</span>
                 </button>
+              </div>
+
+              {/* Toggles Rápidos de Fotos y Venta Directa */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 border-t border-slate-100">
+                <label className="flex items-center justify-between p-2.5 bg-purple-50/60 rounded-xl border border-purple-100 cursor-pointer">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm">📸</span>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Fotos de Productos</p>
+                      <p className="text-[10px] text-slate-500">Envía imagen al consultar catálogo</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.send_product_images}
+                    onChange={(e) => setSettings({ ...settings, send_product_images: e.target.checked })}
+                    className="w-4 h-4 text-purple-600 rounded accent-purple-600"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-2.5 bg-emerald-50/60 rounded-xl border border-emerald-100 cursor-pointer">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm">🛒</span>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Venta por WhatsApp</p>
+                      <p className="text-[10px] text-slate-500">Permite armar y registrar pedidos</p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.allow_chat_orders}
+                    onChange={(e) => setSettings({ ...settings, allow_chat_orders: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded accent-emerald-600"
+                  />
+                </label>
               </div>
 
               {/* Selector Visual de Nodos / Opciones (Carrusel / Grid) */}
@@ -857,13 +912,18 @@ export const AdminWhatsAppBot: React.FC = () => {
                         className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
                       >
                         <div
-                          className={`p-2.5 rounded-2xl text-[11px] leading-relaxed whitespace-pre-wrap max-w-[88%] shadow-xs ${
+                          className={`p-2.5 rounded-2xl text-[11px] leading-relaxed whitespace-pre-wrap max-w-[88%] shadow-xs space-y-1.5 ${
                             msg.sender === 'user'
                               ? 'bg-[#d9fdd3] text-slate-900 rounded-tr-none border border-emerald-200/50'
                               : 'bg-white text-slate-900 rounded-tl-none border border-slate-200/60'
                           }`}
                         >
-                          {msg.text}
+                          {msg.image && (
+                            <div className="rounded-xl overflow-hidden mb-1 border border-slate-100 shadow-xs">
+                              <img src={msg.image} alt="Producto" className="w-full h-28 object-cover" />
+                            </div>
+                          )}
+                          <div>{msg.text}</div>
                           <div className={`mt-0.5 flex items-center justify-end space-x-1 text-[8px] ${
                             msg.sender === 'user' ? 'text-emerald-800' : 'text-slate-400'
                           }`}>
@@ -877,6 +937,20 @@ export const AdminWhatsAppBot: React.FC = () => {
 
                   {/* Botones de Respuesta Rápida para Probar con 1 Clic */}
                   <div className="px-2 py-1.5 bg-slate-200/70 border-t border-slate-300 flex gap-1 overflow-x-auto scrollbar-none">
+                    <button
+                      type="button"
+                      onClick={() => handleSimulateSend('comprar')}
+                      className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                    >
+                      🛒 Comprar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSimulateSend('4')}
+                      className="px-2 py-1 bg-white hover:bg-emerald-50 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-200 cursor-pointer"
+                    >
+                      🛍️ Catálogo
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleSimulateSend('1')}
@@ -897,13 +971,6 @@ export const AdminWhatsAppBot: React.FC = () => {
                       className="px-2 py-1 bg-white hover:bg-emerald-50 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-200 cursor-pointer"
                     >
                       📍 3. Horario
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSimulateSend('4')}
-                      className="px-2 py-1 bg-white hover:bg-emerald-50 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-200 cursor-pointer"
-                    >
-                      🛍️ 4. Web
                     </button>
                     <button
                       type="button"
