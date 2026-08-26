@@ -1053,157 +1053,539 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
         </div>
       )}
 
-      {/* PESTAÑA: CONEXIÓN & FILTROS ANTI-SPAM */}
+      {/* PESTAÑA: CONEXIÓN & FILTROS ANTI-SPAM COMPLETOS */}
       {mainTab === 'bot_security' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
           
-          {/* Tarjeta Conexión QR */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <QrCode className="w-4 h-4 text-purple-600" />
-              <span>Conexión de WhatsApp</span>
-            </h2>
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center space-y-3">
-              {status === 'connected' ? (
-                <div className="space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center">
-                    <CheckCircle2 className="w-6 h-6" />
-                  </div>
-                  <p className="text-xs font-bold text-slate-800">WhatsApp Vinculado Exitosamente</p>
-                  <p className="text-[11px] text-slate-500">
-                    Usuario conectado: {connectedUser?.name || connectedUser?.id || 'Chamical Candy Shop'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold cursor-pointer"
-                  >
-                    Desvincular WhatsApp
-                  </button>
-                </div>
-              ) : qrCode ? (
-                <div className="space-y-2">
-                  <img src={qrCode} alt="QR Code" className="w-48 h-48 mx-auto border-4 border-white shadow rounded-xl" />
-                  <p className="text-xs font-bold text-slate-800">Escaneá el código desde WhatsApp</p>
-                  <p className="text-[10px] text-slate-500">WhatsApp &gt; Dispositivos vinculados &gt; Vincular un dispositivo</p>
-                  <button
-                    type="button"
-                    onClick={handleStartOrRefresh}
-                    className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-bold cursor-pointer"
-                  >
-                    Actualizar QR
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs text-slate-600">El bot se encuentra desconectado.</p>
-                  <button
-                    type="button"
-                    onClick={handleStartOrRefresh}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold cursor-pointer"
-                  >
-                    Iniciar y Generar QR
-                  </button>
-                </div>
-              )}
+          {/* Header con botón Guardar */}
+          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-slate-900">Configuración de Seguridad, Filtros y Conexión</h2>
+                <p className="text-xs text-slate-500">
+                  Controla cuándo y a quién debe responder el bot para evitar spam o interrupciones con amigos y familiares.
+                </p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={handleSaveSettings}
+              disabled={savingSettings}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-black transition-all flex items-center space-x-2 shadow-sm cursor-pointer whitespace-nowrap"
+            >
+              {savingSettings ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              <span>{savingSettings ? 'Guardando en BD...' : 'Guardar Filtros y Ajustes'}</span>
+            </button>
           </div>
 
-          {/* Tarjeta Filtros Anti-Spam & Palabras Clave */}
+          {/* 1. INTERRUPTORES GLOBALES DE FUNCIONAMIENTO */}
           <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-purple-600" />
-              <span>Filtro Anti-Spam (Método 3) & Palabras Clave</span>
-            </h2>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-500" />
+                  <span>Interruptores Principales del Bot</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">Habilita o deshabilita funciones específicas del asistente de WhatsApp.</p>
+              </div>
+            </div>
 
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-3 bg-purple-50/60 rounded-xl border border-purple-100 cursor-pointer">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* Bot Activo */}
+              <label className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                settings.enabled ? 'bg-purple-50/70 border-purple-200' : 'bg-slate-50 border-slate-200 opacity-70'
+              }`}>
                 <div>
-                  <p className="text-xs font-bold text-slate-800">Activar Filtro Inteligente Anti-Spam</p>
-                  <p className="text-[10px] text-slate-500">Solo responde si el mensaje contiene palabras comerciales</p>
+                  <span className="text-xs font-black text-slate-900 block">🤖 Bot de WhatsApp Activo</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">Permite al bot procesar y contestar mensajes automáticamente.</span>
                 </div>
                 <input
                   type="checkbox"
-                  checked={settings.require_keywords_for_chatbot}
-                  onChange={(e) => setSettings({ ...settings, require_keywords_for_chatbot: e.target.checked })}
-                  className="w-4 h-4 text-purple-600 rounded accent-purple-600"
+                  checked={settings.enabled}
+                  onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })}
+                  className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0 mt-0.5"
                 />
               </label>
 
+              {/* Notificar Nuevo Pedido */}
+              <label className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                settings.auto_notify_new_order ? 'bg-purple-50/70 border-purple-200' : 'bg-slate-50 border-slate-200 opacity-70'
+              }`}>
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">🛍️ Avisos de Nuevos Pedidos Web</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">Envía el mensaje de bienvenida y datos de CBU al registrar compras web.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.auto_notify_new_order}
+                  onChange={(e) => setSettings({ ...settings, auto_notify_new_order: e.target.checked })}
+                  className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              {/* Notificar Cambio de Estado */}
+              <label className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                settings.auto_notify_status_change ? 'bg-purple-50/70 border-purple-200' : 'bg-slate-50 border-slate-200 opacity-70'
+              }`}>
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">📦 Avisos de Cambio de Estado</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">Avisa automáticamente cuando el pedido está En Preparación, Listo o en Camino.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.auto_notify_status_change}
+                  onChange={(e) => setSettings({ ...settings, auto_notify_status_change: e.target.checked })}
+                  className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              {/* Menú Automático */}
+              <label className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                settings.auto_chatbot_menu ? 'bg-purple-50/70 border-purple-200' : 'bg-slate-50 border-slate-200 opacity-70'
+              }`}>
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">📋 Menú de Bienvenida y Respuestas</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">Responde con las opciones 1 a 5 y opciones personalizadas.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.auto_chatbot_menu}
+                  onChange={(e) => setSettings({ ...settings, auto_chatbot_menu: e.target.checked })}
+                  className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              {/* Fotos de Golosinas */}
+              <label className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                settings.send_product_images ? 'bg-purple-50/70 border-purple-200' : 'bg-slate-50 border-slate-200 opacity-70'
+              }`}>
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">📸 Envío de Fotos HD de Golosinas</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">Envía imagen y ficha cuando el usuario escribe "FOTO 1" o "INFO 1".</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.send_product_images}
+                  onChange={(e) => setSettings({ ...settings, send_product_images: e.target.checked })}
+                  className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+
+              {/* Compra Directa por Chat */}
+              <label className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                settings.allow_chat_orders ? 'bg-purple-50/70 border-purple-200' : 'bg-slate-50 border-slate-200 opacity-70'
+              }`}>
+                <div>
+                  <span className="text-xs font-black text-slate-900 block">🛒 Compras Directas por WhatsApp</span>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">Permite armar carritos, calcular gramos y generar pedidos reales en la BD.</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.allow_chat_orders}
+                  onChange={(e) => setSettings({ ...settings, allow_chat_orders: e.target.checked })}
+                  className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0 mt-0.5"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* 2. FILTROS ANTI-SPAM INTELIGENTES (3 MÉTODOS) */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <span className="text-xs font-bold text-slate-700 block mb-1">Palabras Clave Registradas:</span>
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200">
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-purple-600" />
+                  <span>Filtros Anti-Spam Inteligentes (3 Métodos de Protección)</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Evita que el bot responda en conversaciones personales, grupos o mensajes no comerciales.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              
+              {/* MÉTODO 1: Pausa por Respuesta Manual */}
+              <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                settings.pause_on_manual_reply ? 'bg-amber-50/60 border-amber-200' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <label className="flex items-start justify-between gap-3 cursor-pointer">
+                  <div>
+                    <span className="text-xs font-black text-amber-950 block">
+                      🤫 Método 1: Pausa por Respuesta Manual
+                    </span>
+                    <span className="text-[11px] text-amber-800/80 block mt-0.5">
+                      Si respondes manualmente desde tu teléfono físico, el bot se silencia en ese chat para no interrumpir tu charla.
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.pause_on_manual_reply}
+                    onChange={(e) => setSettings({ ...settings, pause_on_manual_reply: e.target.checked })}
+                    className="w-5 h-5 accent-amber-600 rounded cursor-pointer shrink-0 mt-0.5"
+                  />
+                </label>
+
+                {settings.pause_on_manual_reply && (
+                  <div className="pt-2 border-t border-amber-200/80 flex items-center justify-between text-xs">
+                    <span className="text-amber-900 font-bold text-[11px]">Silenciar durante:</span>
+                    <select
+                      value={settings.pause_duration_minutes || 120}
+                      onChange={(e) => setSettings({ ...settings, pause_duration_minutes: Number(e.target.value) })}
+                      className="px-2.5 py-1 bg-white border border-amber-300 rounded-xl text-xs font-bold text-amber-900 outline-none cursor-pointer"
+                    >
+                      <option value={30}>30 Minutos</option>
+                      <option value={60}>1 Hora</option>
+                      <option value={120}>2 Horas (Recomendado)</option>
+                      <option value={360}>6 Horas</option>
+                      <option value={1440}>24 Horas</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* MÉTODO 2: Restringir solo a Clientes con Pedido */}
+              <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                settings.only_reply_to_customers ? 'bg-blue-50/60 border-blue-200' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <label className="flex items-start justify-between gap-3 cursor-pointer">
+                  <div>
+                    <span className="text-xs font-black text-blue-950 block">
+                      👥 Método 2: Solo a Clientes Registrados
+                    </span>
+                    <span className="text-[11px] text-blue-800/80 block mt-0.5">
+                      El bot SOLO atenderá a personas que ya tengan al menos una compra registrada en la tienda.
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.only_reply_to_customers}
+                    onChange={(e) => setSettings({ ...settings, only_reply_to_customers: e.target.checked })}
+                    className="w-5 h-5 accent-blue-600 rounded cursor-pointer shrink-0 mt-0.5"
+                  />
+                </label>
+
+                {settings.only_reply_to_customers && (
+                  <div className="pt-2 border-t border-blue-200/80 flex items-center justify-between text-xs">
+                    <span className="text-blue-900 font-bold text-[11px]">Criterio de cliente:</span>
+                    <select
+                      value={settings.customer_filter_mode || 'any_order'}
+                      onChange={(e) => setSettings({ ...settings, customer_filter_mode: e.target.value })}
+                      className="px-2.5 py-1 bg-white border border-blue-300 rounded-xl text-xs font-bold text-blue-900 outline-none cursor-pointer"
+                    >
+                      <option value="any_order">Cualquier Pedido Histórico</option>
+                      <option value="recent_order">Pedidos de los últimos 30 días</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* MÉTODO 3: Detección por Palabras Clave */}
+              <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                settings.require_keywords_for_chatbot ? 'bg-purple-50/60 border-purple-200' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <label className="flex items-start justify-between gap-3 cursor-pointer">
+                  <div>
+                    <span className="text-xs font-black text-purple-950 block">
+                      🛡️ Método 3: Palabras Clave Comerciales
+                    </span>
+                    <span className="text-[11px] text-purple-800/80 block mt-0.5">
+                      El bot SOLO responderá si el mensaje menciona términos de compra ("pedido", "precio", "gomitas", etc.).
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={settings.require_keywords_for_chatbot}
+                    onChange={(e) => setSettings({ ...settings, require_keywords_for_chatbot: e.target.checked })}
+                    className="w-5 h-5 accent-purple-600 rounded cursor-pointer shrink-0 mt-0.5"
+                  />
+                </label>
+                <div className="pt-2 border-t border-purple-200/80 flex items-center justify-between text-[11px] text-purple-800 font-medium">
+                  <span>Palabras registradas:</span>
+                  <span className="font-bold font-mono bg-white px-2 py-0.5 rounded-md border border-purple-200 text-purple-900">
+                    {(settings.chatbot_keywords || []).length} activas
+                  </span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Gestor de Palabras Clave Comerciales (Método 3) */}
+            {settings.require_keywords_for_chatbot && (
+              <div className="p-5 bg-purple-50/40 rounded-2xl border border-purple-100 space-y-3">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Diccionario de Palabras Clave Comerciales ({(settings.chatbot_keywords || []).length})</span>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSettings({ ...settings, chatbot_keywords: [...DEFAULT_CHATBOT_KEYWORDS] });
+                      showAlert({ title: 'Palabras Restauradas', message: 'Se restablecieron las palabras clave recomendadas.', type: 'info' });
+                    }}
+                    className="text-[11px] text-purple-700 hover:text-purple-900 font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Restaurar recomendadas</span>
+                  </button>
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Escribí una palabra clave (ej: gomitas, alfajor, precio)..."
+                    value={newKeywordInput}
+                    onChange={(e) => setNewKeywordInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()}
+                    className="flex-1 px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddKeyword}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
+                  >
+                    + Agregar Palabra
+                  </button>
+                </div>
+
+                {/* Lista de Chips de Palabras Clave */}
+                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-3 bg-white rounded-2xl border border-slate-200/80">
                   {(settings.chatbot_keywords || []).map((kw: string) => (
-                    <span key={kw} className="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-lg text-xs flex items-center gap-1 font-mono">
-                      <span>{kw}</span>
-                      <button type="button" onClick={() => handleRemoveKeyword(kw)} className="text-slate-400 hover:text-red-500 cursor-pointer">
-                        <X className="w-3 h-3" />
+                    <span
+                      key={kw}
+                      className="px-2.5 py-1 bg-purple-50 border border-purple-200 text-purple-900 rounded-xl text-xs flex items-center gap-1.5 font-mono shadow-2xs"
+                    >
+                      <span className="font-semibold">{kw}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveKeyword(kw)}
+                        className="text-purple-400 hover:text-red-500 cursor-pointer font-bold ml-0.5"
+                        title="Eliminar palabra"
+                      >
+                        ×
                       </button>
                     </span>
                   ))}
                 </div>
               </div>
+            )}
+          </div>
 
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Agregar palabra clave (ej: gomitas, alfajor)..."
-                  value={newKeywordInput}
-                  onChange={(e) => setNewKeywordInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword()}
-                  className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddKeyword}
-                  className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold cursor-pointer"
-                >
-                  Agregar
-                </button>
+          {/* 3. LISTA NEGRA DE CONTACTOS EXCLUIDOS (AMIGOS / FAMILIARES) */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <UserX className="w-4 h-4 text-red-500" />
+                  <span>Lista Negra de Contactos Excluidos (Amigos / Familiares)</span>
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  Los números aquí anotados jamás recibirán respuestas automáticas ni menús del bot.
+                </p>
               </div>
 
-              {/* Números Excluidos */}
-              <div className="pt-3 border-t border-slate-100 space-y-2">
-                <span className="text-xs font-bold text-slate-700 block">Números Excluidos (Amigos / Familiares):</span>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="3826123456"
-                    value={newIgnoredPhone}
-                    onChange={(e) => setNewIgnoredPhone(e.target.value)}
-                    className="w-1/2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none font-mono"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Etiqueta (ej: Mamá)"
-                    value={newIgnoredLabel}
-                    onChange={(e) => setNewIgnoredLabel(e.target.value)}
-                    className="w-1/2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none"
-                  />
-                </div>
+              <div className="text-xs font-bold text-slate-500">
+                <span>{(settings.ignored_numbers || []).length} contactos excluidos</span>
+              </div>
+            </div>
+
+            {/* Formulario para agregar nuevo número */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+              <div className="sm:col-span-5">
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Número de Teléfono (con código de área):</label>
+                <input
+                  type="text"
+                  placeholder="ej: 3826123456"
+                  value={newIgnoredPhone}
+                  onChange={(e) => setNewIgnoredPhone(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-red-400"
+                />
+              </div>
+              <div className="sm:col-span-4">
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">Etiqueta o Nombre:</label>
+                <input
+                  type="text"
+                  placeholder="ej: Mamá / Amigo / Proveedor"
+                  value={newIgnoredLabel}
+                  onChange={(e) => setNewIgnoredLabel(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-red-400"
+                />
+              </div>
+              <div className="sm:col-span-3 sm:self-end">
                 <button
                   type="button"
                   onClick={handleAddIgnoredNumber}
-                  className="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer"
+                  className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
                 >
-                  Excluir Número
+                  + Excluir Contacto
                 </button>
-
-                <div className="space-y-1 max-h-28 overflow-y-auto">
-                  {(settings.ignored_numbers || []).map((ign: any) => (
-                    <div key={ign.id || ign.phone} className="p-2 bg-slate-50 rounded-xl text-xs flex justify-between items-center border border-slate-200">
-                      <div>
-                        <span className="font-bold text-slate-800 font-mono">{ign.phone}</span>
-                        <span className="text-slate-400 text-[10px] ml-2">({ign.label || 'Excluido'})</span>
-                      </div>
-                      <button type="button" onClick={() => handleRemoveIgnoredNumber(ign.id || ign.phone)} className="text-red-500 hover:text-red-700 cursor-pointer">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
+
+            {/* Buscador y Lista de Excluidos */}
+            {(settings.ignored_numbers || []).length > 0 && (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Buscar contacto en la lista negra..."
+                    value={searchIgnored}
+                    onChange={(e) => setSearchIgnored(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-1.5 bg-white border border-slate-200 rounded-xl text-xs outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-2xl border border-slate-200/80">
+                  {(settings.ignored_numbers || [])
+                    .filter((ign: any) => {
+                      if (!searchIgnored) return true;
+                      const q = searchIgnored.toLowerCase();
+                      const ph = String(ign.phone || ign).toLowerCase();
+                      const lb = String(ign.label || '').toLowerCase();
+                      return ph.includes(q) || lb.includes(q);
+                    })
+                    .map((ign: any) => {
+                      const idVal = ign.id || ign.phone || ign;
+                      const phoneVal = ign.phone || ign;
+                      const labelVal = ign.label || 'Excluido';
+                      return (
+                        <div
+                          key={idVal}
+                          className="p-2.5 bg-white rounded-xl text-xs flex justify-between items-center border border-red-100 shadow-2xs group"
+                        >
+                          <div className="truncate pr-2">
+                            <span className="font-bold text-slate-800 font-mono block truncate">{phoneVal}</span>
+                            <span className="text-[10px] text-red-600 font-medium block truncate">({labelVal})</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveIgnoredNumber(idVal)}
+                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+                            title="Quitar de la lista negra"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 4. CONEXIÓN QR & MENSAJE DE PRUEBA EN VIVO */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* Tarjeta Conexión QR */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-purple-600" />
+                <span>Estado de Vinculación de WhatsApp</span>
+              </h3>
+
+              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-center space-y-3">
+                {status === 'connected' ? (
+                  <div className="space-y-3 w-full">
+                    <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 mx-auto flex items-center justify-center shadow-xs">
+                      <CheckCircle2 className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-slate-800">WhatsApp Conectado y Operativo</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Línea vinculada: <span className="font-bold text-slate-700">{connectedUser?.name || connectedUser?.id || 'Chamical Candy Shop'}</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold cursor-pointer transition-all"
+                    >
+                      Desvincular WhatsApp
+                    </button>
+                  </div>
+                ) : qrCode ? (
+                  <div className="space-y-3 w-full">
+                    <img src={qrCode} alt="QR Code" className="w-48 h-48 mx-auto border-4 border-white shadow-md rounded-2xl" />
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Escaneá el código QR desde tu WhatsApp</p>
+                      <p className="text-[10px] text-slate-500">WhatsApp &gt; Dispositivos vinculados &gt; Vincular un dispositivo</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleStartOrRefresh}
+                      className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-bold cursor-pointer"
+                    >
+                      Actualizar Código QR
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3 py-4">
+                    <p className="text-xs text-slate-600 font-medium">El bot de WhatsApp está actualmente desconectado.</p>
+                    <button
+                      type="button"
+                      onClick={handleStartOrRefresh}
+                      className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black cursor-pointer shadow-sm"
+                    >
+                      Iniciar y Generar Código QR
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Tarjeta Envío de Mensaje de Prueba */}
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <Send className="w-4 h-4 text-purple-600" />
+                <span>Enviar WhatsApp de Prueba en Vivo</span>
+              </h3>
+
+              <p className="text-xs text-slate-500">
+                Verifica que los mensajes salgan correctamente desde el servidor hacia un número de teléfono real.
+              </p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Teléfono Destinatario (ej: 5493826123456):</label>
+                  <input
+                    type="text"
+                    placeholder="5493826123456"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-purple-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-slate-600 block mb-1">Mensaje de Prueba:</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Hola! Este es un mensaje de prueba desde Chamical Candy Shop 🍬"
+                    value={testMessage}
+                    onChange={(e) => setTestMessage(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-400 resize-none font-sans"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSendTest}
+                  disabled={sendingTest || !testPhone}
+                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-sm"
+                >
+                  {sendingTest ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  <span>{sendingTest ? 'Enviando mensaje...' : 'Enviar WhatsApp de Prueba'}</span>
+                </button>
+              </div>
+            </div>
+
           </div>
 
         </div>
