@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   FlaskConical, Play, Cpu, Send, 
   UserCheck, RotateCcw, Download, CheckCheck,
-  Zap, PhoneCall, MoreVertical, RefreshCw, Database
+  Zap, PhoneCall, MoreVertical, RefreshCw, Database,
+  Eye, Image as ImageIcon, Sparkles, Tag, ShoppingBag
 } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 import { supabase } from '../lib/supabase';
@@ -29,7 +30,7 @@ export const TEST_PERSONAS: TestPersona[] = [
     phone: '3826401122',
     role: 'Cliente Nueva',
     avatarBg: 'bg-pink-600',
-    description: 'Sin pedidos previos. Consulta catálogo, precios y bienvenida.',
+    description: 'Sin pedidos previos. Consulta catálogo, fotos, precios y bienvenida.',
     hasActiveOrder: false
   },
   {
@@ -48,7 +49,7 @@ export const TEST_PERSONAS: TestPersona[] = [
     phone: '3826493344',
     role: 'Compradora de Gomitas',
     avatarBg: 'bg-emerald-600',
-    description: 'Pide gomitas al peso en pasos de 25g, 50g y gramajes libres (75g/150g).',
+    description: 'Pide fotos de gomitas al peso y compra en pasos de 25g, 50g y gramajes libres.',
     hasActiveOrder: false
   },
   {
@@ -75,10 +76,18 @@ export const DEFAULT_TEST_SUITES: TestSuite[] = [
   {
     id: 'suite_full_order',
     title: '🍬 Compra Completa con Gramajes',
-    description: 'Producto 1 (250g) + Producto 2 (100g) + Domicilio + Cupón + Transferencia.',
+    description: 'Pide Producto 1 (250g) + Producto 2 (100g) + Domicilio + Cupón + Transferencia.',
     badge: 'Flujo Completo',
     badgeColor: 'bg-pink-100 text-pink-900 border-pink-200',
     steps: ['comprar', '1', '250g', '2', '100g', 'listo', '2', 'Castro Barros 245', 'Mariana Gómez', 'DULCE10', '1', 'si']
+  },
+  {
+    id: 'suite_product_photos',
+    title: '📸 Consulta de Fotos y Ficha de Golosina',
+    description: 'Pide fotos y detalles nutricionales/dietas de Producto 1 y Producto 2.',
+    badge: 'Fotos & Info',
+    badgeColor: 'bg-indigo-100 text-indigo-900 border-indigo-200',
+    steps: ['foto 1', 'foto 2', 'comprar', '1', '250g', 'listo']
   },
   {
     id: 'suite_order_status',
@@ -189,6 +198,9 @@ export const AdminChatbotLab: React.FC = () => {
   const [realOrders, setRealOrders] = useState<any[]>([]);
   const [loadingDb, setLoadingDb] = useState<boolean>(true);
 
+  // Tab Inspector: 'inspector' o 'catalog'
+  const [rightPanelTab, setRightPanelTab] = useState<'inspector' | 'catalog'>('inspector');
+
   // Estados de Configuración y Sandbox
   const [selectedPersona, setSelectedPersona] = useState<TestPersona>(TEST_PERSONAS[0]);
   const [sandboxMode, setSandboxMode] = useState<boolean>(true);
@@ -229,18 +241,16 @@ export const AdminChatbotLab: React.FC = () => {
   });
 
   // =========================================================================
-  // CARGA DE DATOS REALES DE SUPABASE / BASE DE DATOS
+  // CARGA DE DATOS REALES DE SUPABASE (SIN LIMITES ARTIFICIALES)
   // =========================================================================
   const fetchRealData = useCallback(async () => {
     setLoadingDb(true);
     try {
-      // 1. Productos reales con stock
+      // 1. Cargar TODOS los productos de la base de datos
       const { data: prods, error: prodsErr } = await supabase
         .from('products')
         .select('*')
-        .gt('stock', 0)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('created_at', { ascending: false });
 
       if (!prodsErr && prods) {
         setRealProducts(prods as Product[]);
@@ -278,11 +288,10 @@ export const AdminChatbotLab: React.FC = () => {
         .from('orders')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(5);
+        .limit(10);
 
       if (orders && orders.length > 0) {
         setRealOrders(orders);
-        // Actualizar Lucas con el ID del pedido real más reciente
         TEST_PERSONAS[1].activeOrderId = orders[0].id?.slice(0, 8).toUpperCase() || 'A7F39C12';
       }
 
@@ -320,7 +329,7 @@ export const AdminChatbotLab: React.FC = () => {
   };
 
   // =========================================================================
-  // MOTOR DE CÓMPUTO CON DATOS REALES DE BASE DE DATOS
+  // MOTOR DE CÓMPUTO CON DATOS REALES DE BASE DE DATOS Y SOPORTE DE FOTOS
   // =========================================================================
   const computeBotLabResponse = (
     userInput: string,
@@ -338,6 +347,14 @@ export const AdminChatbotLab: React.FC = () => {
     const commonVars = getResolvedVariables(persona);
     const keywords = (realBotSettings?.chatbot_keywords || DEFAULT_CHATBOT_KEYWORDS);
 
+    // Lista de productos reales activos con stock (o todos si no hay stock)
+    const availableProds = realProducts.length > 0 ? realProducts : [
+      { id: 'mock-1', name: 'Moritas Ácidas', price_per_kg: 12000, min_weight: 25, weight_step: 25, unit_type: 'weight', stock: 50, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80', description: 'Gomitas masticables con cobertura ácida crocante.' },
+      { id: 'mock-2', name: 'Ositos Frutales', price_per_kg: 10000, min_weight: 50, weight_step: 50, unit_type: 'weight', stock: 40, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80', description: 'Clásicos ositos con jugo natural de frutas.' },
+      { id: 'mock-3', name: 'Chocolate Block 38g', base_price: 950, unit_type: 'piece', stock: 100, image_url: 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=600&auto=format&fit=crop&q=80', description: 'Tableta de chocolate con leche y maní tostado.' },
+      { id: 'mock-4', name: 'Súper Combo Gomitas 500g', base_price: 5400, unit_type: 'piece', stock: 20, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80', description: 'Mix con las 5 variedades de gomitas más pedidas.' }
+    ];
+
     // 1. Filtro Anti-Spam (Método 3) o Persona Ignorada
     if (persona.isIgnored || (realBotSettings?.require_keywords_for_chatbot && (lower.includes('almorzar') || lower.includes('hola pá') || lower.includes('nos vemos') || lower.includes('amigo') || lower.includes('che')))) {
       const hasKeyword = keywords.some((kw: string) => lower.includes(kw.toLowerCase()));
@@ -351,7 +368,7 @@ export const AdminChatbotLab: React.FC = () => {
     }
 
     // 2. Simulación de Comprobante de Pago
-    if (text.includes('[ENVIAR FOTO COMPROBANTE]') || (text.includes('comprobante') && text.includes('foto'))) {
+    if (text.includes('[ENVIAR FOTO COMPROBANTE]') || (text.includes('comprobante') && text.includes('foto') && !lower.startsWith('foto '))) {
       image = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80';
       reply = botSettings.template_payment_proof
         ? interpolateTemplate(botSettings.template_payment_proof, commonVars)
@@ -359,7 +376,47 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, image, newState };
     }
 
-    // 3. Consulta de Estado de Pedido (Opción 1)
+    // 3. COMANDO: VER FOTOS Y DETALLES DE CADA GOMITA / PRODUCTO REAL
+    if (lower.startsWith('foto') || lower.startsWith('detalle') || lower.startsWith('info') || lower.startsWith('ver foto') || lower === 'fotos' || lower === 'galeria' || lower === 'ver fotos') {
+      const numIdx = parseInt(lower.replace(/\D/g, ''), 10);
+      let targetProd: any = null;
+
+      if (!isNaN(numIdx) && numIdx >= 1 && numIdx <= availableProds.length) {
+        targetProd = availableProds[numIdx - 1];
+      } else if (lower.length > 4) {
+        targetProd = availableProds.find((p: any) => lower.includes(p.name.toLowerCase().slice(0, 5)) || lower.includes(p.name.toLowerCase().split(' ')[0]));
+      }
+
+      if (targetProd) {
+        const isWeight = targetProd.unit_type === 'weight' || targetProd.is_bulk;
+        const priceStr = isWeight
+          ? `\$${Number(targetProd.price_per_kg || targetProd.base_price || targetProd.price || 10000).toLocaleString('es-AR')}/kg (desde ${targetProd.min_weight || 25}g • pasos de ${targetProd.weight_step || 25}g)`
+          : `\$${Number(targetProd.base_price || targetProd.price || 0).toLocaleString('es-AR')} por unidad`;
+        
+        const dietStr = Array.isArray(targetProd.diet) && targetProd.diet.length > 0 ? `\n🌱 *Apto / Dietas:* ${targetProd.diet.join(' • ')}` : '';
+        const descStr = targetProd.description ? `\n📝 *Detalle:* ${targetProd.description}` : '';
+        const stockStr = `\n📦 *Stock:* ${targetProd.stock} unidades en tienda`;
+
+        reply = `🍬 *${targetProd.name}* 🍭${descStr}${dietStr}\n💰 *Precio:* ${priceStr}${stockStr}\n\n👉 *Para agregarla al pedido:* Respondé con su número (*${availableProds.indexOf(targetProd) + 1}*) o escribí los gramos que querés (*250g*).\n👉 Para ver la foto de otra golosina escribí *FOTO [número]* (ej: *FOTO 2*).`;
+        image = targetProd.image_url || targetProd.images?.[0] || 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80';
+        return { reply, image, newState };
+      } else {
+        // Galería general con lista completa
+        const listText = availableProds.map((p: any, i: number) => {
+          const isWeight = p.unit_type === 'weight' || p.is_bulk;
+          const priceStr = isWeight
+            ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg`
+            : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')}`;
+          return `${i + 1}️⃣ *${p.name}* — ${priceStr} 📸 _(Escribí *FOTO ${i + 1}*)_`;
+        }).join('\n');
+
+        reply = `📸 *GALERÍA COMPLETA DE GOLOSINAS (${availableProds.length} en Base de Datos)* 🍬\n\n${listText}\n\n👉 *Escribí FOTO [número] (ej: FOTO 1, FOTO 2) para ver la foto en alta definición y los detalles de cada una.*`;
+        image = availableProds[0]?.image_url || availableProds[0]?.images?.[0];
+        return { reply, image, newState };
+      }
+    }
+
+    // 4. Consulta de Estado de Pedido (Opción 1)
     if ((lower === '1' || lower.includes('estado') || lower.includes('como va')) && newState.step === 'IDLE') {
       const activeOrder = realOrders.find((o: any) => o.customer_phone?.includes(persona.phone.slice(-6)) || o.shipping_name?.toLowerCase().includes(persona.name.toLowerCase().split(' ')[0])) || (persona.hasActiveOrder ? { id: persona.activeOrderId || 'A7F39C12', status: 'preparing', total: 4200, shipping_address: 'Retiro en Local' } : null);
 
@@ -380,32 +437,32 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 4. Opción 2: Datos Bancarios
+    // 5. Opción 2: Datos Bancarios
     if ((lower === '2' || lower.includes('alias') || lower.includes('cbu') || lower.includes('transferencia')) && newState.step === 'IDLE') {
       reply = interpolateTemplate(botSettings.menu_response_2 || DEFAULT_TEMPLATES.menu_response_2, commonVars);
       return { reply, newState };
     }
 
-    // 5. Opción 3: Ubicación y Horarios
+    // 6. Opción 3: Ubicación y Horarios
     if ((lower === '3' || lower.includes('horario') || lower.includes('direccion') || lower.includes('ubicacion')) && newState.step === 'IDLE') {
       reply = interpolateTemplate(botSettings.menu_response_3 || DEFAULT_TEMPLATES.menu_response_3, commonVars);
       return { reply, newState };
     }
 
-    // 6. Opción 5: Asesor Humano
+    // 7. Opción 5: Asesor Humano
     if ((lower === '5' || lower.includes('persona') || lower.includes('asesor') || lower.includes('ayuda')) && newState.step === 'IDLE') {
       reply = interpolateTemplate(botSettings.menu_response_5 || DEFAULT_TEMPLATES.menu_response_5, commonVars);
       return { reply, newState };
     }
 
-    // 7. Cancelar / Salir
+    // 8. Cancelar / Salir
     if (lower === 'cancelar' || lower === 'salir') {
       newState = { step: 'IDLE', items: [], subtotal: 0, discountAmount: 0, total: 0, pendingProduct: undefined };
       reply = `❌ *Proceso de compra cancelado.* ¿En qué más podemos ayudarte?\n\n` + interpolateTemplate(botSettings.template_menu || DEFAULT_TEMPLATES.template_menu, commonVars);
       return { reply, newState };
     }
 
-    // 8. Carrito: Ver / Vaciar / Quitar
+    // 9. Carrito: Ver / Vaciar / Quitar
     if (lower === 'carrito' || lower === 'ver carrito' || lower === 'ver') {
       if (newState.items.length === 0) {
         reply = '🛒 Tu carrito está vacío. Escribí *COMPRAR* para ver nuestras golosinas con stock disponible.';
@@ -440,14 +497,7 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 9. Iniciar Compra / Opción 4 Catálogo
-    const availableProds = realProducts.length > 0 ? realProducts.slice(0, 10) : [
-      { id: 'mock-1', name: 'Moritas Ácidas', price_per_kg: 12000, min_weight: 25, weight_step: 25, unit_type: 'weight', stock: 50, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80' },
-      { id: 'mock-2', name: 'Ositos Frutales', price_per_kg: 10000, min_weight: 50, weight_step: 50, unit_type: 'weight', stock: 40, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80' },
-      { id: 'mock-3', name: 'Chocolate Block 38g', base_price: 950, unit_type: 'piece', stock: 100, image_url: 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=600&auto=format&fit=crop&q=80' },
-      { id: 'mock-4', name: 'Súper Combo Gomitas 500g', base_price: 5400, unit_type: 'piece', stock: 20, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80' }
-    ];
-
+    // 10. Iniciar Compra / Opción 4 Catálogo (Muestra TODOS los productos de la BD)
     if (lower === 'comprar' || lower === 'pedir' || lower.includes('nuevo pedido') || lower === 'quiero comprar' || lower === 'quiero gomitas' || ((lower === '4' || lower.includes('catalogo') || lower.includes('productos')) && newState.step === 'IDLE')) {
       newState.step = 'SELECTING_PRODUCTS';
       newState.items = [];
@@ -464,14 +514,14 @@ export const AdminChatbotLab: React.FC = () => {
         return `${idx + 1}️⃣ *${p.name}* — ${priceStr}`;
       }).join('\n');
 
-      reply = `🛍️ *¡Vamos a armar tu pedido con nuestro catálogo real!* 🍬\n\n${prodsListText}\n\n👉 *Respondé con el NÚMERO del producto que querés llevar (ej: 1, 2).*`;
+      reply = `🛍️ *¡Catálogo Completo de Golosinas (${availableProds.length} productos en stock)!* 🍬\n\n${prodsListText}\n\n👉 *Respondé con el NÚMERO del producto que querés llevar (ej: 1, 2).*\n📸 _Para ver fotos y detalles de cualquiera, escribí *FOTO [número]* (ej: FOTO 1)._`;
       if (availableProds[0]?.image_url) {
         image = availableProds[0].image_url;
       }
       return { reply, image, newState };
     }
 
-    // 10. Selección de Producto en Catálogo
+    // 11. Selección de Producto en Catálogo
     if (newState.step === 'SELECTING_PRODUCTS') {
       if (lower === 'listo' || lower === 'finalizar' || lower === 'pagar' || lower === 'checkout') {
         if (newState.items.length === 0) {
@@ -489,7 +539,7 @@ export const AdminChatbotLab: React.FC = () => {
       if (!isNaN(numIdx) && numIdx >= 1 && numIdx <= availableProds.length) {
         selectedProd = availableProds[numIdx - 1];
       } else {
-        selectedProd = availableProds.find((p: any) => lower.includes(p.name.toLowerCase().slice(0, 5)));
+        selectedProd = availableProds.find((p: any) => lower.includes(p.name.toLowerCase().slice(0, 5)) || lower.includes(p.name.toLowerCase().split(' ')[0]));
       }
 
       if (selectedProd) {
@@ -524,12 +574,12 @@ export const AdminChatbotLab: React.FC = () => {
           return { reply, image, newState };
         }
       } else {
-        reply = `🔍 No entendimos la opción. Escribí el *NÚMERO* del producto de la lista (ej: 1, 2, 3...) o escribí *LISTO* para finalizar tu pedido.`;
+        reply = `🔍 No encontramos ese número en el catálogo. Escribí el *NÚMERO* del producto (1 a ${availableProds.length}) o escribí *LISTO* para finalizar.`;
         return { reply, newState };
       }
     }
 
-    // 11. Selección de Cantidad para productos por unidad
+    // 12. Selección de Cantidad para productos por unidad
     if (newState.step === 'SELECTING_QUANTITY' && newState.pendingProduct) {
       const p = newState.pendingProduct;
       const qty = parseInt(lower.replace(/\D/g, ''), 10) || 1;
@@ -554,7 +604,7 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 12. Selección de Gramaje para gomitas al peso
+    // 13. Selección de Gramaje para gomitas al peso
     if (newState.step === 'SELECTING_WEIGHT' && newState.pendingProduct) {
       const p = newState.pendingProduct;
       const options = p.options || [];
@@ -620,7 +670,7 @@ export const AdminChatbotLab: React.FC = () => {
       }
     }
 
-    // 13. Método de Envío
+    // 14. Método de Envío
     if (newState.step === 'ASK_SHIPPING_METHOD') {
       if (lower === '1' || lower.includes('retiro') || lower.includes('local')) {
         newState.shippingMethod = 'pickup';
@@ -636,7 +686,7 @@ export const AdminChatbotLab: React.FC = () => {
       }
     }
 
-    // 14. Captura de Dirección
+    // 15. Captura de Dirección
     if (newState.step === 'ASK_ADDRESS') {
       newState.shippingAddress = text;
       newState.step = 'ASK_NAME';
@@ -644,7 +694,7 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 15. Captura de Nombre
+    // 16. Captura de Nombre
     if (newState.step === 'ASK_NAME') {
       newState.shippingName = text || persona.name;
       newState.step = 'ASK_COUPON';
@@ -653,7 +703,7 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 16. Captura de Cupón Real
+    // 17. Captura de Cupón Real
     if (newState.step === 'ASK_COUPON') {
       if (lower !== 'no' && lower !== 'ninguno' && lower !== 'paso' && lower !== '0') {
         const promoCodeUpper = text.trim().toUpperCase();
@@ -687,7 +737,7 @@ export const AdminChatbotLab: React.FC = () => {
       }
     }
 
-    // 17. Método de Pago
+    // 18. Método de Pago
     if (newState.step === 'ASK_PAYMENT_METHOD') {
       if (lower === '1' || lower.includes('transferencia') || lower.includes('alias')) {
         newState.paymentMethod = 'transfer';
@@ -712,7 +762,7 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 18. Confirmación Final (y guardado en DB si sandboxMode === false)
+    // 19. Confirmación Final (y guardado en DB si sandboxMode === false)
     if (newState.step === 'CONFIRMING') {
       if (lower === 'si' || lower === 'confirmar' || lower === 'dale' || lower === 'sí' || lower === 's' || lower === 'ok') {
         const orderCode = 'CSC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -747,7 +797,7 @@ export const AdminChatbotLab: React.FC = () => {
               if (newDbOrder && newState.items.length > 0) {
                 const orderItems = newState.items.map((it: any) => ({
                   order_id: newDbOrder.id,
-                  product_id: it.productId || realProducts[0]?.id,
+                  product_id: it.productId || availableProds[0]?.id,
                   quantity: it.quantity || 1,
                   unit_price: it.unitPrice
                 }));
@@ -829,7 +879,7 @@ export const AdminChatbotLab: React.FC = () => {
     let currentHistory: Array<{ sender: 'bot' | 'user'; text: string; time: string; image?: string; isSystemNote?: boolean }> = [
       {
         sender: 'bot',
-        text: `🧪 *Ejecutando Suite de Pruebas: ${suite.title}* ⚡\nPersona: *${selectedPersona.name}* (${selectedPersona.role})\nSimulando con datos reales de la Base de Datos...`,
+        text: `🧪 *Ejecutando Suite de Pruebas: ${suite.title}* ⚡\nPersona: *${selectedPersona.name}* (${selectedPersona.role})\nSimulando con ${realProducts.length} productos de la Base de Datos...`,
         time: initialTime,
         isSystemNote: true
       }
@@ -937,7 +987,7 @@ export const AdminChatbotLab: React.FC = () => {
       history: labChatHistory,
       finalState: labSessionState,
       databaseStats: {
-        productsLoaded: realProducts.length,
+        totalProductsLoaded: realProducts.length,
         promosLoaded: realPromos.length,
         hasStoreSettings: !!realStoreSettings
       },
@@ -951,9 +1001,6 @@ export const AdminChatbotLab: React.FC = () => {
     downloadAnchor.remove();
   };
 
-  // Nombres de los primeros productos reales para los botones rápidos
-  const topProduct1 = realProducts[0]?.name || 'Moritas';
-  const topProduct2 = realProducts[1]?.name || 'Ositos';
   const sampleCoupon = realPromos[0]?.code || 'DULCE10';
 
   return (
@@ -977,7 +1024,7 @@ export const AdminChatbotLab: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
               <span className="flex items-center gap-1 text-emerald-700 font-semibold">
                 <Database className="w-3.5 h-3.5" />
-                <span>Base de Datos: {loadingDb ? 'Cargando...' : `${realProducts.length} productos con stock • ${realPromos.length} cupones activos`}</span>
+                <span>Base de Datos: {loadingDb ? 'Cargando...' : `${realProducts.length} productos totales en catálogo • ${realPromos.length} cupones activos`}</span>
               </span>
             </div>
           </div>
@@ -990,7 +1037,7 @@ export const AdminChatbotLab: React.FC = () => {
             onClick={fetchRealData}
             disabled={loadingDb}
             className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
-            title="Recargar productos y cupones de Supabase"
+            title="Recargar todos los productos y cupones de Supabase"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loadingDb ? 'animate-spin' : ''}`} />
             <span>Recargar BD</span>
@@ -1218,11 +1265,16 @@ export const AdminChatbotLab: React.FC = () => {
                         }`}
                       >
                         {msg.image && (
-                          <img
-                            src={msg.image}
-                            alt="Adjunto"
-                            className="w-full h-24 object-cover rounded-xl mb-1.5 border border-slate-200"
-                          />
+                          <div className="mb-1.5 rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
+                            <img
+                              src={msg.image}
+                              alt="Golosina"
+                              className="w-full max-h-36 object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          </div>
                         )}
                         <p className="whitespace-pre-wrap text-[11px]">{msg.text}</p>
                         <div className={`mt-0.5 flex items-center justify-end space-x-1 text-[8px] ${
@@ -1248,29 +1300,60 @@ export const AdminChatbotLab: React.FC = () => {
 
               {/* Chips Rápidos */}
               <div className="px-2 py-1.5 bg-slate-200/90 border-t border-slate-300 space-y-1">
+                {/* Fila 1: Acciones Principales y Ver Fotos */}
                 <div className="flex gap-1 overflow-x-auto scrollbar-none">
                   <button
                     type="button"
                     onClick={() => handleLabSend('comprar')}
                     className="px-2 py-0.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
                   >
-                    🛒 Comprar
+                    🛒 Catálogo ({realProducts.length})
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLabSend('fotos')}
+                    className="px-2 py-0.5 bg-indigo-700 hover:bg-indigo-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer flex items-center gap-1"
+                  >
+                    <ImageIcon className="w-3 h-3" />
+                    <span>Ver Fotos & Info</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLabSend('foto 1')}
+                    className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer truncate max-w-[100px]"
+                    title="Ver foto del producto #1"
+                  >
+                    📸 Foto 1
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLabSend('foto 2')}
+                    className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer truncate max-w-[100px]"
+                    title="Ver foto del producto #2"
+                  >
+                    📸 Foto 2
+                  </button>
+                  {realProducts.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => handleLabSend('foto 3')}
+                      className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer truncate max-w-[100px]"
+                      title="Ver foto del producto #3"
+                    >
+                      📸 Foto 3
+                    </button>
+                  )}
+                </div>
+
+                {/* Fila 2: Gramajes Libres y Selección de Productos */}
+                <div className="flex gap-1 overflow-x-auto scrollbar-none">
                   <button
                     type="button"
                     onClick={() => handleLabSend('1')}
-                    className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer truncate max-w-[100px]"
-                    title={`1. ${topProduct1}`}
+                    className="px-2 py-0.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer truncate max-w-[90px]"
+                    title={`Elegir ${realProducts[0]?.name || '#1'}`}
                   >
-                    🍬 1. {topProduct1.slice(0, 10)}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleLabSend('2')}
-                    className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer truncate max-w-[100px]"
-                    title={`2. ${topProduct2}`}
-                  >
-                    🍫 2. {topProduct2.slice(0, 10)}
+                    🍬 {realProducts[0]?.name?.slice(0, 8) || '#1'}
                   </button>
                   <button
                     type="button"
@@ -1309,6 +1392,7 @@ export const AdminChatbotLab: React.FC = () => {
                   </button>
                 </div>
 
+                {/* Fila 3: Finalización y Pagos */}
                 <div className="flex gap-1 overflow-x-auto scrollbar-none">
                   <button
                     type="button"
@@ -1353,7 +1437,7 @@ export const AdminChatbotLab: React.FC = () => {
               <div className="p-2 bg-white flex items-center space-x-1.5 border-t border-slate-200">
                 <input
                   type="text"
-                  placeholder={`Escribir como ${selectedPersona.name.split(' ')[0]}...`}
+                  placeholder={`Escribí FOTO 1, COMPRAR, 250g...`}
                   value={labInputText}
                   onChange={(e) => setLabInputText(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleLabSend()}
@@ -1371,110 +1455,239 @@ export const AdminChatbotLab: React.FC = () => {
           </div>
         </div>
 
-        {/* COLUMNA 3 (4 COLS): INSPECTOR DE ESTADO EN VIVO (DEBUGGER & SESSION INSPECTOR) */}
-        <div className="lg:col-span-4 space-y-6">
+        {/* COLUMNA 3 (4 COLS): INSPECTOR DE ESTADO & GALERÍA DE GOLOSINAS */}
+        <div className="lg:col-span-4 space-y-4">
           
-          {/* Tarjeta: Estado Interno del Bot */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                <Cpu className="w-4 h-4 text-purple-600" />
-                <span>3. Inspector de Sesión en Vivo</span>
-              </h3>
-              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                labSessionState.step === 'IDLE' ? 'bg-slate-100 text-slate-700' :
-                labSessionState.step === 'SELECTING_PRODUCTS' ? 'bg-blue-100 text-blue-800' :
-                labSessionState.step === 'SELECTING_WEIGHT' ? 'bg-purple-100 text-purple-800 animate-pulse' :
-                labSessionState.step === 'ASK_COUPON' ? 'bg-amber-100 text-amber-800' :
-                labSessionState.step === 'CONFIRMING' ? 'bg-emerald-100 text-emerald-800' :
-                'bg-pink-100 text-pink-800'
-              }`}>
-                {labSessionState.step}
-              </span>
-            </div>
-
-            {/* Métricas de Carrito */}
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="p-2.5 bg-slate-50 rounded-2xl border border-slate-200">
-                <p className="text-[10px] text-slate-400 font-medium">Subtotal</p>
-                <p className="text-xs font-black text-slate-900">\${labSessionState.subtotal.toLocaleString('es-AR')}</p>
-              </div>
-              <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200">
-                <p className="text-[10px] text-amber-700 font-medium">Descuento</p>
-                <p className="text-xs font-black text-amber-900">-\${labSessionState.discountAmount.toLocaleString('es-AR')}</p>
-              </div>
-              <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200">
-                <p className="text-[10px] text-emerald-700 font-medium">Total</p>
-                <p className="text-xs font-black text-emerald-950">\${labSessionState.total.toLocaleString('es-AR')}</p>
-              </div>
-            </div>
-
-            {/* Tabla de Items en Carrito */}
-            <div className="space-y-1.5">
-              <span className="text-[11px] font-bold text-slate-700 block">Items en Carrito:</span>
-              {labSessionState.items.length === 0 ? (
-                <div className="p-3 bg-slate-50 rounded-xl text-center text-slate-400 text-xs border border-dashed border-slate-200">
-                  Carrito vacío (Paso IDLE)
-                </div>
-              ) : (
-                <div className="space-y-1 max-h-36 overflow-y-auto">
-                  {labSessionState.items.map((it, idx) => (
-                    <div key={idx} className="p-2 bg-slate-50 rounded-xl text-xs flex justify-between items-center border border-slate-200">
-                      <span className="font-semibold text-slate-800 truncate max-w-[150px]">{it.name}</span>
-                      <span className="font-mono font-bold text-purple-700">\${it.unitPrice.toLocaleString('es-AR')}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Variables Resueltas */}
-            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-              <span className="text-[11px] font-bold text-slate-700 block">Variables Resueltas de la BD:</span>
-              <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-                <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
-                  <span className="text-slate-400 block">cliente:</span>
-                  <span className="font-bold text-slate-800">{selectedPersona.name}</span>
-                </div>
-                <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
-                  <span className="text-slate-400 block">alias_banco:</span>
-                  <span className="font-bold text-slate-800 truncate">{realStoreSettings?.bank_alias || 'martinchox33'}</span>
-                </div>
-                <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
-                  <span className="text-slate-400 block">cupon:</span>
-                  <span className="font-bold text-slate-800">{labSessionState.couponCode || 'Ninguno'}</span>
-                </div>
-                <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
-                  <span className="text-slate-400 block">medio_pago:</span>
-                  <span className="font-bold text-slate-800">{labSessionState.paymentMethod || 'No definido'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Acciones de Inyección */}
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-700 block">Inyección de Eventos & BD:</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={handleInjectTimeout}
-                  className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-[10px] font-bold cursor-pointer transition-colors text-center"
-                >
-                  ⏱️ Simular Timeout 30m
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSandboxMode(!sandboxMode)}
-                  className={`p-2 rounded-xl text-[10px] font-bold cursor-pointer transition-colors text-center border ${
-                    sandboxMode ? 'bg-purple-50 text-purple-900 border-purple-200' : 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                  }`}
-                >
-                  {sandboxMode ? '🟣 Sandbox (Memoria)' : '🟢 Modo DB Test (Real)'}
-                </button>
-              </div>
-            </div>
-
+          {/* Switch de Pestañas del Panel Derecho */}
+          <div className="bg-slate-200/80 p-1 rounded-2xl flex items-center text-xs font-bold text-slate-700">
+            <button
+              type="button"
+              onClick={() => setRightPanelTab('inspector')}
+              className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                rightPanelTab === 'inspector' ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900'
+              }`}
+            >
+              <Cpu className="w-4 h-4 text-purple-600" />
+              <span>Inspector de Sesión</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRightPanelTab('catalog')}
+              className={`flex-1 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                rightPanelTab === 'catalog' ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4 text-indigo-600" />
+              <span>Fotos & Fichas ({realProducts.length})</span>
+            </button>
           </div>
+
+          {/* VISTA 1: INSPECTOR DE SESIÓN EN VIVO */}
+          {rightPanelTab === 'inspector' && (
+            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <Cpu className="w-4 h-4 text-purple-600" />
+                  <span>Estado Interno del Bot</span>
+                </h3>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                  labSessionState.step === 'IDLE' ? 'bg-slate-100 text-slate-700' :
+                  labSessionState.step === 'SELECTING_PRODUCTS' ? 'bg-blue-100 text-blue-800' :
+                  labSessionState.step === 'SELECTING_WEIGHT' ? 'bg-purple-100 text-purple-800 animate-pulse' :
+                  labSessionState.step === 'ASK_COUPON' ? 'bg-amber-100 text-amber-800' :
+                  labSessionState.step === 'CONFIRMING' ? 'bg-emerald-100 text-emerald-800' :
+                  'bg-pink-100 text-pink-800'
+                }`}>
+                  {labSessionState.step}
+                </span>
+              </div>
+
+              {/* Métricas de Carrito */}
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2.5 bg-slate-50 rounded-2xl border border-slate-200">
+                  <p className="text-[10px] text-slate-400 font-medium">Subtotal</p>
+                  <p className="text-xs font-black text-slate-900">\${labSessionState.subtotal.toLocaleString('es-AR')}</p>
+                </div>
+                <div className="p-2.5 bg-amber-50 rounded-2xl border border-amber-200">
+                  <p className="text-[10px] text-amber-700 font-medium">Descuento</p>
+                  <p className="text-xs font-black text-amber-900">-\${labSessionState.discountAmount.toLocaleString('es-AR')}</p>
+                </div>
+                <div className="p-2.5 bg-emerald-50 rounded-2xl border border-emerald-200">
+                  <p className="text-[10px] text-emerald-700 font-medium">Total</p>
+                  <p className="text-xs font-black text-emerald-950">\${labSessionState.total.toLocaleString('es-AR')}</p>
+                </div>
+              </div>
+
+              {/* Tabla de Items en Carrito */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-slate-700 block">Items en Carrito:</span>
+                {labSessionState.items.length === 0 ? (
+                  <div className="p-3 bg-slate-50 rounded-xl text-center text-slate-400 text-xs border border-dashed border-slate-200">
+                    Carrito vacío (Paso IDLE)
+                  </div>
+                ) : (
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {labSessionState.items.map((it, idx) => (
+                      <div key={idx} className="p-2 bg-slate-50 rounded-xl text-xs flex justify-between items-center border border-slate-200">
+                        <span className="font-semibold text-slate-800 truncate max-w-[150px]">{it.name}</span>
+                        <span className="font-mono font-bold text-purple-700">\${it.unitPrice.toLocaleString('es-AR')}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Variables Resueltas */}
+              <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+                <span className="text-[11px] font-bold text-slate-700 block">Variables Resueltas de la BD:</span>
+                <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                  <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                    <span className="text-slate-400 block">cliente:</span>
+                    <span className="font-bold text-slate-800">{selectedPersona.name}</span>
+                  </div>
+                  <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                    <span className="text-slate-400 block">alias_banco:</span>
+                    <span className="font-bold text-slate-800 truncate">{realStoreSettings?.bank_alias || 'martinchox33'}</span>
+                  </div>
+                  <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                    <span className="text-slate-400 block">cupon:</span>
+                    <span className="font-bold text-slate-800">{labSessionState.couponCode || 'Ninguno'}</span>
+                  </div>
+                  <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
+                    <span className="text-slate-400 block">medio_pago:</span>
+                    <span className="font-bold text-slate-800">{labSessionState.paymentMethod || 'No definido'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Acciones de Inyección */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <span className="text-[11px] font-bold text-slate-700 block">Inyección de Eventos & BD:</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleInjectTimeout}
+                    className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-[10px] font-bold cursor-pointer transition-colors text-center"
+                  >
+                    ⏱️ Simular Timeout 30m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSandboxMode(!sandboxMode)}
+                    className={`p-2 rounded-xl text-[10px] font-bold cursor-pointer transition-colors text-center border ${
+                      sandboxMode ? 'bg-purple-50 text-purple-900 border-purple-200' : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                    }`}
+                  >
+                    {sandboxMode ? '🟣 Sandbox (Memoria)' : '🟢 Modo DB Test (Real)'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VISTA 2: CATÁLOGO COMPLETO, FOTOS Y FICHAS DE GOLOSINAS */}
+          {rightPanelTab === 'catalog' && (
+            <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm space-y-3.5 max-h-[560px] overflow-y-auto">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>Fichas de Golosinas en BD</span>
+                  </h3>
+                  <p className="text-[10px] text-slate-500">Hacé clic para enviar la foto o pedir directo.</p>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-900">
+                  {realProducts.length} Golosinas
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {realProducts.map((p, idx) => {
+                  const isWeight = p.unit_type === 'weight' || p.is_bulk;
+                  const priceLabel = isWeight 
+                    ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg`
+                    : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')} c/u`;
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-200 transition-all flex flex-col gap-2.5"
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className="w-14 h-14 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
+                          {p.image_url || p.images?.[0] ? (
+                            <img
+                              src={p.image_url || p.images?.[0]}
+                              alt={p.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <span className="text-lg">🍬</span>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-xs font-bold text-slate-900 truncate">
+                              {idx + 1}. {p.name}
+                            </p>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black text-purple-700 bg-purple-100">
+                              {priceLabel}
+                            </span>
+                          </div>
+
+                          <p className="text-[10px] text-slate-500 line-clamp-2 mt-0.5">
+                            {p.description || 'Golosina artesanal dulce de Chamical Candy Shop.'}
+                          </p>
+
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {isWeight && (
+                              <span className="px-1.5 py-0.2 rounded text-[8px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
+                                ⚖️ Min: {p.min_weight || 25}g • Paso: {p.weight_step || 25}g
+                              </span>
+                            )}
+                            <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold ${
+                              p.stock > 0 ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-900'
+                            }`}>
+                              📦 Stock: {p.stock}
+                            </span>
+                            {Array.isArray(p.diet) && p.diet.map((d, di) => (
+                              <span key={di} className="px-1.5 py-0.2 rounded text-[8px] font-bold bg-sky-100 text-sky-900">
+                                🌱 {d}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botones Rápidos por Producto */}
+                      <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-200/60">
+                        <button
+                          type="button"
+                          onClick={() => handleLabSend(`foto ${idx + 1}`)}
+                          className="py-1 px-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer border border-indigo-200"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>📸 Enviar Foto</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleLabSend(`${idx + 1}`)}
+                          className="py-1 px-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs"
+                        >
+                          <ShoppingBag className="w-3 h-3" />
+                          <span>🛒 Pedir #{idx + 1}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
         </div>
 

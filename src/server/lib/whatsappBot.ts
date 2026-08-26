@@ -1256,13 +1256,70 @@ class WhatsAppBotService {
         return;
       }
 
-      // 12. Opción 4: Catálogo
+      // 12. Fotos y Detalles de Productos Específicos
+      if (body.startsWith('foto') || body.startsWith('detalle') || body.startsWith('info') || body.startsWith('ver foto') || body === 'fotos' || body === 'galeria') {
+        const { data: prods } = await db.from('products').select('*').gt('stock', 0).order('created_at', { ascending: false });
+        if (prods && prods.length > 0) {
+          const numIdx = parseInt(body.replace(/\D/g, ''), 10);
+          let targetProd: any = null;
+          if (!isNaN(numIdx) && numIdx >= 1 && numIdx <= prods.length) {
+            targetProd = prods[numIdx - 1];
+          } else if (body.length > 4) {
+            targetProd = prods.find((p: any) => body.includes(p.name.toLowerCase().slice(0, 5)));
+          }
+
+          if (targetProd) {
+            const isWeight = targetProd.unit_type === 'weight' || targetProd.is_bulk;
+            const priceStr = isWeight
+              ? `\$${Number(targetProd.price_per_kg || targetProd.base_price || targetProd.price || 10000).toLocaleString('es-AR')}/kg (desde ${targetProd.min_weight || 25}g • pasos de ${targetProd.weight_step || 25}g)`
+              : `\$${Number(targetProd.base_price || targetProd.price || 0).toLocaleString('es-AR')} por unidad`;
+            const dietStr = Array.isArray(targetProd.diet) && targetProd.diet.length > 0 ? `\n🌱 *Dietas / Apto:* ${targetProd.diet.join(' • ')}` : '';
+            const descStr = targetProd.description ? `\n📝 *Detalle:* ${targetProd.description}` : '';
+
+            const caption = `🍬 *${targetProd.name}* 🍭${descStr}${dietStr}\n💰 *Precio:* ${priceStr}\n📦 *Stock:* ${targetProd.stock} disponibles\n\n👉 Para pedir este producto escribí *COMPRAR* o su número.`;
+            
+            if (targetProd.image_url) {
+              await this.sendImageMessage(from, targetProd.image_url, caption);
+            } else {
+              await this.sock.sendMessage(from, { text: caption });
+            }
+            return;
+          } else {
+            // Galería general
+            const catalogListText = prods.map((p: any, i: number) => {
+              const isWeight = p.unit_type === 'weight' || p.is_bulk;
+              const priceStr = isWeight
+                ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg`
+                : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')}`;
+              return `${i + 1}️⃣ *${p.name}* — ${priceStr} (Escribí *FOTO ${i + 1}*)`;
+            }).join('\n');
+
+            const firstWithImage = prods.find((p: any) => !!p.image_url);
+            if (firstWithImage?.image_url) {
+              await this.sendImageMessage(from, firstWithImage.image_url, `📸 *GALERÍA DE GOLOSINAS EN STOCK* 🍬\n\n${catalogListText}\n\n👉 *Escribí FOTO [número] (ej: FOTO 1, FOTO 2) para ver la foto y detalles de cada una.*`);
+            } else {
+              await this.sock.sendMessage(from, {
+                text: `📸 *GALERÍA DE GOLOSINAS EN STOCK* 🍬\n\n${catalogListText}\n\n👉 *Escribí FOTO [número] para ver la foto y ficha de cada golosina.*`
+              });
+            }
+            return;
+          }
+        }
+      }
+
+      // 13. Opción 4: Catálogo
       if (body === '4' || body.includes('catalogo') || body.includes('productos') || body.includes('precio')) {
-        const { data: prods } = await db.from('products').select('id, name, price, images, image_url').gt('stock', 0).limit(8);
-        const catalogListText = prods?.map((p: any, i: number) => `${i + 1}️⃣ *${p.name}* - \$${Number(p.price || 0).toLocaleString('es-AR')}`).join('\n') || '';
+        const { data: prods } = await db.from('products').select('*').gt('stock', 0).order('created_at', { ascending: false });
+        const catalogListText = prods?.map((p: any, i: number) => {
+          const isWeight = p.unit_type === 'weight' || p.is_bulk;
+          const priceStr = isWeight
+            ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg (desde ${p.min_weight || 25}g)`
+            : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')}`;
+          return `${i + 1}️⃣ *${p.name}* — ${priceStr}`;
+        }).join('\n') || '';
         
         if (settings.send_product_images && prods?.[0]?.image_url) {
-          await this.sendImageMessage(from, prods[0].image_url, `🍬 *${prods[0].name}* - \$${Number(prods[0].price || 0).toLocaleString('es-AR')}`);
+          await this.sendImageMessage(from, prods[0].image_url, `🍬 *${prods[0].name}* — Catálogo Completo`);
         }
         
         await this.sock.sendMessage(from, { text: this.formatTemplate(settings.menu_response_4 || DEFAULT_BOT_SETTINGS.menu_response_4, { ...commonVars, catalogo_lista: catalogListText }) });
