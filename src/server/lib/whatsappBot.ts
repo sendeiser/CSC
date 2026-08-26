@@ -100,13 +100,32 @@ export const DEFAULT_BOT_SETTINGS: WhatsAppBotSettings = {
   template_order_preparing: `👨‍🍳 *¡Buenas noticias {cliente}!* 🍬\n\nTu pedido *#{pedido_id}* por *\${total}* ya está *EN PREPARACIÓN*. 🍭\nNuestros expertos están seleccionando y empacando tus golosinas con el mayor cuidado.\n\n¡Te avisaremos apenas esté listo! ⏱️`,
   template_order_ready: `✨ *¡Tu pedido está LISTO {cliente}!* 🎉\n\n📦 Pedido: *#{pedido_id}*\n📍 Ya podés pasar a retirarlo por nuestro local en los horarios habituales.\n\n¡Te esperamos con tus golosinas preparadas! 🍬`,
   template_order_shipped: `🛵 *¡Tu pedido va en camino {cliente}!* 🚀\n\n📦 Pedido: *#{pedido_id}*\n📍 Dirección de entrega: *{direccion}*\n\nEl cadete ya salió con tu pedido. ¡Mantenete atento para recibir tus golosinas! 🍭`,
-  template_menu: `🍬 *¡Hola {cliente}! Bienvenido a Chamical Candy Shop* 🍭\n\n¿En qué podemos ayudarte hoy? *Respondé con el número de opción:*\n\n1️⃣ 📦 *Consultar estado de mi pedido*\n2️⃣ 🏦 *Ver datos de transferencia bancaria*\n3️⃣ 📍 *Horarios y ubicación del local*\n4️⃣ 🛍️ *Ver catálogo de productos y precios*\n5️⃣ 👤 *Hablar con una persona del equipo*\n\n_Escribí *COMPRAR* si querés hacer un pedido directo por acá._`,
+  template_menu: `🍬 *¡Hola {cliente}! Bienvenido a Chamical Candy Shop* 🍭\n\n¿En qué podemos ayudarte hoy? *Respondé con el número de opción:*\n\n1️⃣ 📦 *Consultar estado de mi pedido*\n2️⃣ 🏦 *Ver datos de transferencia bancaria*\n3️⃣ 📍 *Horarios y ubicación del local*\n4️⃣ 🛍️ *Ver catálogo de productos y precios*\n5️⃣ 👤 *Hablar con una persona del equipo*\n\n_Escribí *COMPRAR* si querés armar un pedido directo por acá._`,
   template_payment_proof: `📸 *¡Comprobante de pago recibido!* 🎉\n\nMuchas gracias por enviarnos tu comprobante. Nuestro equipo lo verificará a la brevedad para confirmar tu pedido. 🍬`,
   menu_response_1: `📦 *Estado de tu Pedido:* #{pedido_id}\n\n• *Estado:* {estado}\n• *Total:* \${total}\n• *Destino:* {direccion}\n\n_Para volver al menú, enviá la palabra *MENU*._`,
   menu_response_2: `🏦 *Datos para Transferencia Bancaria:* 🍬\n\n• *Alias:* \`{alias_banco}\`\n• *Banco:* {banco}\n• *Titular:* {titular}\n• *CBU:* \`{cbu}\`\n\n📸 *Una vez realizada la transferencia, podés enviar la captura o comprobante por este mismo chat.*\n\n_Enviá *MENU* para ver más opciones._`,
   menu_response_3: `📍 *Ubicación y Horarios de Atención:* 🍬\n\n🏠 *Dirección:* {direccion}\n🕒 *Horarios:* {horarios}\n\n¡Te esperamos con las golosinas más ricas! 🍭\n\n_Enviá *MENU* para volver al menú principal._`,
   menu_response_4: `🛍️ *Catálogo y Precios de Chamical Candy Shop* 🍬\n\n{catalogo_lista}\n\n👉 *También podés explorar la tienda web:* {catalogo_url}\n\n_Para armar tu pedido por acá, respondé con el número de producto que querés o escribí *COMPRAR*._`,
   menu_response_5: `👤 *¡Entendido {cliente}! Un asesor de nuestro equipo te responderá a la brevedad.* 🍬\n\nPor favor dejanos tu consulta detallada para poder ayudarte más rápido. ¡Muchas gracias por tu paciencia!`,
+  
+  // Flujo de compra por WhatsApp
+  template_buy_catalog: `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n{catalogo_lista}\n\n👉 *Respondé con el NÚMERO del producto que querés llevar (ej: 1, 2).*`,
+  template_product_photo: `🍬 *{producto}* 🍭\n{detalle}{dietas}\n💰 *Precio:* {precio}\n📦 *Stock:* {stock} disponibles\n\n👉 Para pedir este producto escribí *COMPRAR* o su número.`,
+  template_weight_prompt: `🍬 *{producto}* (Venta al peso) ⚖️\n💰 *Precio:* \${precio_kg}/kg • Mínimo: *{min_weight}g* (Fraccionable de a *{step_weight}g*)\n\n*¿Qué cantidad querés llevar?*\n{opciones_gramaje}\n\n👉 *Respondé con el número (1 a {cantidad_opciones})* o escribí tus gramos exactos (ej: *75g*, *150g*, *350g*).`,
+  template_unit_quantity_prompt: `🍫 *{producto}*\n💰 *Precio:* \${precio_unitario} por unidad\n\n👉 *¿Cuántas unidades querés llevar?* (Escribí la cantidad, ej: 1, 2, 3...)`,
+  template_cart_item_added: `✅ *¡Agregaste {producto}!* 🍬 (+{subtotal_item})\n\n🛒 *Tu carrito actual:*\n{carrito_items}\n\n💰 *Subtotal:* \${subtotal}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`,
+  template_cart_view: `🛒 *TU CARRITO ACTUAL:* 🍬\n\n{carrito_items}\n\n💰 *Subtotal:* \${subtotal}\n\n👉 Para sumar más productos, escribí su *NÚMERO*.\n👉 Para quitar un producto, escribí *QUITAR [número]* (ej: QUITAR 1).\n👉 O escribí *LISTO* para avanzar con la entrega y el pago.`,
+  template_empty_cart: `⚠️ Tu carrito está vacío. Escribí el *NÚMERO* del producto que querés agregar o escribí *CANCELAR*.`,
+  template_shipping_prompt: `🛵 *¿Cómo querés recibir tu pedido?*\n\nRespondé con el número de opción:\n1️⃣ *Retiro por el local (Chamical)* — Sin costo\n2️⃣ *Envío a domicilio con cadete (Chamical)*`,
+  template_address_prompt: `📍 *Por favor escribí tu dirección de entrega y entrecalles en Chamical:*`,
+  template_name_prompt: `👤 *¿A nombre de quién registramos el pedido?* (Escribí tu nombre y apellido):`,
+  template_coupon_prompt: `🎟️ *¿Tenés algún Cupón de Descuento?*\n\n👉 Escribí el código de tu cupón (ej: *{ejemplo_cupon}*) o respondé *NO* para continuar sin cupón.`,
+  template_coupon_applied: `🎉 *¡Cupón {cupon} aplicado con éxito!* Descuento: -\${descuento} ✨\n\n💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`,
+  template_coupon_invalid: `ℹ️ El cupón "{cupon}" no es válido o expiró. Continuamos con el valor regular.\n\n💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`,
+  template_payment_prompt: `💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`,
+  template_order_summary: `🍬 *RESUMEN DE TU PEDIDO* 🍭\n\n🛒 *Golosinas:*\n{carrito_items}\n\n💵 *Subtotal:* \${subtotal}\n{linea_descuento}🛵 *Entrega:* {metodo_entrega}\n📍 *Dirección:* {direccion}\n👤 *Cliente:* {cliente}\n💳 *Forma de Pago:* {medio_pago}\n\n💰 *TOTAL A PAGAR:* \${total}\n\n¿Está todo correcto?\n👉 Respondé *SI* para confirmar tu pedido o *CANCELAR*.`,
+  template_order_confirmed: `🎉 *¡PEDIDO #{pedido_id} REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *{cliente}*, tu pedido ya fue cargado automáticamente.\n\n📦 *Detalle:*\n{carrito_items}\n💰 *Total:* \${total}\n📍 *Entrega:* {direccion}\n\n{instrucciones_pago}`,
+  template_order_cancelled: `❌ *Proceso de compra cancelado.* ¿En qué más podemos ayudarte?\n\n{menu}`,
   custom_menu_options: []
 };
 
