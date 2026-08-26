@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck, Sparkles, Wallet, Bell } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Users, Ticket, Plus, Edit3, Trash2, X, Check, Save, AlertCircle, RefreshCw, Star, Layout, FileText, Menu, Search, Eye, MessageCircle, BarChart2, TrendingUp, PieChart, Filter, ArrowUpDown, DollarSign, Calculator, Info, HelpCircle, ChevronDown, ChevronUp, Truck, Sparkles, Wallet, Bell, FlaskConical } from 'lucide-react';
 import { AdminSection, Product } from '../types';
 import { admin as adminApi, products as productsApi, categories as categoriesApi, upload as uploadApi, setAuthToken, getAuthToken } from '../lib/api';
 import AdminHomepageEditor from './AdminHomepageEditor';
 import { AdminBannersEditor } from './AdminBannersEditor';
 import AdminAboutPageEditor from './AdminAboutPageEditor';
 import { AdminWhatsAppEditor } from './AdminWhatsAppEditor';
+import { AdminChatbotLab } from './AdminChatbotLab';
 import { AdminOrdersSection } from './AdminOrdersSection';
 import { AdminShippingEditor } from './AdminShippingEditor';
 import { AdminFinancesSection } from './AdminFinancesSection';
@@ -680,6 +681,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
     { id: 'about-page', label: 'Sobre Nosotros', icon: <FileText className="w-4.5 h-4.5" /> },
     { id: 'categories', label: 'Categorías', icon: <Layout className="w-4.5 h-4.5" /> },
     { id: 'whatsapp', label: 'Mensajes WhatsApp', icon: <MessageCircle className="w-4.5 h-4.5 text-emerald-400" /> },
+    { id: 'chatbot-lab', label: 'Laboratorio Bot', icon: <FlaskConical className="w-4.5 h-4.5 text-purple-400" /> },
     { id: 'shipping', label: 'Envíos & Datos Bancarios', icon: <Truck className="w-4.5 h-4.5 text-pink-400" /> },
   ]
 
@@ -2049,6 +2051,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ setActiveScreen, setSess
               {section === 'about-page' && <AdminAboutPageEditor />}
               {section === 'categories' && <AdminCategoriesScreen />}
               {section === 'whatsapp' && <AdminWhatsAppEditor />}
+              {section === 'chatbot-lab' && <AdminChatbotLab />}
               {section === 'shipping' && <AdminShippingEditor />}
             </>
           )}

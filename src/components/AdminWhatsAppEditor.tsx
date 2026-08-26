@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Save, RefreshCw, HelpCircle, Check, Info, Phone, MessageCircle, RotateCcw, Copy, Sparkles, Smartphone, Plus, Trash2, Edit3, X, Bot } from 'lucide-react';
+import { MessageSquare, Save, RefreshCw, HelpCircle, Check, Info, Phone, MessageCircle, RotateCcw, Copy, Sparkles, Smartphone, Plus, Trash2, Edit3, X, Bot, FlaskConical } from 'lucide-react';
 import { admin as adminApi, homepage as homepageApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 import { DEFAULT_WHATSAPP_TEMPLATES, DEFAULT_CUSTOM_QUICK_MESSAGES, CustomQuickMessage, setWhatsAppNumbers, setWhatsAppTemplates, waLink } from '../lib/whatsapp';
 import { AdminWhatsAppBot } from './AdminWhatsAppBot';
+import { AdminChatbotLab } from './AdminChatbotLab';
 
 export const AdminWhatsAppEditor: React.FC = () => {
   const { showAlert } = useModal();
-  const [mainView, setMainView] = useState<'bot' | 'templates'>('bot');
+  const [mainView, setMainView] = useState<'bot' | 'templates' | 'lab'>('bot');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'transfer' | 'mercadopago' | 'preparing' | 'ready' | 'general' | 'numbers' | 'custom_quick'>('transfer');
@@ -304,35 +305,47 @@ export const AdminWhatsAppEditor: React.FC = () => {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12">
       {/* Selector Principal de Modo */}
-      <div className="bg-slate-200/70 p-1.5 rounded-2xl flex items-center gap-1.5 border border-slate-200 shadow-xs">
+      <div className="bg-slate-200/70 p-1.5 rounded-2xl flex flex-col sm:flex-row items-center gap-1.5 border border-slate-200 shadow-xs">
         <button
           onClick={() => setMainView('bot')}
-          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+          className={`flex-1 w-full sm:w-auto py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
             mainView === 'bot'
               ? 'bg-white text-emerald-800 shadow-sm border border-slate-200/80'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Bot className="w-4.5 h-4.5 text-emerald-600" />
-          <span>🤖 WhatsApp Bot & Envíos Automáticos (Baileys)</span>
+          <span>🤖 WhatsApp Bot (Baileys)</span>
+        </button>
+
+        <button
+          onClick={() => setMainView('lab')}
+          className={`flex-1 w-full sm:w-auto py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+            mainView === 'lab'
+              ? 'bg-white text-purple-800 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <FlaskConical className="w-4.5 h-4.5 text-purple-600" />
+          <span>🧪 Laboratorio & Sandbox</span>
         </button>
 
         <button
           onClick={() => setMainView('templates')}
-          className={`flex-1 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+          className={`flex-1 w-full sm:w-auto py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
             mainView === 'templates'
               ? 'bg-white text-emerald-800 shadow-sm border border-slate-200/80'
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          <MessageSquare className="w-4.5 h-4.5 text-purple-600" />
-          <span>💬 Plantillas y Enlaces de WhatsApp Web</span>
+          <MessageSquare className="w-4.5 h-4.5 text-emerald-600" />
+          <span>💬 Plantillas Web</span>
         </button>
       </div>
 
-      {mainView === 'bot' ? (
-        <AdminWhatsAppBot />
-      ) : (
+      {mainView === 'bot' && <AdminWhatsAppBot onOpenLab={() => setMainView('lab')} />}
+      {mainView === 'lab' && <AdminChatbotLab />}
+      {mainView === 'templates' && (
         <>
           {/* Header Banner */}
           <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
