@@ -399,8 +399,11 @@ class WhatsAppBotService {
           keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
         generateHighQualityLinkPreview: true,
-        connectTimeoutMs: 45000,
-        keepAliveIntervalMs: 25000,
+        connectTimeoutMs: 60000,
+        keepAliveIntervalMs: 15000,
+        defaultQueryTimeoutMs: 60000,
+        syncFullHistory: false,
+        retryRequestDelayMs: 250,
         emitOwnEvents: false
       });
 
@@ -421,20 +424,30 @@ class WhatsAppBotService {
 
         if (connection === 'close') {
           const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-          const shouldReconnect = statusCode !== DisconnectReason?.loggedOut;
+          const isLoggedOut = statusCode === DisconnectReason?.loggedOut;
 
           this.connectedUser = null;
           this.qrCode = null;
 
-          if (statusCode === DisconnectReason?.loggedOut) {
+          if (isLoggedOut) {
+            console.log('[WhatsApp Bot]: ❌ Sesión cerrada por el usuario o desvinculada desde WhatsApp en el teléfono.');
             this.status = 'disconnected';
+            this.reconnectAttempts = 0;
             this.clearAuth();
-          } else if (shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts && !isServerless) {
+          } else if (!isServerless) {
+            // Reconexión automática continua ante microcortes, código 515 (restartRequired), 428 (connectionLost), etc.
             this.reconnectAttempts++;
+            const isRestartRequired = statusCode === 515;
+            const delay = isRestartRequired ? 1500 : Math.min(2000 * Math.pow(1.3, Math.min(this.reconnectAttempts, 8)), 20000);
+            
             this.status = 'connecting';
+            console.log(`[WhatsApp Bot]: 🔄 Conexión interrumpida (código ${statusCode || 'desconocido'}). Reconectando intento #${this.reconnectAttempts} en ${(delay/1000).toFixed(1)}s...`);
+
             setTimeout(() => {
-              this.start().catch(() => {});
-            }, 5000);
+              this.start().catch((err) => {
+                console.error('[WhatsApp Bot Auto-Reconnect Error]:', err);
+              });
+            }, delay);
           } else {
             this.status = 'disconnected';
           }
