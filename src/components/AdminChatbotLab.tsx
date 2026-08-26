@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  FlaskConical, Play, Cpu, CheckCircle2, Send, 
+  FlaskConical, Play, Cpu, Send, 
   UserCheck, RotateCcw, Download, CheckCheck,
-  Zap, PhoneCall, MoreVertical, Smartphone
+  Zap, PhoneCall, MoreVertical, RefreshCw, Database
 } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
+import { supabase } from '../lib/supabase';
+import { whatsappBotApi } from '../lib/api';
 import { DEFAULT_CHATBOT_KEYWORDS, DEFAULT_TEMPLATES } from './AdminWhatsAppBot';
+import { Product } from '../types';
 
 export interface TestPersona {
   id: string;
@@ -68,11 +71,11 @@ export interface TestSuite {
   steps: string[];
 }
 
-export const TEST_SUITES: TestSuite[] = [
+export const DEFAULT_TEST_SUITES: TestSuite[] = [
   {
     id: 'suite_full_order',
     title: '🍬 Compra Completa con Gramajes',
-    description: 'Moritas 250g + Ositos 100g + Domicilio + Cupón DULCE10 + Transferencia.',
+    description: 'Producto 1 (250g) + Producto 2 (100g) + Domicilio + Cupón + Transferencia.',
     badge: 'Flujo Completo',
     badgeColor: 'bg-pink-100 text-pink-900 border-pink-200',
     steps: ['comprar', '1', '250g', '2', '100g', 'listo', '2', 'Castro Barros 245', 'Mariana Gómez', 'DULCE10', '1', 'si']
@@ -96,7 +99,7 @@ export const TEST_SUITES: TestSuite[] = [
   {
     id: 'suite_coupon_test',
     title: '🎟️ Prueba de Cupón de Descuento',
-    description: 'Aplica cupón DULCE10 con descuento automático en subtotal.',
+    description: 'Aplica cupón con descuento automático en subtotal según base de datos.',
     badge: 'Descuento',
     badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-200',
     steps: ['comprar', '1', '500g', 'listo', '1', 'Mariana Gómez', 'DULCE10', '1', 'si']
@@ -119,9 +122,74 @@ export const TEST_SUITES: TestSuite[] = [
   }
 ];
 
+export function buildWeightOptionsForProduct(p: any): Array<{ label: string; grams: number; price: number }> {
+  const minWeight = Number(p.min_weight) || 25;
+  const maxWeight = Number(p.max_weight) || 1000;
+  const step = Number(p.weight_step) || 25;
+  const pricePerKg = Number(p.price_per_kg || p.base_price || p.price || 10000);
+
+  let standardPoints: number[] = [];
+  if (step <= 25) {
+    standardPoints = [25, 50, 100, 250, 500];
+  } else if (step <= 50) {
+    standardPoints = [50, 100, 250, 500, 1000];
+  } else {
+    standardPoints = [100, 250, 500, 1000];
+  }
+
+  const validPoints = Array.from(new Set([minWeight, ...standardPoints]))
+    .filter((g) => g >= minWeight && g <= maxWeight && (g - minWeight) % step === 0)
+    .sort((a, b) => a - b)
+    .slice(0, 5);
+
+  return validPoints.map((g) => {
+    let price = 0;
+    if (p.sizes && typeof p.sizes === 'object' && p.sizes[`${g}g`]) {
+      price = Number(p.sizes[`${g}g`]);
+    } else {
+      price = Math.round((g / 1000) * pricePerKg);
+    }
+    const label = g >= 1000 ? `${g / 1000} Kilo (${g}g)` : `${g}g`;
+    return { label, grams: g, price };
+  });
+}
+
+export function calculateGramPrice(p: any, grams: number): number {
+  const pricePerKg = Number(p.price_per_kg || p.base_price || p.price || 10000);
+  if (p.sizes && typeof p.sizes === 'object' && p.sizes[`${grams}g`]) {
+    return Number(p.sizes[`${grams}g`]);
+  }
+  return Math.round((grams / 1000) * pricePerKg);
+}
+
+export function parseGramsFromText(input: string): number | null {
+  const t = input.toLowerCase().trim();
+  if (t.includes('medio kilo') || t.includes('medio kg') || t.includes('1/2 kilo') || t.includes('1/2kg')) return 500;
+  if (t.includes('cuarto kilo') || t.includes('cuarto kg') || t.includes('1/4 kilo') || t.includes('1/4kg')) return 250;
+  if (t.includes('kilo y medio') || t.includes('1.5 kg') || t.includes('1,5 kg')) return 1500;
+  if (t.includes('2 kilos') || t.includes('2kg')) return 2000;
+  if (t.includes('1 kilo') || t.includes('un kilo') || t.includes('1kg')) return 1000;
+
+  const matchGrams = t.match(/(\d+)\s*(?:g|gr|gramos|grs)?\b/i);
+  if (matchGrams) {
+    const num = parseInt(matchGrams[1], 10);
+    if (!isNaN(num) && num > 0) return num;
+  }
+  return null;
+}
+
 export const AdminChatbotLab: React.FC = () => {
   const { showAlert } = useModal();
 
+  // Datos Reales de la Base de Datos
+  const [realProducts, setRealProducts] = useState<Product[]>([]);
+  const [realPromos, setRealPromos] = useState<any[]>([]);
+  const [realStoreSettings, setRealStoreSettings] = useState<any>(null);
+  const [realBotSettings, setRealBotSettings] = useState<any>(null);
+  const [realOrders, setRealOrders] = useState<any[]>([]);
+  const [loadingDb, setLoadingDb] = useState<boolean>(true);
+
+  // Estados de Configuración y Sandbox
   const [selectedPersona, setSelectedPersona] = useState<TestPersona>(TEST_PERSONAS[0]);
   const [sandboxMode, setSandboxMode] = useState<boolean>(true);
   const [simulationSpeed, setSimulationSpeed] = useState<'fast' | 'normal' | 'human'>('normal');
@@ -130,6 +198,7 @@ export const AdminChatbotLab: React.FC = () => {
   const [isBotTyping, setIsBotTyping] = useState<boolean>(false);
   const [labInputText, setLabInputText] = useState('');
 
+  // Historial de Chat
   const [labChatHistory, setLabChatHistory] = useState<Array<{ sender: 'bot' | 'user'; text: string; time: string; image?: string; isSystemNote?: boolean }>>([
     {
       sender: 'bot',
@@ -138,9 +207,11 @@ export const AdminChatbotLab: React.FC = () => {
     }
   ]);
 
+  // Estado de Sesión de Compra
   const [labSessionState, setLabSessionState] = useState<{
     step: 'IDLE' | 'SELECTING_PRODUCTS' | 'SELECTING_WEIGHT' | 'SELECTING_QUANTITY' | 'ASK_SHIPPING_METHOD' | 'ASK_ADDRESS' | 'ASK_NAME' | 'ASK_COUPON' | 'ASK_PAYMENT_METHOD' | 'CONFIRMING';
-    items: Array<{ name: string; quantity: number; weightGrams?: number; unitPrice: number }>;
+    pendingProduct?: any;
+    items: Array<{ productId?: string; name: string; quantity: number; weightGrams?: number; unitPrice: number }>;
     subtotal: number;
     discountAmount: number;
     total: number;
@@ -157,6 +228,100 @@ export const AdminChatbotLab: React.FC = () => {
     total: 0
   });
 
+  // =========================================================================
+  // CARGA DE DATOS REALES DE SUPABASE / BASE DE DATOS
+  // =========================================================================
+  const fetchRealData = useCallback(async () => {
+    setLoadingDb(true);
+    try {
+      // 1. Productos reales con stock
+      const { data: prods, error: prodsErr } = await supabase
+        .from('products')
+        .select('*')
+        .gt('stock', 0)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!prodsErr && prods) {
+        setRealProducts(prods as Product[]);
+      }
+
+      // 2. Cupones de descuento activos reales
+      const { data: promos } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('is_active', true);
+
+      if (promos) {
+        setRealPromos(promos);
+      }
+
+      // 3. Ajustes de tienda reales (Alias bancario, CBU, Dirección, Horarios)
+      const { data: storeSection } = await supabase
+        .from('homepage_sections')
+        .select('content')
+        .eq('section_name', 'store_settings')
+        .maybeSingle();
+
+      if (storeSection?.content) {
+        setRealStoreSettings(storeSection.content);
+      }
+
+      // 4. Configuración del Bot de WhatsApp y plantillas personalizadas
+      const botSettingsRes = await whatsappBotApi.getSettings().catch(() => null);
+      if (botSettingsRes) {
+        setRealBotSettings(botSettingsRes);
+      }
+
+      // 5. Últimos pedidos reales para asociar al perfil VIP (Lucas)
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (orders && orders.length > 0) {
+        setRealOrders(orders);
+        // Actualizar Lucas con el ID del pedido real más reciente
+        TEST_PERSONAS[1].activeOrderId = orders[0].id?.slice(0, 8).toUpperCase() || 'A7F39C12';
+      }
+
+    } catch (err) {
+      console.warn('[AdminChatbotLab]: Error al cargar datos reales de Supabase:', err);
+    } finally {
+      setLoadingDb(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRealData();
+  }, [fetchRealData]);
+
+  // Obtener variables dinámicas resueltas
+  const getResolvedVariables = (persona: TestPersona) => {
+    return {
+      cliente: persona.name,
+      alias_banco: realStoreSettings?.bank_alias || 'martinchox33',
+      banco: realStoreSettings?.bank_name || 'MercadoPago / Galicia',
+      titular: realStoreSettings?.bank_holder || 'Gonzalez Martin Gustavo',
+      cbu: realStoreSettings?.bank_cbu || '0000003100092138928374',
+      direccion: realStoreSettings?.pickup_address || realStoreSettings?.address || 'Castro Barros 245, Chamical, La Rioja',
+      horarios: realStoreSettings?.pickup_schedule || realStoreSettings?.opening_hours || 'Lunes a Sábados de 09:00 a 13:00 y de 17:30 a 22:00 hs.',
+      catalogo_url: realStoreSettings?.store_website_url || 'https://candyshopchamical.netlify.app'
+    };
+  };
+
+  const interpolateTemplate = (template: string, vars: Record<string, any>) => {
+    let res = template || '';
+    for (const [k, v] of Object.entries(vars)) {
+      res = res.replace(new RegExp(`\\{${k}\\}`, 'gi'), String(v ?? ''));
+    }
+    return res;
+  };
+
+  // =========================================================================
+  // MOTOR DE CÓMPUTO CON DATOS REALES DE BASE DE DATOS
+  // =========================================================================
   const computeBotLabResponse = (
     userInput: string,
     prevState: any,
@@ -169,12 +334,16 @@ export const AdminChatbotLab: React.FC = () => {
     let image: string | undefined = undefined;
     let systemNote = false;
 
+    const botSettings = realBotSettings || DEFAULT_TEMPLATES;
+    const commonVars = getResolvedVariables(persona);
+    const keywords = (realBotSettings?.chatbot_keywords || DEFAULT_CHATBOT_KEYWORDS);
+
     // 1. Filtro Anti-Spam (Método 3) o Persona Ignorada
-    if (persona.isIgnored || (lower.includes('almorzar') || lower.includes('hola pá') || lower.includes('nos vemos') || lower.includes('amigo') || lower.includes('che'))) {
-      const hasKeyword = DEFAULT_CHATBOT_KEYWORDS.some((kw: string) => lower.includes(kw.toLowerCase()));
+    if (persona.isIgnored || (realBotSettings?.require_keywords_for_chatbot && (lower.includes('almorzar') || lower.includes('hola pá') || lower.includes('nos vemos') || lower.includes('amigo') || lower.includes('che')))) {
+      const hasKeyword = keywords.some((kw: string) => lower.includes(kw.toLowerCase()));
       if (!hasKeyword) {
         return {
-          reply: `🔇 *[BOT SILENCIOSO - FILTRO ANTI-SPAM]*\nEl mensaje de "${persona.name}" no contiene palabras clave de la tienda. El bot no interrumpe la conversación personal.`,
+          reply: `🔇 *[BOT SILENCIOSO - FILTRO ANTI-SPAM]*\nEl mensaje de "${persona.name}" no contiene palabras clave comerciales. El bot no interrumpe la conversación personal.`,
           newState,
           systemNote: true
         };
@@ -184,33 +353,62 @@ export const AdminChatbotLab: React.FC = () => {
     // 2. Simulación de Comprobante de Pago
     if (text.includes('[ENVIAR FOTO COMPROBANTE]') || (text.includes('comprobante') && text.includes('foto'))) {
       image = 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=600&auto=format&fit=crop&q=80';
-      reply = DEFAULT_TEMPLATES.template_payment_proof
-        ? DEFAULT_TEMPLATES.template_payment_proof.replace('{cliente}', persona.name).replace('{pedido_id}', persona.activeOrderId || 'A7F39C12')
-        : `📸 *¡Comprobante de pago recibido!* ✨\nMuchas gracias *${persona.name}*, ya estamos verificando la acreditación para despachar tu pedido.`;
+      reply = botSettings.template_payment_proof
+        ? interpolateTemplate(botSettings.template_payment_proof, commonVars)
+        : `📸 *¡Comprobante de pago recibido!* ✨\nMuchas gracias *${persona.name}*, ya estamos verificando la acreditación bancaria para despachar tu pedido.`;
       return { reply, image, newState };
     }
 
-    // 3. Consulta de Estado de Pedido
+    // 3. Consulta de Estado de Pedido (Opción 1)
     if ((lower === '1' || lower.includes('estado') || lower.includes('como va')) && newState.step === 'IDLE') {
-      if (persona.hasActiveOrder) {
-        reply = `👨‍🍳 *¡Hola ${persona.name}! Tu pedido #${persona.activeOrderId || 'A7F39C12'} está EN PREPARACIÓN.*\n\nNuestros expertos están armando tu bolsita de golosinas. ¡Te avisaremos apenas esté listo para retirar! ✨`;
+      const activeOrder = realOrders.find((o: any) => o.customer_phone?.includes(persona.phone.slice(-6)) || o.shipping_name?.toLowerCase().includes(persona.name.toLowerCase().split(' ')[0])) || (persona.hasActiveOrder ? { id: persona.activeOrderId || 'A7F39C12', status: 'preparing', total: 4200, shipping_address: 'Retiro en Local' } : null);
+
+      if (activeOrder) {
+        const statusMap: Record<string, string> = {
+          pending: '⏳ Pendiente de pago',
+          paid: '✅ Pagado y confirmado',
+          preparing: '👨‍🍳 En preparación en local',
+          ready: '✨ Listo para retirar',
+          shipped: '🛵 En camino con cadete',
+          delivered: '🎉 Entregado'
+        };
+        const st = statusMap[activeOrder.status] || '⏳ En preparación';
+        reply = `📦 *Estado de tu Pedido:* #${(activeOrder.id || 'A7F39C12').slice(0, 8).toUpperCase()}\n\n• *Estado:* ${st}\n• *Total:* \$${Number(activeOrder.total || 4200).toLocaleString('es-AR')}\n• *Destino:* ${activeOrder.shipping_address || 'Castro Barros 245'}\n\n_Para volver al menú, enviá la palabra *MENU*._`;
       } else {
-        reply = `📦 *Estado de Pedidos:*\nNo encontramos pedidos pendientes para tu número (*${persona.phone}*).\n\n👉 Para armar un pedido nuevo, escribí *COMPRAR*.`;
+        reply = `📦 *Estado de Pedidos:*\nNo encontramos pedidos pendientes para tu número (*${persona.phone}*).\n\n👉 Para armar un pedido nuevo con productos reales, escribí *COMPRAR*.`;
       }
       return { reply, newState };
     }
 
-    // 4. Cancelar
-    if (lower === 'cancelar' || lower === 'salir') {
-      newState = { step: 'IDLE', items: [], subtotal: 0, discountAmount: 0, total: 0 };
-      reply = `❌ *Proceso de compra cancelado.* ¿En qué más podemos ayudarte?\n\n` + DEFAULT_TEMPLATES.template_menu.replace('{cliente}', persona.name);
+    // 4. Opción 2: Datos Bancarios
+    if ((lower === '2' || lower.includes('alias') || lower.includes('cbu') || lower.includes('transferencia')) && newState.step === 'IDLE') {
+      reply = interpolateTemplate(botSettings.menu_response_2 || DEFAULT_TEMPLATES.menu_response_2, commonVars);
       return { reply, newState };
     }
 
-    // 5. Carrito: Ver / Vaciar / Quitar
+    // 5. Opción 3: Ubicación y Horarios
+    if ((lower === '3' || lower.includes('horario') || lower.includes('direccion') || lower.includes('ubicacion')) && newState.step === 'IDLE') {
+      reply = interpolateTemplate(botSettings.menu_response_3 || DEFAULT_TEMPLATES.menu_response_3, commonVars);
+      return { reply, newState };
+    }
+
+    // 6. Opción 5: Asesor Humano
+    if ((lower === '5' || lower.includes('persona') || lower.includes('asesor') || lower.includes('ayuda')) && newState.step === 'IDLE') {
+      reply = interpolateTemplate(botSettings.menu_response_5 || DEFAULT_TEMPLATES.menu_response_5, commonVars);
+      return { reply, newState };
+    }
+
+    // 7. Cancelar / Salir
+    if (lower === 'cancelar' || lower === 'salir') {
+      newState = { step: 'IDLE', items: [], subtotal: 0, discountAmount: 0, total: 0, pendingProduct: undefined };
+      reply = `❌ *Proceso de compra cancelado.* ¿En qué más podemos ayudarte?\n\n` + interpolateTemplate(botSettings.template_menu || DEFAULT_TEMPLATES.template_menu, commonVars);
+      return { reply, newState };
+    }
+
+    // 8. Carrito: Ver / Vaciar / Quitar
     if (lower === 'carrito' || lower === 'ver carrito' || lower === 'ver') {
       if (newState.items.length === 0) {
-        reply = '🛒 Tu carrito está vacío. Escribí *COMPRAR* para ver nuestras golosinas.';
+        reply = '🛒 Tu carrito está vacío. Escribí *COMPRAR* para ver nuestras golosinas con stock disponible.';
       } else {
         const list = newState.items.map((it: any, idx: number) => `${idx + 1}️⃣ ${it.name} - \$${it.unitPrice.toLocaleString('es-AR')}`).join('\n');
         reply = `🛒 *TU CARRITO ACTUAL:* 🍬\n\n${list}\n\n💰 *Subtotal:* \$${newState.subtotal.toLocaleString('es-AR')}\n\n👉 Para sumar más, escribí su número.\n👉 Para quitar, escribí *QUITAR [nro]*.\n👉 O escribí *LISTO* para avanzar con la entrega.`;
@@ -223,6 +421,7 @@ export const AdminChatbotLab: React.FC = () => {
       newState.subtotal = 0;
       newState.total = 0;
       newState.step = 'SELECTING_PRODUCTS';
+      newState.pendingProduct = undefined;
       reply = '🗑️ *Vaciaste tu carrito.* Podés elegir nuevos productos de la lista escribiendo su *NÚMERO*.';
       return { reply, newState };
     }
@@ -241,78 +440,191 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 6. Iniciar Compra
-    if (lower === 'comprar' || lower === 'pedir' || lower.includes('nuevo pedido') || lower === 'quiero comprar' || lower === 'quiero gomitas') {
+    // 9. Iniciar Compra / Opción 4 Catálogo
+    const availableProds = realProducts.length > 0 ? realProducts.slice(0, 10) : [
+      { id: 'mock-1', name: 'Moritas Ácidas', price_per_kg: 12000, min_weight: 25, weight_step: 25, unit_type: 'weight', stock: 50, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80' },
+      { id: 'mock-2', name: 'Ositos Frutales', price_per_kg: 10000, min_weight: 50, weight_step: 50, unit_type: 'weight', stock: 40, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80' },
+      { id: 'mock-3', name: 'Chocolate Block 38g', base_price: 950, unit_type: 'piece', stock: 100, image_url: 'https://images.unsplash.com/photo-1511381939415-e44015466834?w=600&auto=format&fit=crop&q=80' },
+      { id: 'mock-4', name: 'Súper Combo Gomitas 500g', base_price: 5400, unit_type: 'piece', stock: 20, image_url: 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80' }
+    ];
+
+    if (lower === 'comprar' || lower === 'pedir' || lower.includes('nuevo pedido') || lower === 'quiero comprar' || lower === 'quiero gomitas' || ((lower === '4' || lower.includes('catalogo') || lower.includes('productos')) && newState.step === 'IDLE')) {
       newState.step = 'SELECTING_PRODUCTS';
       newState.items = [];
       newState.subtotal = 0;
       newState.discountAmount = 0;
       newState.total = 0;
-      reply = `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n1️⃣ *Moritas Ácidas* — \$12.000/kg (desde 25g)\n2️⃣ *Ositos Frutales* — \$10.000/kg (desde 50g)\n3️⃣ *Chocolate Block 38g* — \$950 por unidad\n4️⃣ *Súper Combo Gomitas 500g* — \$5.400\n\n👉 *Respondé con el NÚMERO del producto (ej: 1, 2).*`;
-      image = 'https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=600&auto=format&fit=crop&q=80';
+
+      const prodsListText = availableProds.map((p: any, idx: number) => {
+        const isWeight = p.unit_type === 'weight' || p.is_bulk;
+        const minW = p.min_weight || 25;
+        const priceStr = isWeight
+          ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg (desde ${minW}g)`
+          : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')}`;
+        return `${idx + 1}️⃣ *${p.name}* — ${priceStr}`;
+      }).join('\n');
+
+      reply = `🛍️ *¡Vamos a armar tu pedido con nuestro catálogo real!* 🍬\n\n${prodsListText}\n\n👉 *Respondé con el NÚMERO del producto que querés llevar (ej: 1, 2).*`;
+      if (availableProds[0]?.image_url) {
+        image = availableProds[0].image_url;
+      }
       return { reply, image, newState };
     }
 
-    // 7. Selección de Producto
+    // 10. Selección de Producto en Catálogo
     if (newState.step === 'SELECTING_PRODUCTS') {
-      if (lower === '1' || lower.includes('moritas')) {
-        newState.step = 'SELECTING_WEIGHT';
-        reply = `🍬 *Moritas Ácidas* (Venta al peso) ⚖️\n💰 *Precio:* \$12.000/kg • Mínimo: *25g* (Fraccionable de a *25g*)\n\n*¿Qué cantidad querés llevar?*\n1️⃣ *25g* — \$300\n2️⃣ *50g* — \$600\n3️⃣ *100g* — \$1.200\n4️⃣ *250g* — \$2.800\n5️⃣ *500g* — \$5.400\n\n👉 *Respondé con el número (1 a 5)* o escribí tus gramos exactos (ej: *75g*, *150g*, *350g*).`;
-        return { reply, newState };
-      } else if (lower === '2' || lower.includes('ositos')) {
-        newState.step = 'SELECTING_WEIGHT';
-        reply = `🍬 *Ositos Frutales* (Venta al peso) ⚖️\n💰 *Precio:* \$10.000/kg • Mínimo: *50g* (Fraccionable de a *50g*)\n\n*¿Qué cantidad querés llevar?*\n1️⃣ *50g* — \$500\n2️⃣ *100g* — \$1.000\n3️⃣ *250g* — \$2.500\n4️⃣ *500g* — \$5.000\n5️⃣ *1 Kilo (1000g)* — \$9.500\n\n👉 *Respondé con el número (1 a 5)* o escribí tus gramos exactos (ej: *150g*, *300g*).`;
-        return { reply, newState };
-      } else if (lower === 'listo' || lower === 'finalizar' || lower === 'pagar') {
+      if (lower === 'listo' || lower === 'finalizar' || lower === 'pagar' || lower === 'checkout') {
         if (newState.items.length === 0) {
-          reply = '⚠️ Tu carrito está vacío. Escribí el *NÚMERO* del producto que querés agregar.';
+          reply = '⚠️ Tu carrito está vacío. Escribí el *NÚMERO* del producto que querés agregar o escribí *CANCELAR*.';
           return { reply, newState };
         }
         newState.step = 'ASK_SHIPPING_METHOD';
         reply = `🛵 *¿Cómo querés recibir tu pedido?*\n\nRespondé con el número de opción:\n1️⃣ *Retiro por el local (Chamical)* — Sin costo\n2️⃣ *Envío a domicilio con cadete (Chamical)*`;
         return { reply, newState };
       }
+
+      const numIdx = parseInt(lower.replace(/\D/g, ''), 10);
+      let selectedProd: any = null;
+
+      if (!isNaN(numIdx) && numIdx >= 1 && numIdx <= availableProds.length) {
+        selectedProd = availableProds[numIdx - 1];
+      } else {
+        selectedProd = availableProds.find((p: any) => lower.includes(p.name.toLowerCase().slice(0, 5)));
+      }
+
+      if (selectedProd) {
+        const isWeight = selectedProd.unit_type === 'weight' || selectedProd.is_bulk;
+
+        if (isWeight) {
+          const options = buildWeightOptionsForProduct(selectedProd);
+          const minWeight = Number(selectedProd.min_weight) || 25;
+          const step = Number(selectedProd.weight_step) || 25;
+          const pricePerKg = Number(selectedProd.price_per_kg || selectedProd.base_price || selectedProd.price || 10000);
+
+          newState.step = 'SELECTING_WEIGHT';
+          newState.pendingProduct = { ...selectedProd, options };
+
+          const optionsList = options.map((opt, i) => `${i + 1}️⃣ *${opt.label}* — \$${opt.price.toLocaleString('es-AR')}`).join('\n');
+
+          reply = `🍬 *${selectedProd.name}* (Venta al peso) ⚖️\n💰 *Precio:* \$${pricePerKg.toLocaleString('es-AR')}/kg • Mínimo: *${minWeight}g* (Fraccionable de a *${step}g*)\n\n*¿Qué cantidad querés llevar?*\n${optionsList}\n\n👉 *Respondé con el número (1 a ${options.length})* o escribí tus gramos exactos (ej: *75g*, *150g*, *350g*).`;
+          if (selectedProd.image_url) {
+            image = selectedProd.image_url;
+          }
+          return { reply, image, newState };
+        } else {
+          // Producto por unidad
+          const unitPrice = Number(selectedProd.base_price || selectedProd.price || 0);
+          newState.step = 'SELECTING_QUANTITY';
+          newState.pendingProduct = { ...selectedProd, options: [] };
+
+          reply = `🍫 *${selectedProd.name}*\n💰 *Precio:* \$${unitPrice.toLocaleString('es-AR')} por unidad\n\n👉 *¿Cuántas unidades querés llevar?* (Escribí la cantidad, ej: 1, 2, 3...)`;
+          if (selectedProd.image_url) {
+            image = selectedProd.image_url;
+          }
+          return { reply, image, newState };
+        }
+      } else {
+        reply = `🔍 No entendimos la opción. Escribí el *NÚMERO* del producto de la lista (ej: 1, 2, 3...) o escribí *LISTO* para finalizar tu pedido.`;
+        return { reply, newState };
+      }
     }
 
-    // 8. Selección de Gramaje
-    if (newState.step === 'SELECTING_WEIGHT') {
-      if (lower === '10g' || lower === '15g') {
-        reply = `⚠️ La cantidad mínima de compra para Moritas es de *25g* (\$300).\n\n👉 Respondé *1* para llevar 25g o escribí otra cantidad superior a 25g.`;
-        return { reply, newState };
-      }
-      if (lower === '33g') {
-        reply = `⚠️ Moritas se fracciona en pasos de *25g*.\n\n¿Te preparamos:\n1️⃣ *25g* (\$300)\n2️⃣ *50g* (\$600)?\n\n👉 Respondé 1 o 2.`;
-        return { reply, newState };
-      }
+    // 11. Selección de Cantidad para productos por unidad
+    if (newState.step === 'SELECTING_QUANTITY' && newState.pendingProduct) {
+      const p = newState.pendingProduct;
+      const qty = parseInt(lower.replace(/\D/g, ''), 10) || 1;
+      const unitPrice = Number(p.base_price || p.price || 0);
+      const itemTotal = unitPrice * qty;
 
-      let grams = 250;
-      let price = 2800;
-      let prodName = 'Moritas Ácidas';
+      const formattedName = `${p.name} (x${qty} u.)`;
+      newState.items.push({
+        productId: p.id,
+        name: formattedName,
+        quantity: qty,
+        unitPrice: itemTotal
+      });
 
-      if (lower === '1' || lower === '25g') { grams = 25; price = 300; }
-      else if (lower === '2' || lower === '50g') { grams = 50; price = 600; }
-      else if (lower === '3' || lower === '100g') { grams = 100; price = 1200; }
-      else if (lower === '4' || lower === '250g') { grams = 250; price = 2800; }
-      else if (lower === '5' || lower === '500g') { grams = 500; price = 5400; }
-      else if (lower === '75g') { grams = 75; price = 900; }
-      else if (lower === '150g') { grams = 150; price = 1800; }
-
-      const formattedItemName = `${prodName} (${grams}g)`;
-      newState.items.push({ name: formattedItemName, quantity: 1, weightGrams: grams, unitPrice: price });
-      newState.subtotal = newState.items.reduce((s: number, it: any) => s + it.unitPrice, 0);
+      newState.subtotal = newState.items.reduce((acc: number, it: any) => acc + it.unitPrice, 0);
       newState.total = Math.max(0, newState.subtotal - (newState.discountAmount || 0));
       newState.step = 'SELECTING_PRODUCTS';
+      newState.pendingProduct = undefined;
 
       const itemsList = newState.items.map((i: any) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
-      reply = `✅ *¡Agregaste ${formattedItemName}!* 🍬 (+\$${price.toLocaleString('es-AR')})\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${newState.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`;
+      reply = `✅ *¡Agregaste ${formattedName}!* 🍬 (+\$${itemTotal.toLocaleString('es-AR')})\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${newState.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`;
       return { reply, newState };
     }
 
-    // 9. Método de Envío
+    // 12. Selección de Gramaje para gomitas al peso
+    if (newState.step === 'SELECTING_WEIGHT' && newState.pendingProduct) {
+      const p = newState.pendingProduct;
+      const options = p.options || [];
+      const minWeight = Number(p.min_weight) || 25;
+      const maxWeight = Number(p.max_weight) || 1000;
+      const step = Number(p.weight_step) || 25;
+
+      let chosenGrams: number | null = null;
+      let chosenPrice: number = 0;
+
+      const optIdx = parseInt(lower.replace(/\D/g, ''), 10);
+      if (!isNaN(optIdx) && optIdx >= 1 && optIdx <= options.length && !lower.includes('g') && !lower.includes('kilo')) {
+        chosenGrams = options[optIdx - 1].grams;
+        chosenPrice = options[optIdx - 1].price;
+      } else {
+        const parsedGrams = parseGramsFromText(lower);
+        if (parsedGrams) {
+          if (parsedGrams < minWeight) {
+            const minPrice = calculateGramPrice(p, minWeight);
+            reply = `⚠️ La cantidad mínima de compra para *${p.name}* es de *${minWeight}g* (\$${minPrice.toLocaleString('es-AR')}).\n\n👉 Respondé *1* para llevar ${minWeight}g o escribí otra cantidad superior a ${minWeight}g.`;
+            return { reply, newState };
+          }
+          if (parsedGrams > maxWeight) {
+            reply = `⚠️ El máximo disponible por bolsita es de *${maxWeight}g*. Podés pedir hasta ${maxWeight}g por porción.`;
+            return { reply, newState };
+          }
+          // Validación de saltos de gramaje
+          if ((parsedGrams - minWeight) % step !== 0 && parsedGrams % step !== 0) {
+            const lowerG = Math.floor(parsedGrams / step) * step || minWeight;
+            const upperG = lowerG + step;
+            const priceLower = calculateGramPrice(p, lowerG);
+            const priceUpper = calculateGramPrice(p, upperG);
+            reply = `⚠️ *${p.name}* se fracciona en pasos de *${step}g*.\n\n¿Te preparamos:\n1️⃣ *${lowerG}g* (\$${priceLower.toLocaleString('es-AR')})\n2️⃣ *${upperG}g* (\$${priceUpper.toLocaleString('es-AR')})?\n\n👉 Respondé 1 o 2.`;
+            return { reply, newState };
+          }
+
+          chosenGrams = parsedGrams;
+          chosenPrice = calculateGramPrice(p, parsedGrams);
+        }
+      }
+
+      if (chosenGrams && chosenPrice > 0) {
+        const formattedName = `${p.name} (${chosenGrams}g)`;
+        newState.items.push({
+          productId: p.id,
+          name: formattedName,
+          quantity: 1,
+          weightGrams: chosenGrams,
+          unitPrice: chosenPrice
+        });
+
+        newState.subtotal = newState.items.reduce((acc: number, it: any) => acc + it.unitPrice, 0);
+        newState.total = Math.max(0, newState.subtotal - (newState.discountAmount || 0));
+        newState.step = 'SELECTING_PRODUCTS';
+        newState.pendingProduct = undefined;
+
+        const itemsList = newState.items.map((i: any) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
+        reply = `✅ *¡Agregaste ${formattedName}!* 🍬 (+\$${chosenPrice.toLocaleString('es-AR')})\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${newState.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`;
+        return { reply, newState };
+      } else {
+        reply = `🔍 No entendimos la cantidad. Respondé con el número de opción (1 a ${options.length}) o escribí los gramos que querés (ej: *50g*, *100g*, *250g*).`;
+        return { reply, newState };
+      }
+    }
+
+    // 13. Método de Envío
     if (newState.step === 'ASK_SHIPPING_METHOD') {
       if (lower === '1' || lower.includes('retiro') || lower.includes('local')) {
         newState.shippingMethod = 'pickup';
-        newState.shippingAddress = 'Retiro en Local (Castro Barros 245, Chamical)';
+        newState.shippingAddress = realStoreSettings?.pickup_address || 'Retiro en Local (Castro Barros 245, Chamical)';
         newState.step = 'ASK_NAME';
         reply = '👤 *¿A nombre de quién registramos el pedido?* (Escribí tu nombre y apellido):';
         return { reply, newState };
@@ -324,7 +636,7 @@ export const AdminChatbotLab: React.FC = () => {
       }
     }
 
-    // 10. Captura de Dirección
+    // 14. Captura de Dirección
     if (newState.step === 'ASK_ADDRESS') {
       newState.shippingAddress = text;
       newState.step = 'ASK_NAME';
@@ -332,24 +644,42 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 11. Captura de Nombre
+    // 15. Captura de Nombre
     if (newState.step === 'ASK_NAME') {
       newState.shippingName = text || persona.name;
       newState.step = 'ASK_COUPON';
-      reply = `🎟️ *¿Tenés algún Cupón de Descuento?*\n\n👉 Escribí el código de tu cupón (ej: *DULCE10*) o respondé *NO* para continuar sin cupón.`;
+      const samplePromo = realPromos.length > 0 ? realPromos[0].code : 'DULCE10';
+      reply = `🎟️ *¿Tenés algún Cupón de Descuento?*\n\n👉 Escribí el código de tu cupón (ej: *${samplePromo}*) o respondé *NO* para continuar sin cupón.`;
       return { reply, newState };
     }
 
-    // 12. Captura de Cupón
+    // 16. Captura de Cupón Real
     if (newState.step === 'ASK_COUPON') {
-      if (lower === 'dulce10') {
-        const discount = Math.min(newState.subtotal, 300);
-        newState.couponCode = 'DULCE10';
-        newState.discountAmount = discount;
-        newState.total = Math.max(0, newState.subtotal - discount);
-        newState.step = 'ASK_PAYMENT_METHOD';
-        reply = `🎉 *¡Cupón DULCE10 aplicado con éxito!* Descuento: -\$300 ✨\n\n💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`;
-        return { reply, newState };
+      if (lower !== 'no' && lower !== 'ninguno' && lower !== 'paso' && lower !== '0') {
+        const promoCodeUpper = text.trim().toUpperCase();
+        const matchedPromo = realPromos.find((p: any) => p.code.toUpperCase() === promoCodeUpper) || (promoCodeUpper === 'DULCE10' ? { code: 'DULCE10', discount_type: 'fixed', discount_value: 300, min_order_amount: 0 } : null);
+
+        if (matchedPromo) {
+          let discount = 0;
+          if (matchedPromo.discount_type === 'percentage') {
+            discount = Math.round((newState.subtotal * Number(matchedPromo.discount_value)) / 100);
+          } else {
+            discount = Number(matchedPromo.discount_value || 300);
+          }
+          discount = Math.min(newState.subtotal, discount);
+
+          newState.couponCode = matchedPromo.code;
+          newState.discountAmount = discount;
+          newState.total = Math.max(0, newState.subtotal - discount);
+          newState.step = 'ASK_PAYMENT_METHOD';
+
+          reply = `🎉 *¡Cupón ${matchedPromo.code} aplicado con éxito desde la BD!* Descuento: -\$${discount.toLocaleString('es-AR')} ✨\n\n💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`;
+          return { reply, newState };
+        } else {
+          newState.step = 'ASK_PAYMENT_METHOD';
+          reply = `ℹ️ El cupón "${text}" no es válido o expiró en la base de datos. Continuamos con el valor regular.\n\n💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`;
+          return { reply, newState };
+        }
       } else {
         newState.step = 'ASK_PAYMENT_METHOD';
         reply = `💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`;
@@ -357,7 +687,7 @@ export const AdminChatbotLab: React.FC = () => {
       }
     }
 
-    // 13. Método de Pago
+    // 17. Método de Pago
     if (newState.step === 'ASK_PAYMENT_METHOD') {
       if (lower === '1' || lower.includes('transferencia') || lower.includes('alias')) {
         newState.paymentMethod = 'transfer';
@@ -382,34 +712,65 @@ export const AdminChatbotLab: React.FC = () => {
       return { reply, newState };
     }
 
-    // 14. Confirmación Final
+    // 18. Confirmación Final (y guardado en DB si sandboxMode === false)
     if (newState.step === 'CONFIRMING') {
-      if (lower === 'si' || lower === 'confirmar' || lower === 'dale' || lower === 'sí' || lower === 's') {
+      if (lower === 'si' || lower === 'confirmar' || lower === 'dale' || lower === 'sí' || lower === 's' || lower === 'ok') {
         const orderCode = 'CSC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
         const itemsList = newState.items.map((i: any) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
         
-        let confirmMsg = `🎉 *¡PEDIDO #${orderCode} REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *${newState.shippingName || persona.name}*, tu pedido ya fue cargado.\n\n📦 *Detalle:*\n${itemsList}\n💰 *Total:* \$${newState.total.toLocaleString('es-AR')}\n📍 *Entrega:* ${newState.shippingAddress || 'Retiro en Local'}\n`;
+        let confirmMsg = `🎉 *¡PEDIDO #${orderCode} REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *${newState.shippingName || persona.name}*, tu pedido ya fue cargado con datos reales.\n\n📦 *Detalle:*\n${itemsList}\n💰 *Total:* \$${newState.total.toLocaleString('es-AR')}\n📍 *Entrega:* ${newState.shippingAddress || 'Retiro en Local'}\n`;
 
         if (newState.paymentMethod === 'transfer') {
-          confirmMsg += `\n🏦 *Datos para Transferencia:*\n• *Alias:* \`martinchox33\`\n• *Banco:* MercadoPago / Galicia\n• *Titular:* Gonzalez Martin Gustavo\n\n📸 *Enviá el comprobante de transferencia por acá para comenzar a preparar tus golosinas.* ✨`;
+          confirmMsg += `\n🏦 *Datos para Transferencia:*\n• *Alias:* \`${commonVars.alias_banco}\`\n• *Banco:* ${commonVars.banco}\n• *Titular:* ${commonVars.titular}\n• *CBU:* \`${commonVars.cbu}\`\n\n📸 *Enviá el comprobante de transferencia por acá para comenzar a preparar tus golosinas.* ✨`;
         } else if (newState.paymentMethod === 'cash') {
-          confirmMsg += `\n💵 *Pago en Efectivo:* Abonás al recibir o retirar tu pedido. ¡Ya estamos preparando tus golosinas! ✨`;
+          confirmMsg += `\n💵 *Pago en Efectivo:* Abonás al recibir o retirar tu pedido en ${commonVars.direccion}. ¡Ya estamos preparando tus golosinas! ✨`;
         } else {
-          confirmMsg += `\n💳 *Pago con Mercado Pago:* Podés transferir al Alias \`martinchox33\` o coordinar el link con nuestro asesor. ✨`;
+          confirmMsg += `\n💳 *Pago con Mercado Pago:* Podés transferir al Alias \`${commonVars.alias_banco}\` o coordinar el link con nuestro asesor. ✨`;
+        }
+
+        // Si estamos en modo DB Real, persistir en Supabase
+        if (!sandboxMode) {
+          (async () => {
+            try {
+              const { data: newDbOrder } = await supabase.from('orders').insert({
+                shipping_name: newState.shippingName || persona.name,
+                shipping_address: newState.shippingAddress || 'Retiro en Local',
+                shipping_city: 'Chamical',
+                total: newState.total,
+                status: 'pending',
+                discount_amount: newState.discountAmount || 0,
+                shipping_cost: 0,
+                payment_method: newState.paymentMethod || 'transfer',
+                customer_phone: persona.phone
+              }).select().single();
+
+              if (newDbOrder && newState.items.length > 0) {
+                const orderItems = newState.items.map((it: any) => ({
+                  order_id: newDbOrder.id,
+                  product_id: it.productId || realProducts[0]?.id,
+                  quantity: it.quantity || 1,
+                  unit_price: it.unitPrice
+                }));
+                await supabase.from('order_items').insert(orderItems);
+              }
+            } catch (saveErr) {
+              console.warn('[AdminChatbotLab]: Error al persistir pedido real en Supabase:', saveErr);
+            }
+          })();
         }
 
         newState.step = 'IDLE';
         reply = confirmMsg;
         return { reply, newState };
       } else {
-        newState = { step: 'IDLE', items: [], subtotal: 0, discountAmount: 0, total: 0 };
+        newState = { step: 'IDLE', items: [], subtotal: 0, discountAmount: 0, total: 0, pendingProduct: undefined };
         reply = '❌ Pedido cancelado. Escribí *MENU* para ver más opciones.';
         return { reply, newState };
       }
     }
 
     // Menú por defecto
-    reply = DEFAULT_TEMPLATES.template_menu.replace('{cliente}', persona.name);
+    reply = interpolateTemplate(botSettings.template_menu || DEFAULT_TEMPLATES.template_menu, commonVars);
     return { reply, newState };
   };
 
@@ -468,7 +829,7 @@ export const AdminChatbotLab: React.FC = () => {
     let currentHistory: Array<{ sender: 'bot' | 'user'; text: string; time: string; image?: string; isSystemNote?: boolean }> = [
       {
         sender: 'bot',
-        text: `🧪 *Ejecutando Suite de Pruebas: ${suite.title}* ⚡\nPersona: *${selectedPersona.name}* (${selectedPersona.role})\nSimulando ${suite.steps.length} interacciones...`,
+        text: `🧪 *Ejecutando Suite de Pruebas: ${suite.title}* ⚡\nPersona: *${selectedPersona.name}* (${selectedPersona.role})\nSimulando con datos reales de la Base de Datos...`,
         time: initialTime,
         isSystemNote: true
       }
@@ -480,7 +841,8 @@ export const AdminChatbotLab: React.FC = () => {
       items: [],
       subtotal: 0,
       discountAmount: 0,
-      total: 0
+      total: 0,
+      pendingProduct: undefined
     };
     setLabSessionState(curState);
 
@@ -522,16 +884,18 @@ export const AdminChatbotLab: React.FC = () => {
     setRunningSuiteId(null);
     showAlert({
       title: '¡Suite de Pruebas Exitosa!',
-      message: `La suite "${suite.title}" finalizó sin errores para ${selectedPersona.name}.`,
+      message: `La suite "${suite.title}" finalizó sin errores para ${selectedPersona.name} con datos reales.`,
       type: 'success'
     });
   };
 
   const handleResetLab = () => {
+    const commonVars = getResolvedVariables(selectedPersona);
+    const botSettings = realBotSettings || DEFAULT_TEMPLATES;
     setLabChatHistory([
       {
         sender: 'bot',
-        text: DEFAULT_TEMPLATES.template_menu.replace('{cliente}', selectedPersona.name),
+        text: interpolateTemplate(botSettings.template_menu || DEFAULT_TEMPLATES.template_menu, commonVars),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }
     ]);
@@ -540,7 +904,8 @@ export const AdminChatbotLab: React.FC = () => {
       items: [],
       subtotal: 0,
       discountAmount: 0,
-      total: 0
+      total: 0,
+      pendingProduct: undefined
     });
     setRunningSuiteId(null);
     setCurrentSuiteStep(0);
@@ -552,13 +917,14 @@ export const AdminChatbotLab: React.FC = () => {
       items: [],
       subtotal: 0,
       discountAmount: 0,
-      total: 0
+      total: 0,
+      pendingProduct: undefined
     });
     setLabChatHistory(prev => [
       ...prev,
       {
         sender: 'bot',
-        text: `⏱️ *[TIMEOUT DE SESIÓN]*: Han pasado 30 minutos de inactividad. La sesión de compra fue liberada automáticamente.`,
+        text: `⏱️ *[TIMEOUT DE SESIÓN]*: Han pasado 30 minutos de inactividad. La sesión de compra fue liberada automáticamente en memoria.`,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         isSystemNote: true
       }
@@ -570,6 +936,11 @@ export const AdminChatbotLab: React.FC = () => {
       persona: selectedPersona,
       history: labChatHistory,
       finalState: labSessionState,
+      databaseStats: {
+        productsLoaded: realProducts.length,
+        promosLoaded: realPromos.length,
+        hasStoreSettings: !!realStoreSettings
+      },
       timestamp: new Date().toISOString()
     }, null, 2));
     const downloadAnchor = document.createElement('a');
@@ -580,31 +951,51 @@ export const AdminChatbotLab: React.FC = () => {
     downloadAnchor.remove();
   };
 
+  // Nombres de los primeros productos reales para los botones rápidos
+  const topProduct1 = realProducts[0]?.name || 'Moritas';
+  const topProduct2 = realProducts[1]?.name || 'Ositos';
+  const sampleCoupon = realPromos[0]?.code || 'DULCE10';
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
       
       {/* Barra Superior de Control del Laboratorio */}
       <div className="bg-white rounded-3xl p-5 border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-md shadow-purple-200">
+          <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center font-bold shadow-md shadow-purple-200 shrink-0">
             <FlaskConical className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-lg font-black text-slate-900 tracking-tight">Laboratorio de Pruebas & Sandbox Chatbot</h1>
               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
                 sandboxMode ? 'bg-purple-100 text-purple-900 border border-purple-200' : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
               }`}>
-                {sandboxMode ? '🟣 Modo Sandbox (En Memoria)' : '🟢 Modo DB Test (Pedidos Reales)'}
+                {sandboxMode ? '🟣 Modo Sandbox (En Memoria)' : '🟢 Modo DB Test (Crea Pedidos Reales)'}
               </span>
             </div>
-            <p className="text-xs text-slate-500">
-              Simulá compras completas, gramajes fraccionables (25g, 50g, 75g libre), cupones y filtros anti-spam sin necesidad de un segundo celular.
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-500">
+              <span className="flex items-center gap-1 text-emerald-700 font-semibold">
+                <Database className="w-3.5 h-3.5" />
+                <span>Base de Datos: {loadingDb ? 'Cargando...' : `${realProducts.length} productos con stock • ${realPromos.length} cupones activos`}</span>
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Botón Recargar BD */}
+          <button
+            type="button"
+            onClick={fetchRealData}
+            disabled={loadingDb}
+            className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
+            title="Recargar productos y cupones de Supabase"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loadingDb ? 'animate-spin' : ''}`} />
+            <span>Recargar BD</span>
+          </button>
+
           {/* Selector de Velocidad */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-700">
             <span className="text-[10px] text-slate-400 px-2">Velocidad:</span>
@@ -677,10 +1068,12 @@ export const AdminChatbotLab: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setSelectedPersona(p);
+                    const commonVars = getResolvedVariables(p);
+                    const botSettings = realBotSettings || DEFAULT_TEMPLATES;
                     setLabChatHistory([
                       {
                         sender: 'bot',
-                        text: DEFAULT_TEMPLATES.template_menu.replace('{cliente}', p.name),
+                        text: interpolateTemplate(botSettings.template_menu || DEFAULT_TEMPLATES.template_menu, commonVars),
                         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                       }
                     ]);
@@ -689,7 +1082,8 @@ export const AdminChatbotLab: React.FC = () => {
                       items: [],
                       subtotal: 0,
                       discountAmount: 0,
-                      total: 0
+                      total: 0,
+                      pendingProduct: undefined
                     });
                   }}
                   className={`w-full p-3 rounded-2xl text-left border transition-all cursor-pointer ${
@@ -741,7 +1135,7 @@ export const AdminChatbotLab: React.FC = () => {
             </div>
 
             <div className="space-y-2.5">
-              {TEST_SUITES.map((s) => (
+              {DEFAULT_TEST_SUITES.map((s) => (
                 <div
                   key={s.id}
                   className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col justify-between gap-2.5"
@@ -865,9 +1259,18 @@ export const AdminChatbotLab: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => handleLabSend('1')}
-                    className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer"
+                    className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer truncate max-w-[100px]"
+                    title={`1. ${topProduct1}`}
                   >
-                    🍬 1. Moritas
+                    🍬 1. {topProduct1.slice(0, 10)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLabSend('2')}
+                    className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-800 rounded-lg text-[10px] font-bold shrink-0 shadow-xs border border-slate-300 cursor-pointer truncate max-w-[100px]"
+                    title={`2. ${topProduct2}`}
+                  >
+                    🍫 2. {topProduct2.slice(0, 10)}
                   </button>
                   <button
                     type="button"
@@ -916,10 +1319,10 @@ export const AdminChatbotLab: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleLabSend('dulce10')}
+                    onClick={() => handleLabSend(sampleCoupon)}
                     className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold shrink-0 shadow-xs cursor-pointer"
                   >
-                    🎟️ DULCE10
+                    🎟️ {sampleCoupon}
                   </button>
                   <button
                     type="button"
@@ -1027,15 +1430,15 @@ export const AdminChatbotLab: React.FC = () => {
 
             {/* Variables Resueltas */}
             <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
-              <span className="text-[11px] font-bold text-slate-700 block">Variables Inyectadas:</span>
+              <span className="text-[11px] font-bold text-slate-700 block">Variables Resueltas de la BD:</span>
               <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                 <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
                   <span className="text-slate-400 block">cliente:</span>
                   <span className="font-bold text-slate-800">{selectedPersona.name}</span>
                 </div>
                 <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
-                  <span className="text-slate-400 block">telefono:</span>
-                  <span className="font-bold text-slate-800">{selectedPersona.phone}</span>
+                  <span className="text-slate-400 block">alias_banco:</span>
+                  <span className="font-bold text-slate-800 truncate">{realStoreSettings?.bank_alias || 'martinchox33'}</span>
                 </div>
                 <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-200">
                   <span className="text-slate-400 block">cupon:</span>
@@ -1050,7 +1453,7 @@ export const AdminChatbotLab: React.FC = () => {
 
             {/* Acciones de Inyección */}
             <div className="space-y-2 pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-bold text-slate-700 block">Inyección de Eventos:</span>
+              <span className="text-[11px] font-bold text-slate-700 block">Inyección de Eventos & BD:</span>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -1066,7 +1469,7 @@ export const AdminChatbotLab: React.FC = () => {
                     sandboxMode ? 'bg-purple-50 text-purple-900 border-purple-200' : 'bg-emerald-50 text-emerald-900 border-emerald-200'
                   }`}
                 >
-                  {sandboxMode ? '🟣 Sandbox Activo' : '🟢 Modo DB Test'}
+                  {sandboxMode ? '🟣 Sandbox (Memoria)' : '🟢 Modo DB Test (Real)'}
                 </button>
               </div>
             </div>
