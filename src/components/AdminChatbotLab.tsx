@@ -8,7 +8,7 @@ import {
 import { useModal } from '../context/ModalContext';
 import { supabase } from '../lib/supabase';
 import { whatsappBotApi } from '../lib/api';
-import { DEFAULT_CHATBOT_KEYWORDS, DEFAULT_TEMPLATES } from './AdminWhatsAppBot';
+import { DEFAULT_CHATBOT_KEYWORDS, DEFAULT_TEMPLATES } from '../lib/whatsappBotConstants';
 import { Product } from '../types';
 
 export interface TestPersona {

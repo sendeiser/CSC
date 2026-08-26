@@ -8,7 +8,8 @@ import {
   FlaskConical, Move, MousePointer, HelpCircle
 } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
-import { DEFAULT_TEMPLATES, CustomMenuOption } from './AdminWhatsAppBot';
+import type { CustomMenuOption } from '../lib/whatsappBotConstants';
+import { DEFAULT_TEMPLATES } from '../lib/whatsappBotConstants';
 
 export interface FlowNodeOutput {
   id: string;
