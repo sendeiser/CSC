@@ -422,6 +422,8 @@ export const whatsappBotApi = {
     request<any>('/whatsapp-bot/settings'),
   updateSettings: (settings: any) =>
     request<any>('/whatsapp-bot/settings', { method: 'PUT', body: JSON.stringify(settings) }),
+  getContacts: () =>
+    request<Array<{ jid: string; phone: string; name: string; pushName?: string; isGroup?: boolean; lastActive?: string }>>('/whatsapp-bot/contacts'),
   sendTest: (phone: string, message?: string) =>
     request<{ success: boolean; message: string }>('/whatsapp-bot/send-test', {
       method: 'POST',

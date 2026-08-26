@@ -10,6 +10,17 @@ const isServerless = process.env.NETLIFY === 'true' || !!process.env.AWS_LAMBDA_
 const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'csc_data') : path.join(process.cwd(), 'data');
 const AUTH_DIR = path.join(DATA_DIR, 'baileys_auth');
 const SETTINGS_FILE = path.join(DATA_DIR, 'whatsapp_bot_settings.json');
+const CONTACTS_FILE = path.join(DATA_DIR, 'whatsapp_contacts.json');
+
+export interface SyncedWhatsAppContact {
+  jid: string;
+  phone: string;
+  name: string;
+  pushName?: string;
+  verifiedName?: string;
+  isGroup: boolean;
+  lastActive?: string;
+}
 
 function ensureDir(dirPath: string) {
   try {
@@ -306,8 +317,24 @@ class WhatsAppBotService {
   private pausedChats: Map<string, number> = new Map();
   // Registro en memoria de sesiones de compra activas por WhatsApp
   private orderSessions: Map<string, BotOrderSession> = new Map();
+  // Registro de contactos y chats sincronizados
+  private contactsMap: Map<string, SyncedWhatsAppContact> = new Map();
+  private saveContactsTimeout: any = null;
 
   constructor() {
+    // Cargar contactos sincronizados previos si existen
+    try {
+      if (fs.existsSync(CONTACTS_FILE)) {
+        const raw = fs.readFileSync(CONTACTS_FILE, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const c of parsed) {
+            if (c?.phone) this.contactsMap.set(c.phone, c);
+          }
+        }
+      }
+    } catch (_e) {}
+
     // Si no es serverless y hay sesión guardada previa, iniciar conexión
     if (!isServerless) {
       try {
@@ -318,6 +345,26 @@ class WhatsAppBotService {
         }
       } catch (_e) {}
     }
+  }
+
+  private saveContactsToFile(): void {
+    if (this.saveContactsTimeout) return;
+    this.saveContactsTimeout = setTimeout(() => {
+      this.saveContactsTimeout = null;
+      try {
+        ensureDir(DATA_DIR);
+        const list = Array.from(this.contactsMap.values());
+        fs.writeFileSync(CONTACTS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+      } catch (_e) {}
+    }, 2000);
+  }
+
+  public async getContacts(): Promise<SyncedWhatsAppContact[]> {
+    return Array.from(this.contactsMap.values()).sort((a, b) => {
+      if (a.name && !b.name) return -1;
+      if (!a.name && b.name) return 1;
+      return (b.lastActive || '').localeCompare(a.lastActive || '');
+    });
   }
 
   public async start(): Promise<void> {
@@ -400,14 +447,72 @@ class WhatsAppBotService {
         }
       });
 
+      // Escuchar y sincronizar contactos de WhatsApp
+      this.sock.ev.on('contacts.upsert', (contacts: any[]) => {
+        if (!Array.isArray(contacts)) return;
+        for (const c of contacts) {
+          if (!c.id || c.id.endsWith('@g.us')) continue;
+          const phone = c.id.split('@')[0].replace(/\D/g, '');
+          if (!phone) continue;
+          const existing = this.contactsMap.get(phone) || { jid: c.id, phone, name: phone, isGroup: false };
+          const name = c.name || c.notify || c.verifiedName || existing.name || phone;
+          this.contactsMap.set(phone, { ...existing, jid: c.id, phone, name, pushName: c.notify || existing.pushName });
+        }
+        this.saveContactsToFile();
+      });
+
+      this.sock.ev.on('contacts.update', (contacts: any[]) => {
+        if (!Array.isArray(contacts)) return;
+        for (const c of contacts) {
+          if (!c.id || c.id.endsWith('@g.us')) continue;
+          const phone = c.id.split('@')[0].replace(/\D/g, '');
+          if (!phone) continue;
+          const existing = this.contactsMap.get(phone) || { jid: c.id, phone, name: phone, isGroup: false };
+          const name = c.name || c.notify || c.verifiedName || existing.name || phone;
+          this.contactsMap.set(phone, { ...existing, jid: c.id, phone, name, pushName: c.notify || existing.pushName });
+        }
+        this.saveContactsToFile();
+      });
+
+      this.sock.ev.on('chats.upsert', (chats: any[]) => {
+        if (!Array.isArray(chats)) return;
+        for (const ch of chats) {
+          if (!ch.id || ch.id.endsWith('@g.us')) continue;
+          const phone = ch.id.split('@')[0].replace(/\D/g, '');
+          if (!phone) continue;
+          const existing = this.contactsMap.get(phone) || { jid: ch.id, phone, name: phone, isGroup: false };
+          const name = ch.name || existing.name || phone;
+          this.contactsMap.set(phone, { ...existing, jid: ch.id, phone, name });
+        }
+        this.saveContactsToFile();
+      });
+
       // Escuchar mensajes entrantes y salientes para el Menú Interactivo y Pausa Inteligente
       this.sock.ev.on('messages.upsert', async (chatUpdate: any) => {
         if (!chatUpdate.messages || chatUpdate.messages.length === 0) return;
         const settings = await getBotSettings();
-        if (!settings.enabled) return;
 
         for (const msg of chatUpdate.messages) {
           if (!msg.key?.remoteJid || msg.key.remoteJid.endsWith('@g.us')) continue;
+
+          // Registrar contacto desde mensaje
+          const msgPhone = msg.key.remoteJid.split('@')[0].replace(/\D/g, '');
+          if (msgPhone) {
+            const existing = this.contactsMap.get(msgPhone) || { jid: msg.key.remoteJid, phone: msgPhone, name: msgPhone, isGroup: false };
+            const pushName = msg.pushName || existing.pushName || '';
+            const name = (pushName && pushName !== msgPhone) ? pushName : existing.name;
+            this.contactsMap.set(msgPhone, {
+              ...existing,
+              jid: msg.key.remoteJid,
+              phone: msgPhone,
+              name,
+              pushName,
+              lastActive: new Date().toISOString()
+            });
+            this.saveContactsToFile();
+          }
+
+          if (!settings.enabled) continue;
 
           // Si el mensaje lo envié yo manualmente desde el WhatsApp de la tienda/personal
           if (msg.key.fromMe) {

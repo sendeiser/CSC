@@ -9,10 +9,11 @@ import {
   MoreVertical, Paperclip, Smile, Mic, CheckCheck, FlaskConical,
   Play, PlayCircle, FastForward, Cpu, Terminal, FileCode, CheckSquare,
   Shield, Activity, ArrowRight, Zap, Image as ImageIcon, Download,
-  ShoppingBag, Truck, Gift, CreditCard, ShoppingCart
+  ShoppingBag, Truck, Gift, CreditCard, ShoppingCart, Users, UploadCloud, Square
 } from 'lucide-react';
 import { whatsappBotApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
+import { supabase } from '../lib/supabase';
 import { AdminChatbotLab } from './AdminChatbotLab';
 import { AdminWhatsAppFlowBuilder } from './AdminWhatsAppFlowBuilder';
 
@@ -106,6 +107,16 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
   const [testMessage, setTestMessage] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
   const [copiedVar, setCopiedVar] = useState<string | null>(null);
+
+  // Estados para Importación y Selección de Contactos (Celular, WhatsApp, Clientes, VCF)
+  const [showContactPickerModal, setShowContactPickerModal] = useState(false);
+  const [contactPickerSource, setContactPickerSource] = useState<'whatsapp' | 'customers' | 'vcf'>('whatsapp');
+  const [loadedWhatsAppContacts, setLoadedWhatsAppContacts] = useState<Array<{ jid: string; phone: string; name: string; pushName?: string }>>([]);
+  const [loadedCustomerContacts, setLoadedCustomerContacts] = useState<Array<{ phone: string; name: string; totalOrders?: number }>>([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const [selectedContactsForExclusion, setSelectedContactsForExclusion] = useState<Record<string, { phone: string; label: string }>>({});
+  const vcardFileInputRef = useRef<HTMLInputElement>(null);
 
   // Cargar estado y configuración inicial
   const fetchStatus = async () => {
@@ -412,6 +423,277 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
       return item.id !== idOrPhone && item.phone !== idOrPhone;
     });
     setSettings({ ...settings, ignored_numbers: updated });
+  };
+
+  // 1. Selector Nativo de Contactos de Android / Chrome (Web Contact Picker API)
+  const handlePickFromNativePhone = async () => {
+    if (typeof navigator !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window) {
+      try {
+        const props = ['name', 'tel'];
+        const opts = { multiple: true };
+        const contacts = await (navigator as any).contacts.select(props, opts);
+        if (contacts && contacts.length > 0) {
+          const currentList: IgnoredNumber[] = Array.isArray(settings.ignored_numbers) ? [...settings.ignored_numbers] : [];
+          let addedCount = 0;
+          
+          for (const c of contacts) {
+            const rawName = Array.isArray(c.name) ? c.name[0] : (c.name || 'Contacto Celular');
+            const tels = Array.isArray(c.tel) ? c.tel : [c.tel];
+            for (const rawTel of tels) {
+              if (!rawTel) continue;
+              const clean = String(rawTel).replace(/\D/g, '');
+              if (clean && clean.length >= 6) {
+                if (!currentList.some(item => String(item.phone || item).replace(/\D/g, '') === clean)) {
+                  currentList.unshift({
+                    id: 'ign_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                    phone: clean,
+                    label: rawName || 'Contacto Celular',
+                    created_at: new Date().toISOString()
+                  });
+                  addedCount++;
+                }
+              }
+            }
+          }
+          
+          if (addedCount > 0) {
+            const newSet = { ...settings, ignored_numbers: currentList };
+            setSettings(newSet);
+            await whatsappBotApi.updateSettings(newSet);
+            showAlert({
+              title: '¡Contactos Excluidos!',
+              message: `Se importaron y guardaron ${addedCount} contacto(s) seleccionados directamente desde tu celular.`,
+              type: 'success'
+            });
+          } else {
+            showAlert({
+              title: 'Sin contactos nuevos',
+              message: 'Los contactos seleccionados ya estaban en la lista de excluidos.',
+              type: 'info'
+            });
+          }
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          console.error('Contact picker error:', err);
+          handleOpenContactPickerModal('whatsapp');
+        }
+      }
+    } else {
+      // Fallback para navegadores donde la API no está disponible (ej: desktop)
+      handleOpenContactPickerModal('whatsapp');
+    }
+  };
+
+  // 2. Abrir Modal de Contactos (WhatsApp / Clientes / VCF)
+  const handleOpenContactPickerModal = async (source: 'whatsapp' | 'customers' | 'vcf' = 'whatsapp') => {
+    setContactPickerSource(source);
+    setShowContactPickerModal(true);
+    setSelectedContactsForExclusion({});
+    setContactSearchQuery('');
+    setLoadingContacts(true);
+
+    try {
+      if (source === 'whatsapp' || source === 'vcf') {
+        const contacts = await whatsappBotApi.getContacts().catch(() => []);
+        setLoadedWhatsAppContacts(contacts || []);
+      } else if (source === 'customers') {
+        // Cargar clientes con pedidos desde Supabase
+        const { data } = await supabase
+          .from('orders')
+          .select('customer_name, customer_phone')
+          .not('customer_phone', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (data) {
+          const map = new Map<string, { phone: string; name: string; totalOrders: number }>();
+          for (const ord of data) {
+            const clean = (ord.customer_phone || '').replace(/\D/g, '');
+            if (clean && clean.length >= 6) {
+              const existing = map.get(clean);
+              if (existing) {
+                existing.totalOrders += 1;
+              } else {
+                map.set(clean, {
+                  phone: clean,
+                  name: ord.customer_name || 'Cliente Web',
+                  totalOrders: 1
+                });
+              }
+            }
+          }
+          setLoadedCustomerContacts(Array.from(map.values()));
+        }
+      }
+    } catch (err: any) {
+      console.error('Error fetching contacts:', err);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  // 3. Cambiar pestaña en el modal
+  const handleChangeContactSource = async (source: 'whatsapp' | 'customers' | 'vcf') => {
+    setContactPickerSource(source);
+    if (source === 'customers' && loadedCustomerContacts.length === 0) {
+      setLoadingContacts(true);
+      try {
+        const { data } = await supabase
+          .from('orders')
+          .select('customer_name, customer_phone')
+          .not('customer_phone', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(100);
+
+        if (data) {
+          const map = new Map<string, { phone: string; name: string; totalOrders: number }>();
+          for (const ord of data) {
+            const clean = (ord.customer_phone || '').replace(/\D/g, '');
+            if (clean && clean.length >= 6) {
+              const existing = map.get(clean);
+              if (existing) {
+                existing.totalOrders += 1;
+              } else {
+                map.set(clean, {
+                  phone: clean,
+                  name: ord.customer_name || 'Cliente Web',
+                  totalOrders: 1
+                });
+              }
+            }
+          }
+          setLoadedCustomerContacts(Array.from(map.values()));
+        }
+      } catch (_e) {} finally {
+        setLoadingContacts(false);
+      }
+    } else if (source === 'whatsapp' && loadedWhatsAppContacts.length === 0) {
+      setLoadingContacts(true);
+      try {
+        const contacts = await whatsappBotApi.getContacts().catch(() => []);
+        setLoadedWhatsAppContacts(contacts || []);
+      } catch (_e) {} finally {
+        setLoadingContacts(false);
+      }
+    }
+  };
+
+  // 4. Importar y parsear archivo .VCF (vCard de celular)
+  const handleVCardFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+
+      const parsedContacts: Array<{ jid: string; phone: string; name: string; pushName?: string }> = [];
+      const vcardEntries = content.split(/BEGIN:VCARD/i).filter(Boolean);
+
+      for (const entry of vcardEntries) {
+        let name = '';
+        const fnMatch = entry.match(/FN[;:]([^\r\n]+)/i);
+        if (fnMatch) {
+          name = fnMatch[1].replace(/^[;:]+/, '').trim();
+        } else {
+          const nMatch = entry.match(/N[;:]([^\r\n]+)/i);
+          if (nMatch) name = nMatch[1].replace(/^[;:]+/, '').replace(/;/g, ' ').trim();
+        }
+
+        const telMatches = entry.matchAll(/TEL[^:]*:([^\r\n]+)/gi);
+        for (const m of telMatches) {
+          const rawTel = m[1].trim();
+          const clean = rawTel.replace(/\D/g, '');
+          if (clean.length >= 6) {
+            parsedContacts.push({
+              jid: `${clean}@s.whatsapp.net`,
+              phone: clean,
+              name: name || clean,
+              pushName: name
+            });
+          }
+        }
+      }
+
+      if (parsedContacts.length > 0) {
+        setLoadedWhatsAppContacts(parsedContacts);
+        setContactPickerSource('vcf');
+        setShowContactPickerModal(true);
+        showAlert({
+          title: 'Archivo VCF Leído',
+          message: `Se detectaron ${parsedContacts.length} contactos en el archivo. Marcá los que quieras excluir.`,
+          type: 'info'
+        });
+      } else {
+        showAlert({
+          title: 'Sin números válidos',
+          message: 'No se encontraron teléfonos válidos en el archivo .vcf seleccionado.',
+          type: 'warning'
+        });
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // 5. Toggle de selección individual de contacto
+  const handleToggleContactSelection = (phone: string, label: string) => {
+    setSelectedContactsForExclusion((prev) => {
+      const copy = { ...prev };
+      if (copy[phone]) {
+        delete copy[phone];
+      } else {
+        copy[phone] = { phone, label };
+      }
+      return copy;
+    });
+  };
+
+  // 6. Aplicar contactos seleccionados a la lista negra
+  const handleApplySelectedContactsToBlacklist = async () => {
+    const toAdd = Object.values(selectedContactsForExclusion);
+    if (toAdd.length === 0) {
+      showAlert({ title: 'Selección vacía', message: 'Selecciona al menos un contacto con el casillero.', type: 'warning' });
+      return;
+    }
+
+    const currentList: IgnoredNumber[] = Array.isArray(settings.ignored_numbers) ? [...settings.ignored_numbers] : [];
+    let addedCount = 0;
+
+    for (const item of toAdd) {
+      const clean = item.phone.replace(/\D/g, '');
+      if (!clean) continue;
+      if (!currentList.some(curr => String(curr.phone || curr).replace(/\D/g, '') === clean)) {
+        currentList.unshift({
+          id: 'ign_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+          phone: clean,
+          label: item.label || 'Contacto Personal',
+          created_at: new Date().toISOString()
+        });
+        addedCount++;
+      }
+    }
+
+    const newSettings = { ...settings, ignored_numbers: currentList };
+    setSettings(newSettings);
+    setShowContactPickerModal(false);
+    setSelectedContactsForExclusion({});
+
+    try {
+      await whatsappBotApi.updateSettings(newSettings);
+      showAlert({
+        title: '¡Lista Negra Actualizada!',
+        message: `Se agregaron ${addedCount} contacto(s) a la lista de excluidos del bot en Supabase.`,
+        type: 'success'
+      });
+    } catch (_e) {
+      showAlert({
+        title: 'Contactos Agregados',
+        message: `Se añadieron ${addedCount} contacto(s) a la lista. No olvides pulsar "Guardar Filtros y Ajustes".`,
+        type: 'info'
+      });
+    }
   };
 
   const handleAddKeyword = () => {
@@ -1378,7 +1660,7 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
           </div>
 
           {/* 3. LISTA NEGRA DE CONTACTOS EXCLUIDOS (AMIGOS / FAMILIARES) */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-4">
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm space-y-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -1390,15 +1672,98 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
                 </p>
               </div>
 
-              <div className="text-xs font-bold text-slate-500">
+              <div className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-xl">
                 <span>{(settings.ignored_numbers || []).length} contactos excluidos</span>
               </div>
             </div>
 
-            {/* Formulario para agregar nuevo número */}
+            {/* BOTONES DE IMPORTACIÓN RÁPIDA DE CONTACTOS */}
+            <div className="p-4 bg-purple-50/50 rounded-2xl border border-purple-100/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-purple-950 flex items-center gap-1.5">
+                  <Smartphone className="w-4 h-4 text-purple-600" />
+                  <span>📲 Seleccionar Contactos de tu Celular o WhatsApp</span>
+                </span>
+                <span className="text-[10px] text-purple-700 font-bold bg-white px-2 py-0.5 rounded-lg border border-purple-200">
+                  Sin escribir a mano
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                {/* 1. Selector Nativo del Celular (Android / Chrome) */}
+                <button
+                  type="button"
+                  onClick={handlePickFromNativePhone}
+                  className="p-3 bg-white hover:bg-purple-50 rounded-xl border border-purple-200/80 text-left transition-all group cursor-pointer shadow-2xs flex flex-col justify-between"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Smartphone className="w-4 h-4 text-purple-600" />
+                    <span className="text-xs font-black text-purple-950">Agenda del Celular</span>
+                  </div>
+                  <span className="text-[10px] text-purple-800 block mt-1">
+                    Abre el selector nativo de tu teléfono (Android)
+                  </span>
+                </button>
+
+                {/* 2. Contactos y Chats de WhatsApp */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenContactPickerModal('whatsapp')}
+                  className="p-3 bg-white hover:bg-emerald-50 rounded-xl border border-emerald-200/80 text-left transition-all group cursor-pointer shadow-2xs flex flex-col justify-between"
+                >
+                  <div className="flex items-center space-x-2">
+                    <MessageCircle className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-black text-emerald-950">Chats de WhatsApp</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-800 block mt-1">
+                    Ver conversaciones y contactos sincronizados
+                  </span>
+                </button>
+
+                {/* 3. Clientes de la Tienda */}
+                <button
+                  type="button"
+                  onClick={() => handleOpenContactPickerModal('customers')}
+                  className="p-3 bg-white hover:bg-blue-50 rounded-xl border border-blue-200/80 text-left transition-all group cursor-pointer shadow-2xs flex flex-col justify-between"
+                >
+                  <div className="flex items-center space-x-2">
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-black text-blue-950">Clientes de la Web</span>
+                  </div>
+                  <span className="text-[10px] text-blue-800 block mt-1">
+                    Listado de compradores en Supabase
+                  </span>
+                </button>
+
+                {/* 4. Subir Archivo .VCF (vCard) */}
+                <button
+                  type="button"
+                  onClick={() => vcardFileInputRef.current?.click()}
+                  className="p-3 bg-white hover:bg-amber-50 rounded-xl border border-amber-200/80 text-left transition-all group cursor-pointer shadow-2xs flex flex-col justify-between"
+                >
+                  <div className="flex items-center space-x-2">
+                    <UploadCloud className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs font-black text-amber-950">Subir Archivo .VCF</span>
+                  </div>
+                  <span className="text-[10px] text-amber-800 block mt-1">
+                    Exportar contactos de Google o iPhone
+                  </span>
+                </button>
+
+                <input
+                  type="file"
+                  ref={vcardFileInputRef}
+                  onChange={handleVCardFileUpload}
+                  accept=".vcf,text/vcard"
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* Formulario manual para agregar número */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
               <div className="sm:col-span-5">
-                <label className="text-[10px] font-bold text-slate-600 block mb-1">Número de Teléfono (con código de área):</label>
+                <label className="text-[10px] font-bold text-slate-600 block mb-1">O agregar número manual (con código de área):</label>
                 <input
                   type="text"
                   placeholder="ej: 3826123456"
@@ -1423,7 +1788,7 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
                   onClick={handleAddIgnoredNumber}
                   className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm"
                 >
-                  + Excluir Contacto
+                  + Excluir Manual
                 </button>
               </div>
             </div>
@@ -1479,6 +1844,227 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
               </div>
             )}
           </div>
+
+          {/* MODAL INTERACTIVO DE SELECCIÓN DE CONTACTOS (WHATSAPP / CLIENTES / VCF) */}
+          {showContactPickerModal && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                {/* Header del Modal */}
+                <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shrink-0">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">Seleccionar Contactos para la Lista Negra</h3>
+                      <p className="text-[11px] text-slate-500">
+                        Marca los contactos que deseas excluir para que el bot nunca les responda.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowContactPickerModal(false)}
+                    className="p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-200/60 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Selector de Pestañas de Origen */}
+                <div className="px-5 py-3 flex items-center gap-2 border-b border-slate-100 bg-white overflow-x-auto">
+                  <button
+                    type="button"
+                    onClick={() => handleChangeContactSource('whatsapp')}
+                    className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
+                      contactPickerSource === 'whatsapp'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp ({loadedWhatsAppContacts.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleChangeContactSource('customers')}
+                    className={`px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
+                      contactPickerSource === 'customers'
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Clientes Web ({loadedCustomerContacts.length})</span>
+                  </button>
+
+                  {contactPickerSource === 'vcf' && (
+                    <button
+                      type="button"
+                      onClick={() => handleChangeContactSource('vcf')}
+                      className="px-3.5 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 bg-purple-600 text-white shadow-xs"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>Archivo VCF ({loadedWhatsAppContacts.length})</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Buscador y Controles de Selección */}
+                <div className="p-4 bg-slate-50 border-b border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nombre o número..."
+                      value={contactSearchQuery}
+                      onChange={(e) => setContactSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-400"
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allList = contactPickerSource === 'customers' 
+                          ? loadedCustomerContacts 
+                          : loadedWhatsAppContacts;
+                        const filtered = allList.filter((c: any) => {
+                          if (!contactSearchQuery) return true;
+                          const q = contactSearchQuery.toLowerCase();
+                          return String(c.name || '').toLowerCase().includes(q) || String(c.phone || '').includes(q);
+                        });
+                        const newSelected: Record<string, { phone: string; label: string }> = { ...selectedContactsForExclusion };
+                        for (const c of filtered) {
+                          newSelected[c.phone] = { phone: c.phone, label: c.name || 'Contacto WhatsApp' };
+                        }
+                        setSelectedContactsForExclusion(newSelected);
+                      }}
+                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl cursor-pointer"
+                    >
+                      Marcar Visibles
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedContactsForExclusion({})}
+                      className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl cursor-pointer"
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                </div>
+
+                {/* Lista Scrolleable de Contactos */}
+                <div className="p-4 overflow-y-auto flex-1 space-y-2 max-h-[50vh]">
+                  {loadingContacts ? (
+                    <div className="py-12 flex flex-col items-center justify-center space-y-2 text-slate-400">
+                      <RefreshCw className="w-6 h-6 animate-spin text-purple-600" />
+                      <p className="text-xs font-bold">Cargando contactos...</p>
+                    </div>
+                  ) : (
+                    (() => {
+                      const list = contactPickerSource === 'customers' ? loadedCustomerContacts : loadedWhatsAppContacts;
+                      const filtered = list.filter((c: any) => {
+                        if (!contactSearchQuery) return true;
+                        const q = contactSearchQuery.toLowerCase();
+                        return String(c.name || '').toLowerCase().includes(q) || String(c.phone || '').includes(q);
+                      });
+
+                      if (filtered.length === 0) {
+                        return (
+                          <div className="py-10 text-center text-slate-400 space-y-1">
+                            <Users className="w-8 h-8 mx-auto text-slate-300" />
+                            <p className="text-xs font-bold text-slate-600">No se encontraron contactos</p>
+                            <p className="text-[11px]">Intenta con otro término de búsqueda o sincroniza tu WhatsApp.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {filtered.map((c: any) => {
+                            const isSelected = !!selectedContactsForExclusion[c.phone];
+                            const isAlreadyExcluded = (settings.ignored_numbers || []).some(
+                              (ign: any) => String(ign.phone || ign).replace(/\D/g, '') === String(c.phone).replace(/\D/g, '')
+                            );
+
+                            return (
+                              <label
+                                key={c.phone + (c.jid || '')}
+                                className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                                  isSelected 
+                                    ? 'bg-purple-50/80 border-purple-300 ring-2 ring-purple-400/30' 
+                                    : isAlreadyExcluded 
+                                    ? 'bg-red-50/40 border-red-200' 
+                                    : 'bg-white border-slate-200/80 hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className="flex items-center space-x-2.5 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => handleToggleContactSelection(c.phone, c.name || 'Contacto WhatsApp')}
+                                    className="w-4 h-4 accent-purple-600 rounded cursor-pointer shrink-0"
+                                  />
+                                  <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs shrink-0 uppercase">
+                                    {(c.name || 'C').charAt(0)}
+                                  </div>
+                                  <div className="truncate">
+                                    <span className="text-xs font-black text-slate-900 block truncate">{c.name || c.phone}</span>
+                                    <span className="text-[11px] font-mono text-slate-500 block truncate">+{c.phone}</span>
+                                  </div>
+                                </div>
+
+                                {isAlreadyExcluded && (
+                                  <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-md shrink-0">
+                                    Excluido
+                                  </span>
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+
+                {/* Footer del Modal */}
+                <div className="p-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-slate-600">
+                    <span className="text-purple-700 font-black">{Object.keys(selectedContactsForExclusion).length}</span> seleccionados
+                  </span>
+
+                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    <button
+                      type="button"
+                      onClick={() => setShowContactPickerModal(false)}
+                      className="w-1/2 sm:w-auto px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApplySelectedContactsToBlacklist}
+                      disabled={Object.keys(selectedContactsForExclusion).length === 0}
+                      className="w-1/2 sm:w-auto px-5 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl text-xs font-black cursor-pointer shadow-sm transition-all"
+                    >
+                      Excluir Seleccionados ({Object.keys(selectedContactsForExclusion).length})
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
 
           {/* 4. CONEXIÓN QR & MENSAJE DE PRUEBA EN VIVO */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

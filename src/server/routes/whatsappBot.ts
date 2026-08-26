@@ -64,6 +64,16 @@ router.put('/settings', requireAdmin, async (req: AuthenticatedRequest, res: Res
   }
 });
 
+// Obtener lista de contactos y chats sincronizados de WhatsApp
+router.get('/contacts', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const contacts = await whatsappBot.getContacts();
+    res.json(contacts);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Error al obtener contactos' });
+  }
+});
+
 // Enviar mensaje de prueba
 router.post('/send-test', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const { phone, message } = req.body;
