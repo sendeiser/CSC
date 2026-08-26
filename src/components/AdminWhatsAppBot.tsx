@@ -14,6 +14,7 @@ import {
 import { whatsappBotApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 import { AdminChatbotLab } from './AdminChatbotLab';
+import { AdminWhatsAppFlowBuilder } from './AdminWhatsAppFlowBuilder';
 
 export interface IgnoredNumber {
   id: string;
@@ -357,7 +358,7 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
   const [refreshingQR, setRefreshingQR] = useState(false);
 
   // Navegación principal en 4 pestañas
-  const [mainTab, setMainTab] = useState<'chatbot_studio' | 'test_lab' | 'bot_security'>('chatbot_studio');
+  const [mainTab, setMainTab] = useState<'visual_flow' | 'chatbot_studio' | 'test_lab' | 'bot_security'>('visual_flow');
 
   // Filtro de categoría dentro del Chatbot Studio
   const [templateFilterCategory, setTemplateFilterCategory] = useState<'all' | 'menu' | 'buy_flow' | 'notifications'>('all');
@@ -789,6 +790,19 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
         <div className="flex items-center bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 w-full lg:w-auto overflow-x-auto">
           <button
             type="button"
+            onClick={() => setMainTab('visual_flow')}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              mainTab === 'visual_flow'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>🗺️ Flujo Visual (Diagrama n8n)</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setMainTab('chatbot_studio')}
             className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               mainTab === 'chatbot_studio'
@@ -797,7 +811,7 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
             }`}
           >
             <Bot className="w-4 h-4" />
-            <span>📝 Editor de Plantillas ({ALL_TEMPLATE_NODES.length})</span>
+            <span>📝 Lista de Plantillas ({ALL_TEMPLATE_NODES.length})</span>
           </button>
 
           <button
@@ -828,10 +842,22 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
         </div>
       </div>
 
-      {/* PESTAÑA: LABORATORIO */}
+      {/* PESTAÑA 1: CONSTRUCTOR DE FLUJO VISUAL (ESTILO N8N) */}
+      {mainTab === 'visual_flow' && (
+        <AdminWhatsAppFlowBuilder
+          settings={settings}
+          onUpdateSettings={async (newSet) => {
+            setSettings(newSet);
+            await whatsappBotApi.updateSettings(newSet);
+          }}
+          onOpenLab={() => onOpenLab ? onOpenLab() : setMainTab('test_lab')}
+        />
+      )}
+
+      {/* PESTAÑA 2: LABORATORIO */}
       {mainTab === 'test_lab' && <AdminChatbotLab />}
 
-      {/* PESTAÑA 1: EDITOR DE PLANTILLAS INTEGRAL */}
+      {/* PESTAÑA 3: EDITOR DE PLANTILLAS INTEGRAL CLÁSICO */}
       {mainTab === 'chatbot_studio' && (
         <div className="space-y-4">
           
