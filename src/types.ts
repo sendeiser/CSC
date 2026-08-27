@@ -46,7 +46,7 @@ export interface CartItem {
 
 export type ActiveScreen = 'inicio' | 'catalogo' | 'carrito' | 'login' | 'registro' | 'detalle' | 'admin' | 'nosotros' | 'como-comprar' | 'mis-pedidos';
 
-export type AdminSection = 'dashboard' | 'analytics' | 'finances' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'banners' | 'about-page' | 'categories' | 'whatsapp' | 'chatbot-lab' | 'shipping' | 'notifications';
+export type AdminSection = 'dashboard' | 'analytics' | 'finances' | 'products' | 'orders' | 'users' | 'promos' | 'homepage' | 'banners' | 'about-page' | 'categories' | 'whatsapp' | 'chatbot-lab' | 'chatbot-flow' | 'shipping' | 'notifications';
 
 export interface ExpenseItem {
   id: string;

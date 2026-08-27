@@ -15,7 +15,6 @@ import { whatsappBotApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 import { supabase } from '../lib/supabase';
 import { AdminChatbotLab } from './AdminChatbotLab';
-import { AdminWhatsAppFlowBuilder } from './AdminWhatsAppFlowBuilder';
 
 import type { 
   IgnoredNumber, 
@@ -43,9 +42,10 @@ export {
 
 export interface AdminWhatsAppBotProps {
   onOpenLab?: () => void;
+  onOpenFlowBuilder?: () => void;
 }
 
-export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab }) => {
+export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab, onOpenFlowBuilder }) => {
   const { showAlert, showConfirm } = useModal();
   const [status, setStatus] = useState<'disconnected' | 'connecting' | 'qr_ready' | 'connected'>('disconnected');
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -53,8 +53,8 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
   const [loading, setLoading] = useState(true);
   const [refreshingQR, setRefreshingQR] = useState(false);
 
-  // Navegación principal en 4 pestañas
-  const [mainTab, setMainTab] = useState<'visual_flow' | 'chatbot_studio' | 'test_lab' | 'bot_security'>('visual_flow');
+  // Navegación principal en 3 pestañas limpias
+  const [mainTab, setMainTab] = useState<'chatbot_studio' | 'test_lab' | 'bot_security'>('chatbot_studio');
 
   // Filtro de categoría dentro del Chatbot Studio
   const [templateFilterCategory, setTemplateFilterCategory] = useState<'all' | 'menu' | 'buy_flow' | 'notifications'>('all');
@@ -764,19 +764,18 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
           </div>
         </div>
 
-        <div className="flex items-center bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 w-full lg:w-auto overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setMainTab('visual_flow')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-              mainTab === 'visual_flow'
-                ? 'bg-purple-600 text-white shadow-md shadow-purple-200'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>🗺️ Flujo Visual (Diagrama n8n)</span>
-          </button>
+        <div className="flex items-center bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 w-full lg:w-auto overflow-x-auto gap-1">
+          {onOpenFlowBuilder && (
+            <button
+              type="button"
+              onClick={onOpenFlowBuilder}
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200/60 transition-all cursor-pointer whitespace-nowrap"
+              title="Abrir Constructor de Flujo en Pantalla Completa"
+            >
+              <Layers className="w-4 h-4 text-cyan-600" />
+              <span>🗺️ Constructor de Flujo (Página Completa)</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -819,19 +818,7 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab })
         </div>
       </div>
 
-      {/* PESTAÑA 1: CONSTRUCTOR DE FLUJO VISUAL (ESTILO N8N) */}
-      {mainTab === 'visual_flow' && (
-        <AdminWhatsAppFlowBuilder
-          settings={settings}
-          onUpdateSettings={async (newSet) => {
-            setSettings(newSet);
-            await whatsappBotApi.updateSettings(newSet);
-          }}
-          onOpenLab={() => onOpenLab ? onOpenLab() : setMainTab('test_lab')}
-        />
-      )}
-
-      {/* PESTAÑA 2: LABORATORIO */}
+      {/* PESTAÑA 1: LABORATORIO */}
       {mainTab === 'test_lab' && <AdminChatbotLab />}
 
       {/* PESTAÑA 3: EDITOR DE PLANTILLAS INTEGRAL CLÁSICO */}

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Save, RefreshCw, HelpCircle, Check, Info, Phone, MessageCircle, RotateCcw, Copy, Sparkles, Smartphone, Plus, Trash2, Edit3, X, Bot, FlaskConical } from 'lucide-react';
+import { MessageSquare, Save, RefreshCw, HelpCircle, Check, Info, Phone, MessageCircle, RotateCcw, Copy, Sparkles, Smartphone, Plus, Trash2, Edit3, X, Bot, FlaskConical, Layers } from 'lucide-react';
 import { admin as adminApi, homepage as homepageApi } from '../lib/api';
 import { useModal } from '../context/ModalContext';
 import { DEFAULT_WHATSAPP_TEMPLATES, DEFAULT_CUSTOM_QUICK_MESSAGES, CustomQuickMessage, setWhatsAppNumbers, setWhatsAppTemplates, waLink } from '../lib/whatsapp';
 import { AdminWhatsAppBot } from './AdminWhatsAppBot';
 import { AdminChatbotLab } from './AdminChatbotLab';
+import { AdminWhatsAppFlowBuilder } from './AdminWhatsAppFlowBuilder';
 
 export const AdminWhatsAppEditor: React.FC = () => {
   const { showAlert } = useModal();
-  const [mainView, setMainView] = useState<'bot' | 'templates' | 'lab'>('bot');
+  const [mainView, setMainView] = useState<'bot' | 'flow' | 'lab' | 'templates'>('bot');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'transfer' | 'mercadopago' | 'preparing' | 'ready' | 'general' | 'numbers' | 'custom_quick'>('transfer');
@@ -315,7 +316,19 @@ export const AdminWhatsAppEditor: React.FC = () => {
           }`}
         >
           <Bot className="w-4.5 h-4.5 text-emerald-600" />
-          <span>🤖 WhatsApp Bot (Baileys)</span>
+          <span>🤖 WhatsApp Bot</span>
+        </button>
+
+        <button
+          onClick={() => setMainView('flow')}
+          className={`flex-1 w-full sm:w-auto py-3 px-4 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer ${
+            mainView === 'flow'
+              ? 'bg-white text-cyan-800 shadow-sm border border-slate-200/80'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Layers className="w-4.5 h-4.5 text-cyan-600" />
+          <span>🗺️ Constructor de Flujo</span>
         </button>
 
         <button
@@ -343,7 +356,18 @@ export const AdminWhatsAppEditor: React.FC = () => {
         </button>
       </div>
 
-      {mainView === 'bot' && <AdminWhatsAppBot onOpenLab={() => setMainView('lab')} />}
+      {mainView === 'bot' && (
+        <AdminWhatsAppBot 
+          onOpenLab={() => setMainView('lab')} 
+          onOpenFlowBuilder={() => setMainView('flow')} 
+        />
+      )}
+      {mainView === 'flow' && (
+        <AdminWhatsAppFlowBuilder 
+          onOpenLab={() => setMainView('lab')} 
+          onOpenBotSettings={() => setMainView('bot')} 
+        />
+      )}
       {mainView === 'lab' && <AdminChatbotLab />}
       {mainView === 'templates' && (
         <>
