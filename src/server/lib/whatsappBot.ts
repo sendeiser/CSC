@@ -440,7 +440,16 @@ class WhatsAppBotService {
             this.qrCode = await QRCode.toDataURL(qr, { scale: 8, margin: 2 });
             this.status = 'qr_ready';
             this.isInitializing = false;
-            console.log('[WhatsApp Bot]: Nuevo código QR generado.');
+            console.log('\n============================================================');
+            console.log('  📲 ESCANEÁ ESTE CÓDIGO QR CON TU WHATSAPP (Dispositivos vinculados):');
+            console.log('============================================================\n');
+            try {
+              const terminalQr = await QRCode.toString(qr, { type: 'terminal', small: true });
+              console.log(terminalQr);
+            } catch (_e) {
+              console.log('[WhatsApp Bot]: Código QR disponible para escanear.');
+            }
+            console.log('============================================================\n');
           } catch (err) {
             console.error('[WhatsApp Bot QR Error]:', err);
           }
