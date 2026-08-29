@@ -6,13 +6,15 @@ echo ============================================================
 echo      🍬 CSC CANDY SHOP - SERVIDOR Y BOT DE WHATSAPP 🍭
 echo ============================================================
 echo.
+echo Verificando y liberando puerto 3001...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3001') do taskkill /f /pid %%a >nul 2>&1
+echo.
 echo Iniciando servidor local y conectando WhatsApp Bot...
 echo La sesion se mantendra activa y respondiendo mientras esta ventana este abierta.
-echo Puedes minimizar esta ventana mientras usas tu PC.
 echo.
 npm run server
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo Ocurrio un error al iniciar. Presiona cualquier tecla para reintentar...
+    echo Presiona cualquier tecla para reintentar...
     pause >nul
 )
