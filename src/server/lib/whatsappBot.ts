@@ -218,6 +218,8 @@ export interface BotOrderItem {
   quantity: number;
   weightGrams?: number;
   unitPrice: number;
+  isCombo?: boolean;
+  comboSelections?: Array<{ productId: string; name: string; quantity: number; isWeight: boolean; capacityGrams: number }>;
 }
 
 export interface PendingProduct {
@@ -235,8 +237,14 @@ export interface PendingProduct {
 }
 
 export interface BotOrderSession {
-  step: 'SELECTING_PRODUCTS' | 'SELECTING_WEIGHT' | 'SELECTING_QUANTITY' | 'ASK_SHIPPING_METHOD' | 'ASK_ADDRESS' | 'ASK_NAME' | 'ASK_COUPON' | 'ASK_PAYMENT_METHOD' | 'CONFIRMING';
+  step: 'SELECTING_PRODUCTS' | 'SELECTING_WEIGHT' | 'SELECTING_QUANTITY' | 'SELECTING_COMBO_GUMMIES' | 'ASK_SHIPPING_METHOD' | 'ASK_ADDRESS' | 'ASK_NAME' | 'ASK_COUPON' | 'ASK_PAYMENT_METHOD' | 'CONFIRMING';
   pendingProduct?: PendingProduct;
+  pendingCombo?: {
+    product: any;
+    availableGummies: any[];
+    capacityGrams: number;
+  };
+  catalogPage?: number;
   items: BotOrderItem[];
   subtotal: number;
   couponCode?: string;
@@ -590,7 +598,7 @@ class WhatsAppBotService {
   /**
    * Envía el catálogo de productos con collage numerado y precios x50g de manera 100% confiable
    */
-  public async sendCatalog(from: string, commonVars: Record<string, any>): Promise<boolean> {
+  public async sendCatalog(from: string, commonVars: Record<string, any>, page: number = 1): Promise<boolean> {
     try {
       const db = serviceClient || supabase;
       const { data: rawProds, error: prodsErr } = await db
@@ -603,39 +611,63 @@ class WhatsAppBotService {
       }
 
       const availableProds = (rawProds || []).filter((p: any) => p.stock === null || p.stock === undefined || Number(p.stock) > 0);
-      const prods = (availableProds.length > 0 ? availableProds : (rawProds || [])).slice(0, 6);
+      const allProds = availableProds.length > 0 ? availableProds : (rawProds || []);
 
-      if (!prods || prods.length === 0) {
+      if (!allProds || allProds.length === 0) {
         await this.sendTextMessage(from, '🍬 En este momento no hay productos disponibles en la tienda. Por favor consulta más tarde.');
         return true;
       }
 
-      const catalogListText = prods.map((p: any, i: number) => {
+      const pageSize = 9;
+      const totalPages = Math.ceil(allProds.length / pageSize);
+      const safePage = Math.max(1, Math.min(page, totalPages));
+      const startIndex = (safePage - 1) * pageSize;
+      const prodsOnPage = allProds.slice(startIndex, startIndex + pageSize);
+
+      const catalogListText = prodsOnPage.map((p: any, i: number) => {
+        const itemNumber = startIndex + i + 1;
         const pricing = getProductPricingInfo(p);
-        return `${i + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
+        const isCombo = p.is_combo || p.name.toLowerCase().includes('combo') || p.name.toLowerCase().includes('bandeja') || p.name.toLowerCase().includes('ensalada');
+        const comboTag = isCombo ? ' 🎁 *(¡Personalizalo con tus gomitas!)*' : '';
+        return `${itemNumber}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*${comboTag}`;
       }).join('\n');
 
       const settings = await getBotSettings();
 
-      // Iniciar o reiniciar sesión interactiva de compra
+      // Iniciar o actualizar sesión interactiva de compra
       if (settings.allow_chat_orders) {
+        const existing = this.orderSessions.get(from);
         this.orderSessions.set(from, {
           step: 'SELECTING_PRODUCTS',
-          items: [],
-          subtotal: 0,
-          discountAmount: 0,
-          shippingCost: 0,
-          total: 0,
+          catalogPage: safePage,
+          items: existing?.items || [],
+          subtotal: existing?.subtotal || 0,
+          discountAmount: existing?.discountAmount || 0,
+          shippingCost: existing?.shippingCost || 0,
+          total: existing?.total || 0,
           lastActivity: Date.now()
         });
       }
 
-      const catalogCaption = `🛍️ *CATÁLOGO DE GOLOSINAS & PRECIOS* 🍬\n\n${catalogListText}\n\n👉 *Respondé con el NÚMERO (1, 2, 3...) de la golosina para agregarla a tu pedido.*`;
+      let paginationTip = '';
+      if (totalPages > 1) {
+        if (safePage < totalPages) {
+          paginationTip = `\n\n📄 *Página ${safePage} de ${totalPages}* (Golosinas ${startIndex + 1} a ${startIndex + prodsOnPage.length})\n👉 Escribí *MÁS* o *PÁGINA ${safePage + 1}* para ver las siguientes golosinas.`;
+        } else {
+          paginationTip = `\n\n📄 *Página ${safePage} de ${totalPages}* (Fin del catálogo)\n👉 Escribí *PÁGINA 1* para volver a la primera página.`;
+        }
+      }
+
+      const catalogCaption = `🛍️ *CATÁLOGO DE GOLOSINAS & PRECIOS* 🍬\n\n${catalogListText}${paginationTip}\n\n👉 *Respondé con el NÚMERO (${startIndex + 1} al ${startIndex + prodsOnPage.length}) de la golosina para agregarla a tu pedido.*`;
 
       // Intentar enviar collage con fotos y números
       if (settings.send_product_images) {
         try {
-          const collageBuffer = await generateCatalogCollage(prods);
+          const collageBuffer = await generateCatalogCollage(prodsOnPage, {
+            startIndex,
+            pageNumber: safePage,
+            totalPages
+          });
           const sent = await this.sendImageMessage(from, collageBuffer, catalogCaption);
           if (sent) return true;
         } catch (collErr) {
@@ -984,8 +1016,19 @@ class WhatsAppBotService {
 
           // PASO 1: SELECCIÓN DE PRODUCTOS DEL CATÁLOGO
           if (activeSession.step === 'SELECTING_PRODUCTS') {
+            // Paginación del catálogo
+            if (body === 'mas' || body === 'más' || body === 'siguiente' || body.startsWith('pagina') || body.startsWith('página')) {
+              let targetPage = (activeSession.catalogPage || 1) + 1;
+              const pageNumMatch = body.match(/\d+/);
+              if (pageNumMatch) {
+                targetPage = parseInt(pageNumMatch[0], 10);
+              }
+              await this.sendCatalog(from, commonVars, targetPage);
+              return;
+            }
+
             if (body === 'catalogo' || body === 'catálogo' || body === 'ver catalogo' || body === 'ver catálogo' || body === 'precios' || body === 'productos' || body === 'fotos' || body === 'lista') {
-              await this.sendCatalog(from, commonVars);
+              await this.sendCatalog(from, commonVars, 1);
               return;
             }
 
@@ -1006,7 +1049,7 @@ class WhatsAppBotService {
               .select('*')
               .order('created_at', { ascending: false });
 
-            const availableProducts = (rawAvailable || []).filter((p: any) => p.stock === null || p.stock === undefined || Number(p.stock) > 0).slice(0, 12);
+            const availableProducts = (rawAvailable || []).filter((p: any) => p.stock === null || p.stock === undefined || Number(p.stock) > 0);
 
             const numIdx = parseInt(body.replace(/\D/g, ''), 10);
             let selectedProd: any = null;
@@ -1018,13 +1061,53 @@ class WhatsAppBotService {
             }
 
             if (selectedProd) {
-              const isWeight = selectedProd.unit_type === 'weight' || selectedProd.is_bulk;
+              const isCombo = selectedProd.is_combo || 
+                selectedProd.name.toLowerCase().includes('combo') || 
+                selectedProd.name.toLowerCase().includes('bandeja') || 
+                selectedProd.name.toLowerCase().includes('ensalada');
+
+              // Si es un Combo, permitir armarlo con las gomitas en stock
+              if (isCombo) {
+                const { data: rawGummies } = await db
+                  .from('products')
+                  .select('id, name, unit_type, is_combo, stock')
+                  .eq('unit_type', 'weight')
+                  .neq('is_combo', true)
+                  .order('name', { ascending: true });
+
+                const availableGummies = (rawGummies || []).filter((g: any) => g.stock === null || g.stock === undefined || Number(g.stock) > 0);
+
+                if (availableGummies.length > 0) {
+                  const capacityGrams = Number(selectedProd.combo_capacity) || (selectedProd.name.includes('250') ? 250 : selectedProd.name.includes('400') ? 400 : 500);
+                  activeSession.step = 'SELECTING_COMBO_GUMMIES';
+                  activeSession.pendingCombo = {
+                    product: selectedProd,
+                    availableGummies,
+                    capacityGrams
+                  };
+
+                  const gummiesList = availableGummies.map((g: any, i: number) => `${i + 1}️⃣ *${g.name.trim()}*`).join('\n');
+                  const comboPrice = Number(selectedProd.base_price || selectedProd.price || 0);
+
+                  let comboPrompt = `🎁 *¡VAMOS A ARMAR TU ${selectedProd.name.toUpperCase()}!* 🍬\n`;
+                  comboPrompt += `Capacidad total: *${capacityGrams} gramos* • Precio: *$${comboPrice.toLocaleString('es-AR')}*\n\n`;
+                  comboPrompt += `*Elegí las variedades de gomitas que más te gusten para tu mix:*\n${gummiesList}\n\n`;
+                  comboPrompt += `👉 *Respondé con los números separados por coma (ej: 1, 3, 5, 8)*\n👉 O escribí *TODAS* para armar un mix surtido con todas las variedades.`;
+
+                  if (settings.send_product_images && selectedProd.image_url) {
+                    await this.sendImageMessage(from, selectedProd.image_url, comboPrompt);
+                  } else {
+                    await this.sock.sendMessage(from, { text: comboPrompt });
+                  }
+                  return;
+                }
+              }
+
+              const isWeight = selectedProd.unit_type === 'weight';
               const pricing = getProductPricingInfo(selectedProd);
 
               if (isWeight) {
                 const options = buildWeightOptionsForProduct(selectedProd);
-                const minWeight = Number(selectedProd.min_weight) || 25;
-                const step = Number(selectedProd.weight_step) || 25;
 
                 activeSession.step = 'SELECTING_WEIGHT';
                 activeSession.pendingProduct = {
@@ -1076,7 +1159,67 @@ class WhatsAppBotService {
             }
           }
 
-          // PASO 1.B: SELECCIÓN DE GRAMAJE PARA GOMITAS AL PESO
+          // PASO 1.B: SELECCIÓN DE GOMITAS PARA ARMAR COMBOS
+          if (activeSession.step === 'SELECTING_COMBO_GUMMIES' && activeSession.pendingCombo) {
+            const pending = activeSession.pendingCombo;
+            const availableGummies = pending.availableGummies;
+            let chosenGummies: any[] = [];
+
+            if (body === 'todas' || body === 'todo' || body === 'mix' || body === 'surtido' || body === 'todas las gomitas') {
+              chosenGummies = [...availableGummies];
+            } else {
+              const matchedNumbers = body.match(/\d+/g);
+              if (matchedNumbers && matchedNumbers.length > 0) {
+                const indexes = Array.from(new Set(matchedNumbers.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= availableGummies.length)));
+                chosenGummies = indexes.map(idx => availableGummies[idx - 1]);
+              } else {
+                chosenGummies = availableGummies.filter(g => body.includes(g.name.toLowerCase().slice(0, 4)));
+              }
+            }
+
+            if (chosenGummies.length === 0) {
+              await this.sock.sendMessage(from, {
+                text: `⚠️ No pudimos identificar las gomitas elegidas. Por favor escribí los números separados por coma (ej: *1, 3, 5, 8*) o escribí *TODAS*.`
+              });
+              return;
+            }
+
+            const gramsPerGummy = Math.round(pending.capacityGrams / chosenGummies.length);
+            const comboSelections = chosenGummies.map(g => ({
+              productId: g.id,
+              name: g.name.trim(),
+              quantity: gramsPerGummy,
+              isWeight: true,
+              capacityGrams: 1
+            }));
+
+            const chosenNames = chosenGummies.map(g => g.name.trim()).join(', ');
+            const comboPrice = Number(pending.product.base_price || pending.product.price || 0);
+
+            const comboItem: BotOrderItem = {
+              productId: pending.product.id,
+              name: `${pending.product.name} (Gomitas: ${chosenNames})`,
+              unitPrice: comboPrice,
+              quantity: 1,
+              isCombo: true,
+              comboSelections
+            };
+
+            activeSession.items.push(comboItem);
+            activeSession.subtotal = activeSession.items.reduce((s, it) => s + it.unitPrice, 0);
+            activeSession.total = Math.max(0, activeSession.subtotal - (activeSession.discountAmount || 0));
+            activeSession.step = 'SELECTING_PRODUCTS';
+            activeSession.pendingCombo = undefined;
+
+            const itemsList = activeSession.items.map((i, idx) => `${idx + 1}️⃣ ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
+
+            await this.sock.sendMessage(from, {
+              text: `✅ *¡Armaste y sumaste ${pending.product.name}!* 🎁\n🍬 *Gomitas elegidas:* ${chosenNames}\n💰 *Precio combo:* \$${comboPrice.toLocaleString('es-AR')}\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés sumar otra golosina? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar con la entrega y el pago.`
+            });
+            return;
+          }
+
+          // PASO 1.C: SELECCIÓN DE GRAMAJE PARA GOMITAS AL PESO
           if (activeSession.step === 'SELECTING_WEIGHT' && activeSession.pendingProduct) {
             const p = activeSession.pendingProduct;
             const options = p.options || [];
@@ -1153,7 +1296,7 @@ class WhatsAppBotService {
             }
           }
 
-          // PASO 1.C: SELECCIÓN DE CANTIDAD PARA PRODUCTOS POR UNIDAD
+          // PASO 1.D: SELECCIÓN DE CANTIDAD PARA PRODUCTOS POR UNIDAD
           if (activeSession.step === 'SELECTING_QUANTITY' && activeSession.pendingProduct) {
             const p = activeSession.pendingProduct;
             const qty = parseInt(body.replace(/\D/g, ''), 10) || 1;
@@ -1300,21 +1443,25 @@ class WhatsAppBotService {
           if (activeSession.step === 'CONFIRMING') {
             if (body === 'si' || body === 'confirmar' || body === 'ok' || body === 'dale' || body === 's' || body === 'sí') {
               try {
+                const payLabel = activeSession.paymentMethod === 'transfer' ? 'Transferencia' : activeSession.paymentMethod === 'cash' ? 'Efectivo' : 'Mercado Pago';
+                const cleanPhone = from.replace(/\D/g, '');
+                const fullAddress = `[WhatsApp Bot] [Tel: ${cleanPhone}] [Pago: ${payLabel}] ${activeSession.shippingAddress || 'Retiro en Local'}`;
+
+                const { data: profile } = await db.from('profiles').select('id').limit(1).maybeSingle();
+
                 const orderPayload = {
-                  shipping_name: activeSession.shippingName || pushName,
-                  shipping_address: activeSession.shippingAddress || 'Retiro en Local',
-                  shipping_city: 'Chamical',
+                  user_id: profile?.id || null,
                   total: activeSession.total,
-                  status: 'pending',
                   discount_amount: activeSession.discountAmount || 0,
-                  shipping_cost: 0,
-                  payment_method: activeSession.paymentMethod || 'transfer',
-                  customer_phone: from.replace('@s.whatsapp.net', '')
+                  shipping_cost: activeSession.shippingCost || 0,
+                  shipping_name: activeSession.shippingName || pushName,
+                  shipping_address: fullAddress,
+                  shipping_city: 'Chamical',
+                  status: 'pending'
                 };
 
                 let { data: newOrder, error: orderErr } = await db.from('orders').insert(orderPayload).select().single();
                 if (orderErr && (orderErr.message?.includes('user_id') || (orderErr as any).code === '23502')) {
-                  const { data: profile } = await db.from('profiles').select('id').limit(1).maybeSingle();
                   if (profile?.id) {
                     const fallbackRes = await db.from('orders').insert({ ...orderPayload, user_id: profile.id }).select().single();
                     if (!fallbackRes.error && fallbackRes.data) {
@@ -1324,34 +1471,61 @@ class WhatsAppBotService {
                   }
                 }
 
-                if (newOrder) {
-                  const orderItemsPayload = activeSession.items.map((it) => ({
-                    order_id: newOrder.id,
-                    product_id: it.productId,
-                    quantity: it.quantity,
-                    unit_price: it.unitPrice
-                  }));
-                  await db.from('order_items').insert(orderItemsPayload);
-
-                  const orderCode = newOrder.id ? newOrder.id.slice(0, 8).toUpperCase() : 'CSC-ORD';
-                  const itemsList = activeSession.items.map((i) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
-
-                  let confirmMsg = `🎉 *¡PEDIDO #${orderCode} REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *${activeSession.shippingName}*, tu pedido ya fue cargado.\n\n📦 *Detalle:*\n${itemsList}\n💰 *Total:* \$${activeSession.total.toLocaleString('es-AR')}\n📍 *Entrega:* ${activeSession.shippingAddress}\n`;
-
-                  if (activeSession.paymentMethod === 'transfer') {
-                    confirmMsg += `\n🏦 *Datos para Transferencia:*\n• *Alias:* \`${commonVars.alias_banco}\`\n• *Banco:* ${commonVars.banco}\n• *Titular:* ${commonVars.titular}\n\n📸 *Enviá el comprobante de transferencia por acá para comenzar a preparar tus golosinas.* ✨`;
-                  } else if (activeSession.paymentMethod === 'cash') {
-                    confirmMsg += `\n💵 *Pago en Efectivo:* Abonás al recibir o retirar tu pedido. ¡Ya estamos preparando tus golosinas! ✨`;
-                  } else {
-                    confirmMsg += `\n💳 *Pago con Mercado Pago:* Podés transferir al Alias \`${commonVars.alias_banco}\` o coordinar el link con nuestro asesor. ✨`;
-                  }
-
-                  await this.sock.sendMessage(from, { text: confirmMsg });
-                  this.orderSessions.delete(from);
-                  return;
+                if (orderErr || !newOrder) {
+                  console.error('[WhatsApp Bot Order Error]:', orderErr);
+                  throw orderErr || new Error('No se pudo crear la orden en Supabase');
                 }
+
+                const orderItemsPayload = activeSession.items.map((it) => ({
+                  order_id: newOrder.id,
+                  product_id: it.productId,
+                  quantity: it.quantity || 1,
+                  selected_size: it.isCombo ? 'Combo' : (it.weightGrams ? `${it.weightGrams}g` : 'Unidad'),
+                  unit_price: it.unitPrice,
+                  weight_grams: it.weightGrams || null,
+                  combo_selections: it.comboSelections || null
+                }));
+
+                const { error: itemsErr } = await db.from('order_items').insert(orderItemsPayload);
+                if (itemsErr) {
+                  console.error('[WhatsApp Bot Order Items Error]:', itemsErr);
+                }
+
+                // Notificar al admin
+                try {
+                  const detailedItems = activeSession.items.map((it) => ({
+                    product_id: it.productId,
+                    name: it.name,
+                    quantity: it.quantity || 1,
+                    unit_price: it.unitPrice,
+                    selected_size: it.isCombo ? 'Combo' : (it.weightGrams ? `${it.weightGrams}g` : 'Unidad'),
+                    weight_grams: it.weightGrams,
+                    combo_selections: it.comboSelections
+                  }));
+                  await notifyNewOrder(newOrder, detailedItems);
+                } catch (_notifErr) {
+                  console.warn('[WhatsApp Bot notifyNewOrder error]:', _notifErr);
+                }
+
+                const orderCode = newOrder.id ? newOrder.id.slice(0, 8).toUpperCase() : 'CSC-ORD';
+                const itemsList = activeSession.items.map((i) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
+
+                let confirmMsg = `🎉 *¡PEDIDO #${orderCode} REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *${activeSession.shippingName}*, tu pedido ya quedó guardado en el sistema.\n\n📦 *Detalle:*\n${itemsList}\n💰 *Total:* \$${activeSession.total.toLocaleString('es-AR')}\n📍 *Entrega:* ${activeSession.shippingAddress}\n`;
+
+                if (activeSession.paymentMethod === 'transfer') {
+                  confirmMsg += `\n🏦 *Datos para Transferencia:*\n• *Alias:* \`${commonVars.alias_banco}\`\n• *Banco:* ${commonVars.banco}\n• *Titular:* ${commonVars.titular}\n\n📸 *Enviá el comprobante de transferencia por acá para comenzar a preparar tus golosinas.* ✨`;
+                } else if (activeSession.paymentMethod === 'cash') {
+                  confirmMsg += `\n💵 *Pago en Efectivo:* Abonás al recibir o retirar tu pedido. ¡Ya estamos preparando tus golosinas! ✨`;
+                } else {
+                  confirmMsg += `\n💳 *Pago con Mercado Pago:* Podés transferir al Alias \`${commonVars.alias_banco}\` o coordinar el link con nuestro asesor. ✨`;
+                }
+
+                await this.sock.sendMessage(from, { text: confirmMsg });
+                this.orderSessions.delete(from);
+                return;
               } catch (dbErr) {
-                await this.sock.sendMessage(from, { text: '⚠️ Ocurrió un error al guardar tu pedido. Por favor escribí *5* para que un asesor te asista.' });
+                console.error('[WhatsApp Bot Critical DB Error]:', dbErr);
+                await this.sock.sendMessage(from, { text: '⚠️ Ocurrió un error al guardar tu pedido en el sistema. Por favor escribí *5* para que un asesor te asista.' });
                 this.orderSessions.delete(from);
                 return;
               }

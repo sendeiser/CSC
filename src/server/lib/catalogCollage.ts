@@ -143,8 +143,15 @@ async function getProductImageBuffer(p: CatalogProduct, width: number, height: n
 /**
  * Genera el collage de catálogo numerado con fotos, números 1..N y precios x 50g
  */
-export async function generateCatalogCollage(products: CatalogProduct[]): Promise<Buffer> {
-  const prods = products.slice(0, 6);
+export async function generateCatalogCollage(
+  products: CatalogProduct[],
+  options?: { startIndex?: number; pageNumber?: number; totalPages?: number }
+): Promise<Buffer> {
+  const startIndex = options?.startIndex || 0;
+  const pageNumber = options?.pageNumber || 1;
+  const totalPages = options?.totalPages || 1;
+
+  const prods = products.slice(0, 9);
   if (prods.length === 0) {
     const emptySvg = `
       <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
@@ -156,7 +163,7 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
   }
 
   // Verificar cache de collage
-  const hashKey = prods.map(p => `${p.id}_${p.price_per_kg || p.price || 0}_${p.image_url || ''}`).join('|');
+  const hashKey = `${startIndex}_${pageNumber}_${prods.map(p => `${p.id}_${p.price_per_kg || p.base_price || 0}_${p.image_url || ''}`).join('|')}`;
   if (lastCollageCache && lastCollageCache.hashKey === hashKey && Date.now() - lastCollageCache.timestamp < 10 * 60 * 1000) {
     return lastCollageCache.buffer;
   }
@@ -173,6 +180,10 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
 
   const totalWidth = cols * tileWidth + (cols + 1) * tilePadding;
   const totalHeight = headerHeight + rows * tileHeight + (rows + 1) * tilePadding + footerHeight;
+
+  const pageSubtitle = totalPages > 1 
+    ? `CATÁLOGO DE GOLOSINAS &amp; GOMITAS (Página ${pageNumber} de ${totalPages})`
+    : `CATÁLOGO DE GOLOSINAS &amp; GOMITAS EN STOCK`;
 
   // 1. Canvas Base
   const bgSvg = `
@@ -197,10 +208,10 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
         🍬 CHAMICAL CANDY SHOP 🍭
       </text>
       <text x="${totalWidth / 2}" y="76" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="bold" fill="#38bdf8" text-anchor="middle">
-        CATÁLOGO DE GOLOSINAS &amp; GOMITAS EN STOCK
+        ${pageSubtitle}
       </text>
       <text x="${totalWidth / 2}" y="98" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#fbcfe8" text-anchor="middle">
-        👉 Respondé por WhatsApp con el NÚMERO (1, 2, 3...) para pedir
+        👉 Respondé por WhatsApp con el NÚMERO (${startIndex + 1}, ${startIndex + 2}...) para pedir
       </text>
 
       <text x="${totalWidth / 2}" y="${totalHeight - 24}" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#94a3b8" text-anchor="middle">
@@ -213,7 +224,7 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
   const badgeColors = ['#ec4899', '#8b5cf6', '#059669', '#3b82f6', '#d97706', '#06b6d4', '#e11d48', '#10b981'];
 
   const tilePromises = prods.map(async (p, i) => {
-    const itemNumber = i + 1;
+    const itemNumber = startIndex + i + 1;
     const colIndex = i % cols;
     const rowIndex = Math.floor(i / cols);
 
@@ -222,7 +233,7 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
 
     const pricing = getProductPricingInfo(p);
     const rawTileBuffer = await getProductImageBuffer(p, tileWidth, tileHeight);
-    const badgeColor = badgeColors[i % badgeColors.length];
+    const badgeColor = badgeColors[(startIndex + i) % badgeColors.length];
 
     const overlaySvg = `
       <svg width="${tileWidth}" height="${tileHeight}" xmlns="http://www.w3.org/2000/svg">
