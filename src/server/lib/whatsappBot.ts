@@ -571,6 +571,10 @@ class WhatsAppBotService {
    * Normaliza un número de teléfono a formato WhatsApp (ej: 5493826XXXXXX@s.whatsapp.net)
    */
   public normalizeJid(phone: string): string {
+    if (!phone) return '';
+    if (phone.includes('@')) {
+      return phone;
+    }
     let clean = phone.replace(/\D/g, '');
     if (clean.startsWith('0')) {
       clean = clean.substring(1);
@@ -581,6 +585,65 @@ class WhatsAppBotService {
       clean = '549' + clean;
     }
     return `${clean}@s.whatsapp.net`;
+  }
+
+  /**
+   * Envía el catálogo de productos con collage numerado y precios x50g de manera 100% confiable
+   */
+  public async sendCatalog(from: string, commonVars: Record<string, any>): Promise<boolean> {
+    try {
+      const db = serviceClient || supabase;
+      const settings = await getBotSettings();
+
+      const { data: prods } = await db
+        .from('products')
+        .select('id, name, price, base_price, price_per_kg, unit_type, min_weight, max_weight, weight_step, sizes, stock, is_bulk, images, image_url')
+        .gt('stock', 0)
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (!prods || prods.length === 0) {
+        await this.sendTextMessage(from, '🍬 En este momento no hay productos con stock disponible en la tienda online. Por favor consulta más tarde.');
+        return true;
+      }
+
+      const catalogListText = prods.map((p: any, i: number) => {
+        const pricing = getProductPricingInfo(p);
+        return `${i + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
+      }).join('\n');
+
+      // Iniciar o reiniciar sesión interactiva de compra
+      if (settings.allow_chat_orders) {
+        this.orderSessions.set(from, {
+          step: 'SELECTING_PRODUCTS',
+          items: [],
+          subtotal: 0,
+          discountAmount: 0,
+          shippingCost: 0,
+          total: 0,
+          lastActivity: Date.now()
+        });
+      }
+
+      const catalogCaption = `🛍️ *CATÁLOGO DE GOLOSINAS & PRECIOS* 🍬\n\n${catalogListText}\n\n👉 *Respondé con el NÚMERO (1, 2, 3...) de la golosina para agregarla a tu pedido.*`;
+
+      // Intentar enviar collage con fotos y números
+      if (settings.send_product_images) {
+        try {
+          const collageBuffer = await generateCatalogCollage(prods);
+          const sent = await this.sendImageMessage(from, collageBuffer, catalogCaption);
+          if (sent) return true;
+        } catch (collErr) {
+          console.warn('[WhatsApp Bot]: Error enviando collage, enviando texto:', collErr);
+        }
+      }
+
+      // Si falló el envío de imagen o está deshabilitado, enviar el mensaje de texto formateado
+      return await this.sendTextMessage(from, catalogCaption);
+    } catch (err) {
+      console.error('[WhatsApp Bot sendCatalog Error]:', err);
+      return false;
+    }
   }
 
   /**
@@ -916,6 +979,11 @@ class WhatsAppBotService {
 
           // PASO 1: SELECCIÓN DE PRODUCTOS DEL CATÁLOGO
           if (activeSession.step === 'SELECTING_PRODUCTS') {
+            if (body === 'catalogo' || body === 'catálogo' || body === 'ver catalogo' || body === 'ver catálogo' || body === 'precios' || body === 'productos' || body === 'fotos' || body === 'lista') {
+              await this.sendCatalog(from, commonVars);
+              return;
+            }
+
             if (body === 'listo' || body === 'continuar' || body === 'fin' || body === 'finalizar' || body === 'pagar' || body === 'checkout') {
               if (activeSession.items.length === 0) {
                 await this.sock.sendMessage(from, { text: '⚠️ Tu carrito está vacío. Escribí el *NÚMERO* del producto que querés agregar o escribí *CANCELAR*.' });
@@ -1293,46 +1361,7 @@ class WhatsAppBotService {
 
       // 6. INICIAR PEDIDO DIRECTO POR WHATSAPP
       if (settings.allow_chat_orders && (body === 'comprar' || body === 'hacer pedido' || body === 'pedir' || body === 'nuevo pedido' || body === 'quiero comprar' || body === 'quiero gomitas')) {
-        const { data: products } = await db
-          .from('products')
-          .select('id, name, price, base_price, price_per_kg, unit_type, min_weight, max_weight, weight_step, sizes, stock, is_bulk, images, image_url')
-          .gt('stock', 0)
-          .order('created_at', { ascending: false })
-          .limit(6);
-
-        if (!products || products.length === 0) {
-          await this.sock.sendMessage(from, { text: '🍬 En este momento no hay productos con stock disponible. Por favor consulta más tarde.' });
-          return;
-        }
-
-        this.orderSessions.set(from, {
-          step: 'SELECTING_PRODUCTS',
-          items: [],
-          subtotal: 0,
-          discountAmount: 0,
-          shippingCost: 0,
-          total: 0,
-          lastActivity: Date.now()
-        });
-
-        const productsList = products.map((p: any, idx: number) => {
-          const pricing = getProductPricingInfo(p);
-          return `${idx + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
-        }).join('\n');
-
-        const catalogCaption = `🛍️ *¡VAMOS A ARMAR TU PEDIDO DE GOLOSINAS!* 🍬\n\n${productsList}\n\n👉 *Respondé con el NÚMERO (1, 2, 3...) de la golosina que querés.*`;
-
-        if (settings.send_product_images) {
-          try {
-            const collageBuffer = await generateCatalogCollage(products);
-            await this.sendImageMessage(from, collageBuffer, catalogCaption);
-            return;
-          } catch (collErr) {
-            console.warn('[WhatsApp Bot]: Error enviando collage en compra:', collErr);
-          }
-        }
-
-        await this.sock.sendMessage(from, { text: catalogCaption });
+        await this.sendCatalog(from, commonVars);
         return;
       }
 
@@ -1419,61 +1448,16 @@ class WhatsAppBotService {
             }
             return;
           } else {
-            // Galería general con Collage de Fotos Numeradas
-            const catalogListText = prods.slice(0, 6).map((p: any, i: number) => {
-              const pricing = getProductPricingInfo(p);
-              return `${i + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
-            }).join('\n');
-
-            const caption = `📸 *GALERÍA & CATÁLOGO DE GOLOSINAS* 🍬\n\n${catalogListText}\n\n👉 *Escribí el NÚMERO (1, 2, 3...) para pedir o escribí FOTO [número] para verla en detalle.*`;
-
-            try {
-              const collageBuffer = await generateCatalogCollage(prods);
-              await this.sendImageMessage(from, collageBuffer, caption);
-            } catch (err) {
-              await this.sock.sendMessage(from, { text: caption });
-            }
+            // Galería general con Collage de Fotos Numeradas y catálogo
+            await this.sendCatalog(from, commonVars);
             return;
           }
         }
       }
 
       // 13. Opción 4: Catálogo con Collage de Fotos Numeradas y Precios x50g
-      if (body === '4' || body.includes('catalogo') || body.includes('productos') || body.includes('precio') || body.includes('precios') || body.includes('lista')) {
-        const { data: prods } = await db.from('products').select('*').gt('stock', 0).order('created_at', { ascending: false }).limit(6);
-        const catalogListText = prods?.map((p: any, i: number) => {
-          const pricing = getProductPricingInfo(p);
-          return `${i + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
-        }).join('\n') || '';
-
-        // Iniciar sesión interactiva de compra si está habilitada
-        if (settings.allow_chat_orders && prods && prods.length > 0) {
-          this.orderSessions.set(from, {
-            step: 'SELECTING_PRODUCTS',
-            items: [],
-            subtotal: 0,
-            discountAmount: 0,
-            shippingCost: 0,
-            total: 0,
-            lastActivity: Date.now()
-          });
-        }
-
-        const catalogCaption = `🛍️ *CATÁLOGO DE GOLOSINAS & PRECIOS* 🍬\n\n${catalogListText}\n\n👉 *Respondé con el NÚMERO (1, 2, 3...) de la golosina para agregarla a tu pedido.*`;
-
-        if (settings.send_product_images && prods && prods.length > 0) {
-          try {
-            const collageBuffer = await generateCatalogCollage(prods);
-            await this.sendImageMessage(from, collageBuffer, catalogCaption);
-            return;
-          } catch (collErr) {
-            console.warn('[WhatsApp Bot]: Error enviando collage en opción 4:', collErr);
-          }
-        }
-        
-        await this.sock.sendMessage(from, {
-          text: this.formatTemplate(settings.menu_response_4 || DEFAULT_BOT_SETTINGS.menu_response_4, { ...commonVars, catalogo_lista: catalogListText })
-        });
+      if (body === '4' || body.includes('catalogo') || body.includes('catálogo') || body.includes('productos') || body.includes('precio') || body.includes('precios') || body.includes('lista')) {
+        await this.sendCatalog(from, commonVars);
         return;
       }
 

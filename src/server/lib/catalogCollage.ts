@@ -65,26 +65,36 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, '&apos;');
 }
 
+// Cache en memoria para imágenes y collages generados
+const imageMemoryCache = new Map<string, Buffer>();
+let lastCollageCache: { hashKey: string; buffer: Buffer; timestamp: number } | null = null;
+
 /**
- * Obtiene el buffer de imagen de un producto (descarga de URL o lee local o crea fallback)
+ * Obtiene el buffer de imagen de un producto (descarga de URL o lee local o crea fallback) con cache en memoria
  */
 async function getProductImageBuffer(p: CatalogProduct, width: number, height: number): Promise<Buffer> {
   const imageUrl = p.image_url || (Array.isArray(p.images) && p.images[0] ? p.images[0] : '');
 
   if (imageUrl) {
+    if (imageMemoryCache.has(imageUrl)) {
+      return imageMemoryCache.get(imageUrl)!;
+    }
+
     try {
       if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4000);
+        const timeout = setTimeout(() => controller.abort(), 3500);
         const res = await fetch(imageUrl, { signal: controller.signal });
         clearTimeout(timeout);
 
         if (res.ok) {
           const arrayBuffer = await res.arrayBuffer();
           const buffer = Buffer.from(arrayBuffer);
-          return await sharp(buffer)
+          const resized = await sharp(buffer)
             .resize(width, height, { fit: 'cover', position: 'center' })
             .toBuffer();
+          imageMemoryCache.set(imageUrl, resized);
+          return resized;
         }
       } else {
         // Archivo local
@@ -97,9 +107,11 @@ async function getProductImageBuffer(p: CatalogProduct, width: number, height: n
 
         for (const localPath of possiblePaths) {
           if (fs.existsSync(localPath)) {
-            return await sharp(localPath)
+            const resized = await sharp(localPath)
               .resize(width, height, { fit: 'cover', position: 'center' })
               .toBuffer();
+            imageMemoryCache.set(imageUrl, resized);
+            return resized;
           }
         }
       }
@@ -132,10 +144,8 @@ async function getProductImageBuffer(p: CatalogProduct, width: number, height: n
  * Genera el collage de catálogo numerado con fotos, números 1..N y precios x 50g
  */
 export async function generateCatalogCollage(products: CatalogProduct[]): Promise<Buffer> {
-  // Limitar a máximo 6 u 8 productos por página de collage para mantener nitidez
   const prods = products.slice(0, 6);
   if (prods.length === 0) {
-    // Collage vacío de emergencia
     const emptySvg = `
       <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
         <rect width="800" height="600" fill="#0f172a" />
@@ -145,8 +155,14 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
     return await sharp(Buffer.from(emptySvg)).jpeg().toBuffer();
   }
 
+  // Verificar cache de collage
+  const hashKey = prods.map(p => `${p.id}_${p.price_per_kg || p.price || 0}_${p.image_url || ''}`).join('|');
+  if (lastCollageCache && lastCollageCache.hashKey === hashKey && Date.now() - lastCollageCache.timestamp < 10 * 60 * 1000) {
+    return lastCollageCache.buffer;
+  }
+
   // Dimensiones del collage
-  const cols = prods.length <= 4 ? 2 : (prods.length <= 6 ? 3 : 3);
+  const cols = prods.length <= 4 ? 2 : 3;
   const rows = Math.ceil(prods.length / cols);
   
   const tileWidth = 360;
@@ -158,7 +174,7 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
   const totalWidth = cols * tileWidth + (cols + 1) * tilePadding;
   const totalHeight = headerHeight + rows * tileHeight + (rows + 1) * tilePadding + footerHeight;
 
-  // 1. Crear Canvas Base (Fondo elegante degradado oscuro de tienda)
+  // 1. Canvas Base
   const bgSvg = `
     <svg width="${totalWidth}" height="${totalHeight}" xmlns="http://www.w3.org/2000/svg">
       <defs>
@@ -174,13 +190,9 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
         </linearGradient>
       </defs>
       
-      <!-- Fondo Principal -->
       <rect width="${totalWidth}" height="${totalHeight}" fill="url(#bgGrad)" />
-      
-      <!-- Barra Superior Decorativa -->
       <rect x="0" y="0" width="${totalWidth}" height="8" fill="url(#headerGrad)" />
       
-      <!-- Encabezado -->
       <text x="${totalWidth / 2}" y="46" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">
         🍬 CHAMICAL CANDY SHOP 🍭
       </text>
@@ -191,18 +203,16 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
         👉 Respondé por WhatsApp con el NÚMERO (1, 2, 3...) para pedir
       </text>
 
-      <!-- Pie de imagen -->
       <text x="${totalWidth / 2}" y="${totalHeight - 24}" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="bold" fill="#94a3b8" text-anchor="middle">
         ✨ Envíos a domicilio en Chamical y Retiro por el local • Venta x50g, 100g, 250g y por unidad
       </text>
     </svg>
   `;
 
-  const composites: sharp.OverlayOptions[] = [];
+  // 2. Procesar Tiles en Paralelo
+  const badgeColors = ['#ec4899', '#8b5cf6', '#059669', '#3b82f6', '#d97706', '#06b6d4', '#e11d48', '#10b981'];
 
-  // 2. Procesar cada Tile de Producto
-  for (let i = 0; i < prods.length; i++) {
-    const p = prods[i];
+  const tilePromises = prods.map(async (p, i) => {
     const itemNumber = i + 1;
     const colIndex = i % cols;
     const rowIndex = Math.floor(i / cols);
@@ -212,9 +222,6 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
 
     const pricing = getProductPricingInfo(p);
     const rawTileBuffer = await getProductImageBuffer(p, tileWidth, tileHeight);
-
-    // Overlay con número badge grande + banner inferior con nombre y precio x50g
-    const badgeColors = ['#ec4899', '#8b5cf6', '#059669', '#3b82f6', '#d97706', '#06b6d4', '#e11d48', '#10b981'];
     const badgeColor = badgeColors[i % badgeColors.length];
 
     const overlaySvg = `
@@ -230,28 +237,23 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
           </linearGradient>
         </defs>
 
-        <!-- Borde redondeado sutil -->
         <rect x="0" y="0" width="${tileWidth}" height="${tileHeight}" rx="18" fill="none" stroke="#ffffff" stroke-width="2" stroke-opacity="0.2" />
 
-        <!-- 1. BADGE DEL NÚMERO (Arriba a la izquierda) -->
+        <!-- BADGE DEL NÚMERO -->
         <g filter="url(#dropShadow)">
-          <!-- Círculo Exterior -->
           <circle cx="44" cy="44" r="28" fill="${badgeColor}" stroke="#ffffff" stroke-width="3" />
-          <!-- Número de Identificación -->
           <text x="44" y="45" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle" dominant-baseline="central">
             ${itemNumber}
           </text>
         </g>
 
-        <!-- 2. BANNER INFERIOR CON NOMBRE Y PRECIO x50g -->
+        <!-- BANNER INFERIOR CON NOMBRE Y PRECIO x50g -->
         <rect x="0" y="${tileHeight - 96}" width="${tileWidth}" height="96" rx="0" fill="url(#bottomBannerGrad)" />
 
-        <!-- Nombre del Producto -->
         <text x="${tileWidth / 2}" y="${tileHeight - 64}" font-family="Arial, Helvetica, sans-serif" font-size="17" font-weight="900" fill="#ffffff" text-anchor="middle" filter="url(#dropShadow)">
           ${escapeXml(p.name.length > 26 ? p.name.slice(0, 24) + '…' : p.name)}
         </text>
 
-        <!-- Pastilla de Precio Destacado x50g -->
         <g filter="url(#dropShadow)">
           <rect x="24" y="${tileHeight - 48}" width="${tileWidth - 48}" height="34" rx="10" fill="#0f172a" stroke="${badgeColor}" stroke-width="1.5" />
           <text x="${tileWidth / 2}" y="${tileHeight - 26}" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="900" fill="#fbbf24" text-anchor="middle">
@@ -261,18 +263,19 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
       </svg>
     `;
 
-    // Aplicar overlay sobre la imagen del tile y redondear esquinas
     const tileWithOverlay = await sharp(rawTileBuffer)
       .composite([{ input: Buffer.from(overlaySvg), top: 0, left: 0 }])
       .png()
       .toBuffer();
 
-    composites.push({
+    return {
       input: tileWithOverlay,
       top,
       left
-    });
-  }
+    } as sharp.OverlayOptions;
+  });
+
+  const composites = await Promise.all(tilePromises);
 
   // 3. Crear Imagen Final Compuesta
   const finalCollageBuffer = await sharp(Buffer.from(bgSvg))
@@ -280,5 +283,12 @@ export async function generateCatalogCollage(products: CatalogProduct[]): Promis
     .jpeg({ quality: 90 })
     .toBuffer();
 
+  lastCollageCache = {
+    hashKey,
+    buffer: finalCollageBuffer,
+    timestamp: Date.now()
+  };
+
   return finalCollageBuffer;
 }
+
