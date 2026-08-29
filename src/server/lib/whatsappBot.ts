@@ -593,17 +593,20 @@ class WhatsAppBotService {
   public async sendCatalog(from: string, commonVars: Record<string, any>): Promise<boolean> {
     try {
       const db = serviceClient || supabase;
-      const settings = await getBotSettings();
-
-      const { data: prods } = await db
+      const { data: rawProds, error: prodsErr } = await db
         .from('products')
-        .select('id, name, price, base_price, price_per_kg, unit_type, min_weight, max_weight, weight_step, sizes, stock, is_bulk, images, image_url')
-        .gt('stock', 0)
-        .order('created_at', { ascending: false })
-        .limit(6);
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (prodsErr) {
+        console.error('[WhatsApp Bot]: Error fetching products for catalog:', prodsErr);
+      }
+
+      const availableProds = (rawProds || []).filter((p: any) => p.stock === null || p.stock === undefined || Number(p.stock) > 0);
+      const prods = (availableProds.length > 0 ? availableProds : (rawProds || [])).slice(0, 6);
 
       if (!prods || prods.length === 0) {
-        await this.sendTextMessage(from, '🍬 En este momento no hay productos con stock disponible en la tienda online. Por favor consulta más tarde.');
+        await this.sendTextMessage(from, '🍬 En este momento no hay productos disponibles en la tienda. Por favor consulta más tarde.');
         return true;
       }
 
@@ -611,6 +614,8 @@ class WhatsAppBotService {
         const pricing = getProductPricingInfo(p);
         return `${i + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
       }).join('\n');
+
+      const settings = await getBotSettings();
 
       // Iniciar o reiniciar sesión interactiva de compra
       if (settings.allow_chat_orders) {
@@ -996,12 +1001,12 @@ class WhatsAppBotService {
               return;
             }
 
-            const { data: availableProducts } = await db
+            const { data: rawAvailable } = await db
               .from('products')
-              .select('id, name, price, base_price, price_per_kg, unit_type, min_weight, max_weight, weight_step, sizes, stock, is_bulk, images, image_url')
-              .gt('stock', 0)
-              .order('created_at', { ascending: false })
-              .limit(12);
+              .select('*')
+              .order('created_at', { ascending: false });
+
+            const availableProducts = (rawAvailable || []).filter((p: any) => p.stock === null || p.stock === undefined || Number(p.stock) > 0).slice(0, 12);
 
             const numIdx = parseInt(body.replace(/\D/g, ''), 10);
             let selectedProd: any = null;
