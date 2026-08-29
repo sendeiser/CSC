@@ -26,13 +26,13 @@ export const DEFAULT_TEMPLATES = {
   menu_response_1: `📦 *Estado de tu Pedido:* #{pedido_id}\n\n• *Estado:* {estado}\n• *Total:* \${total}\n• *Destino:* {direccion}\n\n_Para volver al menú, enviá la palabra *MENU*._`,
   menu_response_2: `🏦 *Datos para Transferencia Bancaria:* 🍬\n\n• *Alias:* \`{alias_banco}\`\n• *Banco:* {banco}\n• *Titular:* {titular}\n• *CBU:* \`{cbu}\`\n\n📸 *Una vez realizada la transferencia, podés enviar la captura o comprobante por este mismo chat.*\n\n_Enviá *MENU* para ver más opciones._`,
   menu_response_3: `📍 *Ubicación y Horarios de Atención:* 🍬\n\n🏠 *Dirección:* {direccion}\n🕒 *Horarios:* {horarios}\n\n¡Te esperamos con las golosinas más ricas! 🍭\n\n_Enviá *MENU* para volver al menú principal._`,
-  menu_response_4: `🛍️ *Catálogo y Precios de Chamical Candy Shop* 🍬\n\n{catalogo_lista}\n\n👉 *También podés explorar la tienda web:* {catalogo_url}\n\n_Para armar tu pedido por acá, respondé con el número de producto que querés o escribí *COMPRAR*._`,
+  menu_response_4: `🛍️ *Catálogo & Precios de Chamical Candy Shop* 🍬\n\n{catalogo_lista}\n\n👉 *Respondé con el NÚMERO (1, 2, 3...) de la golosina para pedir o escribí COMPRAR.*\n🌐 *Tienda web:* {catalogo_url}`,
   menu_response_5: `👤 *¡Entendido {cliente}! Un asesor de nuestro equipo te responderá a la brevedad.* 🍬\n\nPor favor dejanos tu consulta detallada para poder ayudarte más rápido. ¡Muchas gracias por tu paciencia!`,
   
   // 2. Flujo de Compra por WhatsApp
-  template_buy_catalog: `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n{catalogo_lista}\n\n👉 *Respondé con el NÚMERO del producto que querés llevar (ej: 1, 2).*`,
+  template_buy_catalog: `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n{catalogo_lista}\n\n👉 *Respondé con el NÚMERO (1, 2, 3...) del producto que querés llevar.*`,
   template_product_photo: `🍬 *{producto}* 🍭\n{detalle}{dietas}\n💰 *Precio:* {precio}\n📦 *Stock:* {stock} disponibles\n\n👉 Para pedir este producto escribí *COMPRAR* o su número.`,
-  template_weight_prompt: `🍬 *{producto}* (Venta al peso) ⚖️\n💰 *Precio:* \${precio_kg}/kg • Mínimo: *{min_weight}g* (Fraccionable de a *{step_weight}g*)\n\n*¿Qué cantidad querés llevar?*\n{opciones_gramaje}\n\n👉 *Respondé con el número (1 a {cantidad_opciones})* o escribí tus gramos exactos (ej: *75g*, *150g*, *350g*).`,
+  template_weight_prompt: `🍬 *{producto}* (Venta al peso) ⚖️\n💰 *Precio:* \${precio_50g} x 50g (\${precio_kg}/kg)\n\n*¿Qué cantidad querés llevar?*\n{opciones_gramaje}\n\n👉 *Respondé con el número (1 a {cantidad_opciones})* o escribí tus gramos exactos (ej: *50g*, *100g*, *150g*).`,
   template_unit_quantity_prompt: `🍫 *{producto}*\n💰 *Precio:* \${precio_unitario} por unidad\n\n👉 *¿Cuántas unidades querés llevar?* (Escribí la cantidad, ej: 1, 2, 3...)`,
   template_cart_item_added: `✅ *¡Agregaste {producto}!* 🍬 (+{subtotal_item})\n\n🛒 *Tu carrito actual:*\n{carrito_items}\n\n💰 *Subtotal:* \${subtotal}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`,
   template_cart_view: `🛒 *TU CARRITO ACTUAL:* 🍬\n\n{carrito_items}\n\n💰 *Subtotal:* \${subtotal}\n\n👉 Para sumar más productos, escribí su *NÚMERO*.\n👉 Para quitar un producto, escribí *QUITAR [número]* (ej: QUITAR 1).\n👉 O escribí *LISTO* para avanzar con la entrega y el pago.`,

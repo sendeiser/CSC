@@ -4,6 +4,7 @@ import path from 'path';
 import os from 'os';
 import { serviceClient, supabase } from './supabase';
 import { getStoreSettingsHelper } from '../routes/admin';
+import { generateCatalogCollage, getProductPricingInfo } from './catalogCollage';
 
 // Directorio temporal seguro compatible con Netlify Lambda y local
 const isServerless = process.env.NETLIFY === 'true' || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.LAMBDA_TASK_ROOT;
@@ -255,15 +256,7 @@ export function buildWeightOptionsForProduct(p: any): Array<{ label: string; gra
   const step = Number(p.weight_step) || 25;
   const pricePerKg = Number(p.price_per_kg || p.base_price || p.price || 10000);
 
-  let standardPoints: number[] = [];
-  if (step <= 25) {
-    standardPoints = [25, 50, 100, 250, 500];
-  } else if (step <= 50) {
-    standardPoints = [50, 100, 250, 500, 1000];
-  } else {
-    standardPoints = [100, 250, 500, 1000];
-  }
-
+  const standardPoints = [50, 100, 150, 250, 500];
   const validPoints = Array.from(new Set([minWeight, ...standardPoints]))
     .filter((g) => g >= minWeight && g <= maxWeight && (g - minWeight) % step === 0)
     .sort((a, b) => a - b)
@@ -634,14 +627,15 @@ class WhatsAppBotService {
   }
 
   /**
-   * Envía un mensaje con imagen a un teléfono de cliente
+   * Envía un mensaje con imagen (URL o Buffer) a un teléfono de cliente
    */
-  public async sendImageMessage(phone: string, imageUrl: string, caption?: string): Promise<boolean> {
+  public async sendImageMessage(phone: string, imageSource: string | Buffer, caption?: string): Promise<boolean> {
     if (this.status === 'connected' && this.sock) {
       try {
         const jid = this.normalizeJid(phone);
+        const imagePayload = Buffer.isBuffer(imageSource) ? imageSource : { url: imageSource };
         await this.sock.sendMessage(jid, {
-          image: { url: imageUrl },
+          image: imagePayload,
           caption: caption || ''
         });
         console.log(`[WhatsApp Bot]: 📸 Imagen enviada a ${phone} vía Baileys`);
@@ -952,12 +946,12 @@ class WhatsAppBotService {
 
             if (selectedProd) {
               const isWeight = selectedProd.unit_type === 'weight' || selectedProd.is_bulk;
+              const pricing = getProductPricingInfo(selectedProd);
 
               if (isWeight) {
                 const options = buildWeightOptionsForProduct(selectedProd);
                 const minWeight = Number(selectedProd.min_weight) || 25;
                 const step = Number(selectedProd.weight_step) || 25;
-                const pricePerKg = Number(selectedProd.price_per_kg || selectedProd.base_price || selectedProd.price || 10000);
 
                 activeSession.step = 'SELECTING_WEIGHT';
                 activeSession.pendingProduct = {
@@ -971,17 +965,17 @@ class WhatsAppBotService {
                   await this.sendImageMessage(
                     from,
                     selectedProd.image_url,
-                    `🍬 *${selectedProd.name}* (Venta al peso)\n💰 \$${pricePerKg.toLocaleString('es-AR')}/kg`
+                    `🍬 *${selectedProd.name}* (Venta al peso)\n💰 *${pricing.displayPriceShort}* • \$${pricing.pricePerKg.toLocaleString('es-AR')}/kg`
                   );
                 }
 
                 await this.sock.sendMessage(from, {
-                  text: `🍬 *${selectedProd.name}* (Venta al peso) ⚖️\n💰 *Precio:* \$${pricePerKg.toLocaleString('es-AR')}/kg • Mínimo: *${minWeight}g* (Fraccionable de a *${step}g*)\n\n*¿Qué cantidad querés llevar?*\n${optionsList}\n\n👉 *Respondé con el número (1 a ${options.length})* o escribí tus gramos exactos (ej: *75g*, *150g*, *350g*).`
+                  text: `🍬 *${selectedProd.name}* (Venta al peso) ⚖️\n💰 *Precio:* *${pricing.displayPriceShort}* (\$${pricing.pricePerKg.toLocaleString('es-AR')}/kg)\n\n*¿Qué cantidad querés llevar?*\n${optionsList}\n\n👉 *Respondé con el número (1 a ${options.length})* o escribí tus gramos exactos (ej: *50g*, *100g*, *150g*).`
                 });
                 return;
               } else {
                 // Producto por unidad
-                const unitPrice = Number(selectedProd.base_price || selectedProd.price || 0);
+                const unitPrice = pricing.unitPrice;
                 activeSession.step = 'SELECTING_QUANTITY';
                 activeSession.pendingProduct = {
                   ...selectedProd,
@@ -1304,7 +1298,7 @@ class WhatsAppBotService {
           .select('id, name, price, base_price, price_per_kg, unit_type, min_weight, max_weight, weight_step, sizes, stock, is_bulk, images, image_url')
           .gt('stock', 0)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(6);
 
         if (!products || products.length === 0) {
           await this.sock.sendMessage(from, { text: '🍬 En este momento no hay productos con stock disponible. Por favor consulta más tarde.' });
@@ -1322,17 +1316,23 @@ class WhatsAppBotService {
         });
 
         const productsList = products.map((p: any, idx: number) => {
-          const isWeight = p.unit_type === 'weight' || p.is_bulk;
-          const minW = p.min_weight || 25;
-          const priceStr = isWeight
-            ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg (desde ${minW}g)`
-            : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')}`;
-          return `${idx + 1}️⃣ *${p.name}* — ${priceStr}`;
+          const pricing = getProductPricingInfo(p);
+          return `${idx + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
         }).join('\n');
 
-        await this.sock.sendMessage(from, {
-          text: `🛍️ *¡Vamos a armar tu pedido de golosinas!* 🍬\n\n${productsList}\n\n👉 *Respondé con el NÚMERO del producto (ej: 1, 2, 3).*`
-        });
+        const catalogCaption = `🛍️ *¡VAMOS A ARMAR TU PEDIDO DE GOLOSINAS!* 🍬\n\n${productsList}\n\n👉 *Respondé con el NÚMERO (1, 2, 3...) de la golosina que querés.*`;
+
+        if (settings.send_product_images) {
+          try {
+            const collageBuffer = await generateCatalogCollage(products);
+            await this.sendImageMessage(from, collageBuffer, catalogCaption);
+            return;
+          } catch (collErr) {
+            console.warn('[WhatsApp Bot]: Error enviando collage en compra:', collErr);
+          }
+        }
+
+        await this.sock.sendMessage(from, { text: catalogCaption });
         return;
       }
 
@@ -1406,14 +1406,11 @@ class WhatsAppBotService {
           }
 
           if (targetProd) {
-            const isWeight = targetProd.unit_type === 'weight' || targetProd.is_bulk;
-            const priceStr = isWeight
-              ? `\$${Number(targetProd.price_per_kg || targetProd.base_price || targetProd.price || 10000).toLocaleString('es-AR')}/kg (desde ${targetProd.min_weight || 25}g • pasos de ${targetProd.weight_step || 25}g)`
-              : `\$${Number(targetProd.base_price || targetProd.price || 0).toLocaleString('es-AR')} por unidad`;
+            const pricing = getProductPricingInfo(targetProd);
             const dietStr = Array.isArray(targetProd.diet) && targetProd.diet.length > 0 ? `\n🌱 *Dietas / Apto:* ${targetProd.diet.join(' • ')}` : '';
             const descStr = targetProd.description ? `\n📝 *Detalle:* ${targetProd.description}` : '';
 
-            const caption = `🍬 *${targetProd.name}* 🍭${descStr}${dietStr}\n💰 *Precio:* ${priceStr}\n📦 *Stock:* ${targetProd.stock} disponibles\n\n👉 Para pedir este producto escribí *COMPRAR* o su número.`;
+            const caption = `🍬 *${targetProd.name}* 🍭${descStr}${dietStr}\n💰 *Precio:* *${pricing.displayPriceFull}*\n📦 *Stock:* ${targetProd.stock} disponibles\n\n👉 Para pedir este producto escribí *COMPRAR* o su número.`;
             
             if (targetProd.image_url) {
               await this.sendImageMessage(from, targetProd.image_url, caption);
@@ -1422,44 +1419,61 @@ class WhatsAppBotService {
             }
             return;
           } else {
-            // Galería general
-            const catalogListText = prods.map((p: any, i: number) => {
-              const isWeight = p.unit_type === 'weight' || p.is_bulk;
-              const priceStr = isWeight
-                ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg`
-                : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')}`;
-              return `${i + 1}️⃣ *${p.name}* — ${priceStr} (Escribí *FOTO ${i + 1}*)`;
+            // Galería general con Collage de Fotos Numeradas
+            const catalogListText = prods.slice(0, 6).map((p: any, i: number) => {
+              const pricing = getProductPricingInfo(p);
+              return `${i + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
             }).join('\n');
 
-            const firstWithImage = prods.find((p: any) => !!p.image_url);
-            if (firstWithImage?.image_url) {
-              await this.sendImageMessage(from, firstWithImage.image_url, `📸 *GALERÍA DE GOLOSINAS EN STOCK* 🍬\n\n${catalogListText}\n\n👉 *Escribí FOTO [número] (ej: FOTO 1, FOTO 2) para ver la foto y detalles de cada una.*`);
-            } else {
-              await this.sock.sendMessage(from, {
-                text: `📸 *GALERÍA DE GOLOSINAS EN STOCK* 🍬\n\n${catalogListText}\n\n👉 *Escribí FOTO [número] para ver la foto y ficha de cada golosina.*`
-              });
+            const caption = `📸 *GALERÍA & CATÁLOGO DE GOLOSINAS* 🍬\n\n${catalogListText}\n\n👉 *Escribí el NÚMERO (1, 2, 3...) para pedir o escribí FOTO [número] para verla en detalle.*`;
+
+            try {
+              const collageBuffer = await generateCatalogCollage(prods);
+              await this.sendImageMessage(from, collageBuffer, caption);
+            } catch (err) {
+              await this.sock.sendMessage(from, { text: caption });
             }
             return;
           }
         }
       }
 
-      // 13. Opción 4: Catálogo
-      if (body === '4' || body.includes('catalogo') || body.includes('productos') || body.includes('precio')) {
-        const { data: prods } = await db.from('products').select('*').gt('stock', 0).order('created_at', { ascending: false });
+      // 13. Opción 4: Catálogo con Collage de Fotos Numeradas y Precios x50g
+      if (body === '4' || body.includes('catalogo') || body.includes('productos') || body.includes('precio') || body.includes('precios') || body.includes('lista')) {
+        const { data: prods } = await db.from('products').select('*').gt('stock', 0).order('created_at', { ascending: false }).limit(6);
         const catalogListText = prods?.map((p: any, i: number) => {
-          const isWeight = p.unit_type === 'weight' || p.is_bulk;
-          const priceStr = isWeight
-            ? `\$${Number(p.price_per_kg || p.base_price || p.price || 10000).toLocaleString('es-AR')}/kg (desde ${p.min_weight || 25}g)`
-            : `\$${Number(p.base_price || p.price || 0).toLocaleString('es-AR')}`;
-          return `${i + 1}️⃣ *${p.name}* — ${priceStr}`;
+          const pricing = getProductPricingInfo(p);
+          return `${i + 1}️⃣ *${p.name}* — 💰 *${pricing.displayPriceFull}*`;
         }).join('\n') || '';
-        
-        if (settings.send_product_images && prods?.[0]?.image_url) {
-          await this.sendImageMessage(from, prods[0].image_url, `🍬 *${prods[0].name}* — Catálogo Completo`);
+
+        // Iniciar sesión interactiva de compra si está habilitada
+        if (settings.allow_chat_orders && prods && prods.length > 0) {
+          this.orderSessions.set(from, {
+            step: 'SELECTING_PRODUCTS',
+            items: [],
+            subtotal: 0,
+            discountAmount: 0,
+            shippingCost: 0,
+            total: 0,
+            lastActivity: Date.now()
+          });
+        }
+
+        const catalogCaption = `🛍️ *CATÁLOGO DE GOLOSINAS & PRECIOS* 🍬\n\n${catalogListText}\n\n👉 *Respondé con el NÚMERO (1, 2, 3...) de la golosina para agregarla a tu pedido.*`;
+
+        if (settings.send_product_images && prods && prods.length > 0) {
+          try {
+            const collageBuffer = await generateCatalogCollage(prods);
+            await this.sendImageMessage(from, collageBuffer, catalogCaption);
+            return;
+          } catch (collErr) {
+            console.warn('[WhatsApp Bot]: Error enviando collage en opción 4:', collErr);
+          }
         }
         
-        await this.sock.sendMessage(from, { text: this.formatTemplate(settings.menu_response_4 || DEFAULT_BOT_SETTINGS.menu_response_4, { ...commonVars, catalogo_lista: catalogListText }) });
+        await this.sock.sendMessage(from, {
+          text: this.formatTemplate(settings.menu_response_4 || DEFAULT_BOT_SETTINGS.menu_response_4, { ...commonVars, catalogo_lista: catalogListText })
+        });
         return;
       }
 
