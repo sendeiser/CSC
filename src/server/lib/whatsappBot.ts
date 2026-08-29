@@ -5,6 +5,7 @@ import os from 'os';
 import { serviceClient, supabase } from './supabase';
 import { getStoreSettingsHelper } from '../routes/admin';
 import { generateCatalogCollage, getProductPricingInfo } from './catalogCollage';
+import { geminiBot } from './geminiBot';
 
 // Directorio temporal seguro compatible con Netlify Lambda y local
 const isServerless = process.env.NETLIFY === 'true' || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.LAMBDA_TASK_ROOT;
@@ -968,12 +969,13 @@ class WhatsAppBotService {
       }
 
       const pushName = msg.pushName || 'Hola';
-      const body = (
+      const rawBody = (
         msg.message?.conversation ||
         msg.message?.extendedTextMessage?.text ||
         msg.message?.imageMessage?.caption ||
         ''
-      ).trim().toLowerCase();
+      ).trim();
+      const body = rawBody.toLowerCase();
 
       const hasImage = !!msg.message?.imageMessage || !!msg.message?.documentMessage;
       const storeSettings = await getStoreSettingsHelper();
@@ -1697,7 +1699,23 @@ class WhatsAppBotService {
         return;
       }
 
-      // 14. Menú por defecto
+      // 14. Generar respuesta inteligente con Google Gemini si está disponible
+      try {
+        const aiReply = await geminiBot.generateReply(rawBody, {
+          customerName: pushName,
+          customerPhone: from,
+          storeSettings
+        });
+
+        if (aiReply) {
+          await this.sock.sendMessage(from, { text: aiReply });
+          return;
+        }
+      } catch (aiErr) {
+        console.warn('[WhatsApp Bot Gemini AI Error]:', aiErr);
+      }
+
+      // 15. Menú por defecto si la IA no está activa
       await this.sock.sendMessage(from, { text: this.formatTemplate(settings.template_menu, commonVars) });
 
     } catch (err) {
