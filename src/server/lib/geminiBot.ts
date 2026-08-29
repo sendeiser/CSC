@@ -96,7 +96,7 @@ Instrucciones de comportamiento:
 `;
 
       const response = await this.client.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         contents: userMessage,
         config: {
           systemInstruction,
@@ -108,11 +108,11 @@ Instrucciones de comportamiento:
       return replyText || null;
     } catch (err: any) {
       console.warn('[GeminiBot Service Error]:', err?.message || err);
-      // Fallback a gemini-1.5-flash si 2.5 no está disponible
+      // Fallback a gemini-3.5-flash
       try {
         if (this.client) {
           const fallbackResp = await this.client.models.generateContent({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-3.5-flash',
             contents: userMessage,
           });
           return fallbackResp?.text?.trim() || null;
