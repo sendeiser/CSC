@@ -345,6 +345,18 @@ class WhatsAppBotService {
           }, 3000);
         }
       } catch (_e) {}
+
+      // Watchdog periódico para asegurar reconexión 24/7 si el socket se cae silenciosamente
+      setInterval(() => {
+        try {
+          if (this.status === 'disconnected' && !this.isInitializing) {
+            if (fs.existsSync(AUTH_DIR) && fs.readdirSync(AUTH_DIR).length > 0) {
+              console.log('[WhatsApp Bot Watchdog]: 🔍 Sesión previa detectada pero desconectada. Iniciando auto-reconexión...');
+              this.start().catch(() => {});
+            }
+          }
+        } catch (_e) {}
+      }, 45000);
     }
   }
 
@@ -377,10 +389,18 @@ class WhatsAppBotService {
       ensureDir(DATA_DIR);
       ensureDir(AUTH_DIR);
 
+      // Limpiar listeners de socket previo si existía
+      if (this.sock) {
+        try {
+          this.sock.ev.removeAllListeners();
+        } catch (_e) {}
+        this.sock = null;
+      }
+
       // Carga dinámica de Baileys para no bloquear el inicio en entornos serverless
       const baileys = await import('@whiskeysockets/baileys');
       const makeWASocket = baileys.default || baileys.makeWASocket;
-      const { useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, DisconnectReason } = baileys;
+      const { useMultiFileAuthState, fetchLatestBaileysVersion, makeCacheableSignalKeyStore, DisconnectReason, Browsers } = baileys;
 
       const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
       const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015901307] as any }));
@@ -395,16 +415,18 @@ class WhatsAppBotService {
         version,
         logger,
         printQRInTerminal: false,
+        browser: Browsers.macOS('Desktop'),
         auth: {
           creds: state.creds,
           keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
         generateHighQualityLinkPreview: true,
+        markOnlineOnConnect: true,
         connectTimeoutMs: 60000,
-        keepAliveIntervalMs: 15000,
+        keepAliveIntervalMs: 10000,
         defaultQueryTimeoutMs: 60000,
         syncFullHistory: false,
-        retryRequestDelayMs: 250,
+        retryRequestDelayMs: 500,
         emitOwnEvents: false
       });
 
@@ -417,6 +439,7 @@ class WhatsAppBotService {
           try {
             this.qrCode = await QRCode.toDataURL(qr, { scale: 8, margin: 2 });
             this.status = 'qr_ready';
+            this.isInitializing = false;
             console.log('[WhatsApp Bot]: Nuevo código QR generado.');
           } catch (err) {
             console.error('[WhatsApp Bot QR Error]:', err);
@@ -429,6 +452,7 @@ class WhatsAppBotService {
 
           this.connectedUser = null;
           this.qrCode = null;
+          this.isInitializing = false;
 
           if (isLoggedOut) {
             console.log('[WhatsApp Bot]: ❌ Sesión cerrada por el usuario o desvinculada desde WhatsApp en el teléfono.');
@@ -439,10 +463,10 @@ class WhatsAppBotService {
             // Reconexión automática continua ante microcortes, código 515 (restartRequired), 428 (connectionLost), etc.
             this.reconnectAttempts++;
             const isRestartRequired = statusCode === 515;
-            const delay = isRestartRequired ? 1500 : Math.min(2000 * Math.pow(1.3, Math.min(this.reconnectAttempts, 8)), 20000);
+            const delay = isRestartRequired ? 1500 : Math.min(2000 * Math.pow(1.3, Math.min(this.reconnectAttempts, 8)), 15000);
             
             this.status = 'connecting';
-            console.log(`[WhatsApp Bot]: 🔄 Conexión interrumpida (código ${statusCode || 'desconocido'}). Reconectando intento #${this.reconnectAttempts} en ${(delay/1000).toFixed(1)}s...`);
+            console.log(`[WhatsApp Bot]: 🔄 Conexión interrumpida (código ${statusCode || 'desconocido'}). Reconectando automáticamente intento #${this.reconnectAttempts} en ${(delay/1000).toFixed(1)}s...`);
 
             setTimeout(() => {
               this.start().catch((err) => {
@@ -455,6 +479,7 @@ class WhatsAppBotService {
         } else if (connection === 'open') {
           this.status = 'connected';
           this.qrCode = null;
+          this.isInitializing = false;
           this.reconnectAttempts = 0;
           this.connectedUser = this.sock?.user || null;
           console.log(`[WhatsApp Bot]: ✅ Conectado exitosamente como ${this.connectedUser?.name || this.connectedUser?.id}`);

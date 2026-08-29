@@ -49,6 +49,17 @@ app.get('/api/health', (_, res) => {
 if (process.env.NETLIFY !== 'true') {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`CSC API running on http://0.0.0.0:${PORT}`)
+
+    // Auto-ping interno anti-suspensión para mantener el servidor activo 24/7 en Render/Cloud
+    const backendUrl = process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL;
+    if (backendUrl) {
+      console.log(`[Keep-Alive]: Auto-ping configurado para ${backendUrl}`);
+      setInterval(() => {
+        fetch(`${backendUrl}/api/health`)
+          .then(() => console.log('[Keep-Alive]: Ping enviado para evitar suspensión del servidor.'))
+          .catch(() => {});
+      }, 10 * 60 * 1000); // Cada 10 minutos
+    }
   })
 }
 
