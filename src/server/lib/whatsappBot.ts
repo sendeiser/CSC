@@ -83,7 +83,24 @@ export interface WhatsAppBotSettings {
   template_order_ready: string;
   template_order_shipped: string;
   template_menu: string;
-  template_payment_proof: string;
+  template_payment_proof?: string;
+  template_buy_catalog?: string;
+  template_product_photo?: string;
+  template_weight_prompt?: string;
+  template_unit_quantity_prompt?: string;
+  template_cart_item_added?: string;
+  template_cart_view?: string;
+  template_empty_cart?: string;
+  template_shipping_prompt?: string;
+  template_address_prompt?: string;
+  template_name_prompt?: string;
+  template_coupon_prompt?: string;
+  template_coupon_applied?: string;
+  template_coupon_invalid?: string;
+  template_payment_prompt?: string;
+  template_order_summary?: string;
+  template_order_confirmed?: string;
+  template_order_cancelled?: string;
   // Respuestas configurables del Menú Interactivo
   menu_response_1: string;
   menu_response_2: string;
@@ -336,27 +353,24 @@ class WhatsAppBotService {
       }
     } catch (_e) {}
 
-    // Si no es serverless y hay sesión guardada previa, iniciar conexión
+    // Iniciar automáticamente en local / servidor para que el QR se imprima de inmediato
     if (!isServerless) {
-      try {
-        if (fs.existsSync(AUTH_DIR) && fs.readdirSync(AUTH_DIR).length > 0) {
-          setTimeout(() => {
-            this.start().catch(() => {});
-          }, 3000);
-        }
-      } catch (_e) {}
+      setTimeout(() => {
+        console.log('[WhatsApp Bot]: 🚀 Iniciando servicio de WhatsApp Bot...');
+        this.start().catch((err) => {
+          console.error('[WhatsApp Bot Auto-Start Error]:', err);
+        });
+      }, 1000);
 
       // Watchdog periódico para asegurar reconexión 24/7 si el socket se cae silenciosamente
       setInterval(() => {
         try {
           if (this.status === 'disconnected' && !this.isInitializing) {
-            if (fs.existsSync(AUTH_DIR) && fs.readdirSync(AUTH_DIR).length > 0) {
-              console.log('[WhatsApp Bot Watchdog]: 🔍 Sesión previa detectada pero desconectada. Iniciando auto-reconexión...');
-              this.start().catch(() => {});
-            }
+            console.log('[WhatsApp Bot Watchdog]: 🔍 Verificando estado de conexión de WhatsApp...');
+            this.start().catch(() => {});
           }
         } catch (_e) {}
-      }, 45000);
+      }, 30000);
     }
   }
 
@@ -502,7 +516,7 @@ class WhatsAppBotService {
           if (!c.id || c.id.endsWith('@g.us')) continue;
           const phone = c.id.split('@')[0].replace(/\D/g, '');
           if (!phone) continue;
-          const existing = this.contactsMap.get(phone) || { jid: c.id, phone, name: phone, isGroup: false };
+          const existing: SyncedWhatsAppContact = this.contactsMap.get(phone) || { jid: c.id, phone, name: phone, isGroup: false };
           const name = c.name || c.notify || c.verifiedName || existing.name || phone;
           this.contactsMap.set(phone, { ...existing, jid: c.id, phone, name, pushName: c.notify || existing.pushName });
         }
@@ -515,7 +529,7 @@ class WhatsAppBotService {
           if (!c.id || c.id.endsWith('@g.us')) continue;
           const phone = c.id.split('@')[0].replace(/\D/g, '');
           if (!phone) continue;
-          const existing = this.contactsMap.get(phone) || { jid: c.id, phone, name: phone, isGroup: false };
+          const existing: SyncedWhatsAppContact = this.contactsMap.get(phone) || { jid: c.id, phone, name: phone, isGroup: false };
           const name = c.name || c.notify || c.verifiedName || existing.name || phone;
           this.contactsMap.set(phone, { ...existing, jid: c.id, phone, name, pushName: c.notify || existing.pushName });
         }
@@ -528,7 +542,7 @@ class WhatsAppBotService {
           if (!ch.id || ch.id.endsWith('@g.us')) continue;
           const phone = ch.id.split('@')[0].replace(/\D/g, '');
           if (!phone) continue;
-          const existing = this.contactsMap.get(phone) || { jid: ch.id, phone, name: phone, isGroup: false };
+          const existing: SyncedWhatsAppContact = this.contactsMap.get(phone) || { jid: ch.id, phone, name: phone, isGroup: false };
           const name = ch.name || existing.name || phone;
           this.contactsMap.set(phone, { ...existing, jid: ch.id, phone, name });
         }
@@ -546,7 +560,7 @@ class WhatsAppBotService {
           // Registrar contacto desde mensaje
           const msgPhone = msg.key.remoteJid.split('@')[0].replace(/\D/g, '');
           if (msgPhone) {
-            const existing = this.contactsMap.get(msgPhone) || { jid: msg.key.remoteJid, phone: msgPhone, name: msgPhone, isGroup: false };
+            const existing: SyncedWhatsAppContact = this.contactsMap.get(msgPhone) || { jid: msg.key.remoteJid, phone: msgPhone, name: msgPhone, isGroup: false };
             const pushName = msg.pushName || existing.pushName || '';
             const name = (pushName && pushName !== msgPhone) ? pushName : existing.name;
             this.contactsMap.set(msgPhone, {
@@ -783,13 +797,14 @@ class WhatsAppBotService {
     if (settings.gateway_type === 'ultramsg' && settings.ultramsg_instance_id && settings.ultramsg_token) {
       try {
         const cleanPhone = phone.replace(/\D/g, '');
+        const imageParam = typeof imageSource === 'string' ? imageSource : '';
         const res = await fetch(`https://api.ultramsg.com/${settings.ultramsg_instance_id}/messages/image`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             token: settings.ultramsg_token,
             to: cleanPhone,
-            image: imageUrl,
+            image: imageParam,
             caption: caption || ''
           })
         });
@@ -1204,8 +1219,9 @@ class WhatsAppBotService {
             } else {
               const matchedNumbers = body.match(/\d+/g);
               if (matchedNumbers && matchedNumbers.length > 0) {
-                const indexes = Array.from(new Set(matchedNumbers.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= availableGummies.length)));
-                chosenGummies = indexes.map(idx => availableGummies[idx - 1]);
+                const parsedNums: number[] = matchedNumbers.map((n: string) => parseInt(n, 10)).filter((n: number) => !isNaN(n) && n >= 1 && n <= (availableGummies?.length || 0));
+                const indexes: number[] = Array.from(new Set(parsedNums));
+                chosenGummies = indexes.map((idx: number) => availableGummies[idx - 1]);
               } else {
                 chosenGummies = availableGummies.filter(g => body.includes(g.name.toLowerCase().slice(0, 4)));
               }
@@ -1218,7 +1234,8 @@ class WhatsAppBotService {
               return;
             }
 
-            const gramsPerGummy = Math.round(pending.capacityGrams / chosenGummies.length);
+            const capacityGrams = Number(pending.capacityGrams) || 500;
+            const gramsPerGummy = Math.round(capacityGrams / chosenGummies.length);
             const comboSelections = chosenGummies.map(g => ({
               productId: g.id,
               name: g.name.trim(),
@@ -1536,7 +1553,7 @@ class WhatsAppBotService {
                     weight_grams: it.weightGrams,
                     combo_selections: it.comboSelections
                   }));
-                  await notifyNewOrder(newOrder, detailedItems);
+                  await this.notifyNewOrder({ ...newOrder, items: detailedItems });
                 } catch (_notifErr) {
                   console.warn('[WhatsApp Bot notifyNewOrder error]:', _notifErr);
                 }

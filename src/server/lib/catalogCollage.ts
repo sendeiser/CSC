@@ -283,7 +283,7 @@ export async function generateCatalogCollage(
       input: tileWithOverlay,
       top,
       left
-    } as sharp.OverlayOptions;
+    } as any;
   });
 
   const composites = await Promise.all(tilePromises);

@@ -652,7 +652,7 @@ export const AdminWhatsAppBot: React.FC<AdminWhatsAppBotProps> = ({ onOpenLab, o
 
   // 6. Aplicar contactos seleccionados a la lista negra
   const handleApplySelectedContactsToBlacklist = async () => {
-    const toAdd = Object.values(selectedContactsForExclusion);
+    const toAdd = Object.values(selectedContactsForExclusion) as Array<{ phone: string; label?: string }>;
     if (toAdd.length === 0) {
       showAlert({ title: 'Selección vacía', message: 'Selecciona al menos un contacto con el casillero.', type: 'warning' });
       return;
