@@ -9,6 +9,7 @@
     "dev:server": "tsx watch src/server/index.ts",
     "start": "tsx src/server/index.ts",
     "server": "tsx src/server/index.ts",
+    "simular": "tsx src/server/simulador_whatsapp.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",

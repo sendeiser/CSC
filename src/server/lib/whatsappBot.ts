@@ -648,7 +648,7 @@ class WhatsAppBotService {
   /**
    * Envía el catálogo de productos con collage numerado y precios x50g de manera 100% confiable
    */
-  public async sendCatalog(from: string, commonVars: Record<string, any>, page: number = 1): Promise<boolean> {
+  public async sendCatalog(from: string, commonVars: Record<string, any>, page: number = 1, customSock?: any): Promise<boolean> {
     try {
       const db = serviceClient || supabase;
       const { data: rawProds, error: prodsErr } = await db
@@ -664,6 +664,11 @@ class WhatsAppBotService {
       const allProds = availableProds.length > 0 ? availableProds : (rawProds || []);
 
       if (!allProds || allProds.length === 0) {
+        const sock = customSock || this.sock;
+        if (sock) {
+          await sock.sendMessage(from, { text: '🍬 En este momento no hay productos disponibles en la tienda. Por favor consulta más tarde.' });
+          return true;
+        }
         await this.sendTextMessage(from, '🍬 En este momento no hay productos disponibles en la tienda. Por favor consulta más tarde.');
         return true;
       }
@@ -718,7 +723,7 @@ class WhatsAppBotService {
             pageNumber: safePage,
             totalPages
           });
-          const sent = await this.sendImageMessage(from, collageBuffer, catalogCaption);
+          const sent = await this.sendImageMessage(from, collageBuffer, catalogCaption, customSock);
           if (sent) return true;
         } catch (collErr) {
           console.warn('[WhatsApp Bot]: Error enviando collage, enviando texto:', collErr);
@@ -922,10 +927,15 @@ class WhatsAppBotService {
   /**
    * Procesa mensajes entrantes y responde con el Menú Interactivo / Venta Conversacional
    */
-  private async handleIncomingMessage(msg: any): Promise<void> {
+  public async handleIncomingMessage(msg: any, customSock?: any): Promise<void> {
     try {
       const from = msg.key.remoteJid;
-      if (!from || !this.sock) return;
+      const sock = customSock || this.sock;
+      if (!from || !sock) return;
+
+      const reply = async (content: { text?: string; image?: any; caption?: string }) => {
+        return await sock.sendMessage(from, content);
+      };
 
       const settings = await getBotSettings();
 
@@ -984,7 +994,7 @@ class WhatsAppBotService {
 
       // 4. Comprobante de pago
       if (hasImage) {
-        await this.sock.sendMessage(from, { text: settings.template_payment_proof });
+        await reply( { text: settings.template_payment_proof });
         return;
       }
 
@@ -1013,7 +1023,7 @@ class WhatsAppBotService {
           // Comando cancelar
           if (body === 'cancelar' || body === 'salir' || body === 'menu' || body === 'menú') {
             this.orderSessions.delete(from);
-            await this.sock.sendMessage(from, {
+            await reply( {
               text: '❌ *Proceso de compra cancelado.* ¿En qué más podemos ayudarte?\n\n' + this.formatTemplate(settings.template_menu, commonVars)
             });
             return;
@@ -1022,11 +1032,11 @@ class WhatsAppBotService {
           // Comando Ver Carrito
           if (body === 'carrito' || body === 'ver carrito' || body === 'ver') {
             if (activeSession.items.length === 0) {
-              await this.sock.sendMessage(from, { text: '🛒 Tu carrito está vacío todavía. Escribí el *NÚMERO* del producto que querés agregar.' });
+              await reply( { text: '🛒 Tu carrito está vacío todavía. Escribí el *NÚMERO* del producto que querés agregar.' });
               return;
             }
             const itemsList = activeSession.items.map((i, idx) => `${idx + 1}️⃣ ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
-            await this.sock.sendMessage(from, {
+            await reply( {
               text: `🛒 *TU CARRITO ACTUAL:* 🍬\n\n${itemsList}\n\n💰 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}\n\n👉 Para sumar más productos, escribí su *NÚMERO*.\n👉 Para quitar un producto, escribí *QUITAR [número]* (ej: QUITAR 1).\n👉 O escribí *LISTO* para avanzar con la entrega y el pago.`
             });
             return;
@@ -1039,7 +1049,7 @@ class WhatsAppBotService {
             activeSession.total = 0;
             activeSession.step = 'SELECTING_PRODUCTS';
             activeSession.pendingProduct = undefined;
-            await this.sock.sendMessage(from, { text: '🗑️ *Vaciaste tu carrito.* Podés elegir nuevos productos de la lista escribiendo su *NÚMERO*.' });
+            await reply( { text: '🗑️ *Vaciaste tu carrito.* Podés elegir nuevos productos de la lista escribiendo su *NÚMERO*.' });
             return;
           }
 
@@ -1052,16 +1062,16 @@ class WhatsAppBotService {
               activeSession.total = Math.max(0, activeSession.subtotal - (activeSession.discountAmount || 0));
               
               if (activeSession.items.length === 0) {
-                await this.sock.sendMessage(from, { text: `🗑️ Quitaste *${removed.name}*. Tu carrito quedó vacío. Escribí el número de un producto para agregar.` });
+                await reply( { text: `🗑️ Quitaste *${removed.name}*. Tu carrito quedó vacío. Escribí el número de un producto para agregar.` });
               } else {
                 const itemsList = activeSession.items.map((i, idx) => `${idx + 1}️⃣ ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
-                await this.sock.sendMessage(from, {
+                await reply( {
                   text: `🗑️ Quitaste *${removed.name}*.\n\n🛒 *Carrito restante:*\n${itemsList}\n\n💰 *Total:* \$${activeSession.total.toLocaleString('es-AR')}\n\n👉 Escribí otro número o escribí *LISTO* para finalizar.`
                 });
               }
               return;
             } else {
-              await this.sock.sendMessage(from, { text: '⚠️ Para quitar un producto escribí *QUITAR* seguido del número del ítem en tu carrito (ej: *QUITAR 1*).' });
+              await reply( { text: '⚠️ Para quitar un producto escribí *QUITAR* seguido del número del ítem en tu carrito (ej: *QUITAR 1*).' });
               return;
             }
           }
@@ -1086,11 +1096,11 @@ class WhatsAppBotService {
 
             if (body === 'listo' || body === 'continuar' || body === 'fin' || body === 'finalizar' || body === 'pagar' || body === 'checkout') {
               if (activeSession.items.length === 0) {
-                await this.sock.sendMessage(from, { text: '⚠️ Tu carrito está vacío. Escribí el *NÚMERO* del producto que querés agregar o escribí *CANCELAR*.' });
+                await reply( { text: '⚠️ Tu carrito está vacío. Escribí el *NÚMERO* del producto que querés agregar o escribí *CANCELAR*.' });
                 return;
               }
               activeSession.step = 'ASK_SHIPPING_METHOD';
-              await this.sock.sendMessage(from, {
+              await reply( {
                 text: `🛵 *¿Cómo querés recibir tu pedido?*\n\nRespondé con el número de opción:\n1️⃣ *Retiro por el local (Chamical)* — Sin costo\n2️⃣ *Envío a domicilio con cadete (Chamical)*`
               });
               return;
@@ -1149,7 +1159,7 @@ class WhatsAppBotService {
                   if (settings.send_product_images && selectedProd.image_url) {
                     await this.sendImageMessage(from, selectedProd.image_url, comboPrompt);
                   } else {
-                    await this.sock.sendMessage(from, { text: comboPrompt });
+                    await reply( { text: comboPrompt });
                   }
                   return;
                 }
@@ -1177,7 +1187,7 @@ class WhatsAppBotService {
                   );
                 }
 
-                await this.sock.sendMessage(from, {
+                await reply( {
                   text: `🍬 *${selectedProd.name}* (Venta al peso) ⚖️\n💰 *Precio:* *${pricing.displayPriceShort}* (\$${pricing.pricePerKg.toLocaleString('es-AR')}/kg)\n\n*¿Qué cantidad querés llevar?*\n${optionsList}\n\n👉 *Respondé con el número (1 a ${options.length})* o escribí tus gramos exactos (ej: *50g*, *100g*, *150g*).`
                 });
                 return;
@@ -1198,13 +1208,13 @@ class WhatsAppBotService {
                   );
                 }
 
-                await this.sock.sendMessage(from, {
+                await reply( {
                   text: `🍫 *${selectedProd.name}*\n💰 *Precio:* \$${unitPrice.toLocaleString('es-AR')} por unidad\n\n👉 *¿Cuántas unidades querés llevar?* (Escribí la cantidad, ej: 1, 2, 3...)`
                 });
                 return;
               }
             } else {
-              await this.sock.sendMessage(from, {
+              await reply( {
                 text: `🔍 No entendimos la opción. Escribí el *NÚMERO* del producto de la lista (ej: 1, 2, 3...) o escribí *LISTO* para finalizar tu pedido.`
               });
               return;
@@ -1231,7 +1241,7 @@ class WhatsAppBotService {
             }
 
             if (chosenGummies.length === 0) {
-              await this.sock.sendMessage(from, {
+              await reply( {
                 text: `⚠️ No pudimos identificar las gomitas elegidas. Por favor escribí los números separados por coma (ej: *1, 3, 5, 8*) o escribí *TODAS*.`
               });
               return;
@@ -1267,7 +1277,7 @@ class WhatsAppBotService {
 
             const itemsList = activeSession.items.map((i, idx) => `${idx + 1}️⃣ ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
 
-            await this.sock.sendMessage(from, {
+            await reply( {
               text: `✅ *¡Armaste y sumaste ${pending.product.name}!* 🎁\n🍬 *Gomitas elegidas:* ${chosenNames}\n💰 *Precio combo:* \$${comboPrice.toLocaleString('es-AR')}\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés sumar otra golosina? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar con la entrega y el pago.`
             });
             return;
@@ -1293,13 +1303,13 @@ class WhatsAppBotService {
               if (parsedGrams) {
                 if (parsedGrams < minWeight) {
                   const minPrice = calculateGramPrice(p, minWeight);
-                  await this.sock.sendMessage(from, {
+                  await reply( {
                     text: `⚠️ La cantidad mínima de compra para *${p.name}* es de *${minWeight}g* (\$${minPrice.toLocaleString('es-AR')}).\n\n👉 Respondé *1* para llevar ${minWeight}g o escribí otra cantidad superior a ${minWeight}g.`
                   });
                   return;
                 }
                 if (parsedGrams > maxWeight) {
-                  await this.sock.sendMessage(from, {
+                  await reply( {
                     text: `⚠️ El máximo disponible por bolsita es de *${maxWeight}g*. Podés pedir hasta ${maxWeight}g por porción.`
                   });
                   return;
@@ -1310,7 +1320,7 @@ class WhatsAppBotService {
                   const upper = lower + step;
                   const priceLower = calculateGramPrice(p, lower);
                   const priceUpper = calculateGramPrice(p, upper);
-                  await this.sock.sendMessage(from, {
+                  await reply( {
                     text: `⚠️ *${p.name}* se fracciona en pasos de *${step}g*.\n\n¿Te preparamos:\n1️⃣ *${lower}g* (\$${priceLower.toLocaleString('es-AR')})\n2️⃣ *${upper}g* (\$${priceUpper.toLocaleString('es-AR')})?\n\n👉 Respondé 1 o 2.`
                   });
                   return;
@@ -1338,12 +1348,12 @@ class WhatsAppBotService {
 
               const itemsList = activeSession.items.map((i, idx) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
 
-              await this.sock.sendMessage(from, {
+              await reply( {
                 text: `✅ *¡Agregaste ${formattedName}!* 🍬 (+\$${chosenPrice.toLocaleString('es-AR')})\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`
               });
               return;
             } else {
-              await this.sock.sendMessage(from, {
+              await reply( {
                 text: `🔍 No entendimos la cantidad. Respondé con el número de opción (1 a ${options.length}) o escribí los gramos que querés (ej: *50g*, *100g*, *250g*).`
               });
               return;
@@ -1372,7 +1382,7 @@ class WhatsAppBotService {
 
             const itemsList = activeSession.items.map((i) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
 
-            await this.sock.sendMessage(from, {
+            await reply( {
               text: `✅ *¡Agregaste ${formattedName}!* 🍫 (+\$${totalPrice.toLocaleString('es-AR')})\n\n🛒 *Tu carrito actual:*\n${itemsList}\n\n💰 *Subtotal:* \$${activeSession.subtotal.toLocaleString('es-AR')}\n\n👉 ¿Querés agregar otro producto? *(Escribí su número)*\n👉 O escribí *LISTO* para continuar y confirmar tu pedido.`
             });
             return;
@@ -1384,15 +1394,15 @@ class WhatsAppBotService {
               activeSession.shippingMethod = 'pickup';
               activeSession.shippingAddress = commonVars.direccion || 'Retiro en Local (Chamical)';
               activeSession.step = 'ASK_NAME';
-              await this.sock.sendMessage(from, { text: '👤 *¿A nombre de quién registramos el pedido?* (Escribí tu nombre y apellido):' });
+              await reply( { text: '👤 *¿A nombre de quién registramos el pedido?* (Escribí tu nombre y apellido):' });
               return;
             } else if (body === '2' || body.includes('envio') || body.includes('domicilio') || body.includes('cadete')) {
               activeSession.shippingMethod = 'delivery';
               activeSession.step = 'ASK_ADDRESS';
-              await this.sock.sendMessage(from, { text: '📍 *Por favor escribí tu dirección de entrega y entrecalles en Chamical:*' });
+              await reply( { text: '📍 *Por favor escribí tu dirección de entrega y entrecalles en Chamical:*' });
               return;
             } else {
-              await this.sock.sendMessage(from, { text: 'Respondé *1* para Retiro en el Local o *2* para Envío a Domicilio.' });
+              await reply( { text: 'Respondé *1* para Retiro en el Local o *2* para Envío a Domicilio.' });
               return;
             }
           }
@@ -1401,7 +1411,7 @@ class WhatsAppBotService {
           if (activeSession.step === 'ASK_ADDRESS') {
             activeSession.shippingAddress = body.trim();
             activeSession.step = 'ASK_NAME';
-            await this.sock.sendMessage(from, { text: '👤 *¿A nombre de quién registramos el pedido?* (Escribí tu nombre y apellido):' });
+            await reply( { text: '👤 *¿A nombre de quién registramos el pedido?* (Escribí tu nombre y apellido):' });
             return;
           }
 
@@ -1409,7 +1419,7 @@ class WhatsAppBotService {
           if (activeSession.step === 'ASK_NAME') {
             activeSession.shippingName = body.trim();
             activeSession.step = 'ASK_COUPON';
-            await this.sock.sendMessage(from, {
+            await reply( {
               text: `🎟️ *¿Tenés algún Cupón de Descuento?*\n\n👉 Escribí el código de tu cupón (ej: *DULCE10*) o respondé *NO* para continuar sin cupón.`
             });
             return;
@@ -1419,7 +1429,7 @@ class WhatsAppBotService {
           if (activeSession.step === 'ASK_COUPON') {
             if (body === 'no' || body === 'ninguno' || body === 'paso' || body === '-' || body === 'n') {
               activeSession.step = 'ASK_PAYMENT_METHOD';
-              await this.sock.sendMessage(from, {
+              await reply( {
                 text: `💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o al recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`
               });
               return;
@@ -1448,18 +1458,18 @@ class WhatsAppBotService {
                   activeSession.discountAmount = discount;
                   activeSession.total = Math.max(0, activeSession.subtotal - discount);
 
-                  await this.sock.sendMessage(from, {
+                  await reply( {
                     text: `🎉 *¡Cupón ${promo.code} aplicado con éxito!* Descuento: -\$${discount.toLocaleString('es-AR')} ✨`
                   });
                 } else {
-                  await this.sock.sendMessage(from, {
+                  await reply( {
                     text: `ℹ️ El cupón ingresado no es válido o ya expiró. Continuamos con el valor regular.`
                   });
                 }
               } catch (_e) {}
 
               activeSession.step = 'ASK_PAYMENT_METHOD';
-              await this.sock.sendMessage(from, {
+              await reply( {
                 text: `💳 *¿Cómo preferís abonar tu pedido?*\n\nRespondé con el número:\n1️⃣ *Transferencia Bancaria* (Alias / CBU)\n2️⃣ *Efectivo contra entrega* (Al retirar o al recibir)\n3️⃣ *Mercado Pago* (Link directo de pago)`
               });
               return;
@@ -1489,7 +1499,7 @@ class WhatsAppBotService {
             }
             summaryText += `\n🛵 *Entrega:* ${shippingLabel}\n📍 *Dirección:* ${activeSession.shippingAddress}\n👤 *Cliente:* ${activeSession.shippingName}\n💳 *Forma de Pago:* ${payLabel}\n\n💰 *TOTAL A PAGAR:* \$${activeSession.total.toLocaleString('es-AR')}\n\n¿Está todo correcto?\n👉 Respondé *SI* para confirmar tu pedido o *CANCELAR*.`;
 
-            await this.sock.sendMessage(from, { text: summaryText });
+            await reply( { text: summaryText });
             return;
           }
 
@@ -1589,18 +1599,18 @@ class WhatsAppBotService {
                   confirmMsg += `\n💳 *Pago con Mercado Pago:* Podés transferir al Alias \`${commonVars.alias_banco}\` o coordinar el link con nuestro asesor. ✨`;
                 }
 
-                await this.sock.sendMessage(from, { text: confirmMsg });
+                await reply( { text: confirmMsg });
                 this.orderSessions.delete(from);
                 return;
               } catch (dbErr) {
                 console.error('[WhatsApp Bot Critical DB Error]:', dbErr);
-                await this.sock.sendMessage(from, { text: '⚠️ Ocurrió un error al guardar tu pedido en el sistema. Por favor escribí *5* para que un asesor te asista.' });
+                await reply( { text: '⚠️ Ocurrió un error al guardar tu pedido en el sistema. Por favor escribí *5* para que un asesor te asista.' });
                 this.orderSessions.delete(from);
                 return;
               }
             } else {
               this.orderSessions.delete(from);
-              await this.sock.sendMessage(from, { text: '❌ Pedido cancelado. Escribí *MENU* para ver más opciones.' });
+              await reply( { text: '❌ Pedido cancelado. Escribí *MENU* para ver más opciones.' });
               return;
             }
           }
@@ -1637,7 +1647,7 @@ class WhatsAppBotService {
         });
         if (matchedCustom && matchedCustom.response) {
           const reply = this.formatTemplate(matchedCustom.response, commonVars);
-          await this.sock.sendMessage(from, { text: reply });
+          await reply( { text: reply });
           return;
         }
       }
@@ -1651,22 +1661,22 @@ class WhatsAppBotService {
         if (customerOrder) {
           const statusMap: Record<string, string> = { paid: '✅ Pagado', preparing: '⏳ En preparación', ready: '🍬 Listo', shipped: '🛵 En camino' };
           const reply = this.formatTemplate(settings.menu_response_1 || DEFAULT_BOT_SETTINGS.menu_response_1, { ...commonVars, pedido_id: customerOrder.id?.slice(0, 8).toUpperCase(), estado: statusMap[customerOrder.status] || 'Pendiente' });
-          await this.sock.sendMessage(from, { text: reply });
+          await reply( { text: reply });
         } else {
-          await this.sock.sendMessage(from, { text: `🔍 No encontramos un pedido asociado a tu número.` });
+          await reply( { text: `🔍 No encontramos un pedido asociado a tu número.` });
         }
         return;
       }
 
       // 10. Opción 2: Bancario
       if (body === '2' || body.includes('alias') || body.includes('transferencia')) {
-        await this.sock.sendMessage(from, { text: this.formatTemplate(settings.menu_response_2 || DEFAULT_BOT_SETTINGS.menu_response_2, commonVars) });
+        await reply( { text: this.formatTemplate(settings.menu_response_2 || DEFAULT_BOT_SETTINGS.menu_response_2, commonVars) });
         return;
       }
 
       // 11. Opción 3: Ubicación
       if (body === '3' || body.includes('horario') || body.includes('direccion')) {
-        await this.sock.sendMessage(from, { text: this.formatTemplate(settings.menu_response_3 || DEFAULT_BOT_SETTINGS.menu_response_3, commonVars) });
+        await reply( { text: this.formatTemplate(settings.menu_response_3 || DEFAULT_BOT_SETTINGS.menu_response_3, commonVars) });
         return;
       }
 
@@ -1692,7 +1702,7 @@ class WhatsAppBotService {
             if (targetProd.image_url) {
               await this.sendImageMessage(from, targetProd.image_url, caption);
             } else {
-              await this.sock.sendMessage(from, { text: caption });
+              await reply( { text: caption });
             }
             return;
           } else {
@@ -1711,7 +1721,7 @@ class WhatsAppBotService {
 
       // 13. Opción 5: Asesor
       if (body === '5' || body.includes('asesor') || body.includes('persona')) {
-        await this.sock.sendMessage(from, { text: this.formatTemplate(settings.menu_response_5 || DEFAULT_BOT_SETTINGS.menu_response_5, commonVars) });
+        await reply( { text: this.formatTemplate(settings.menu_response_5 || DEFAULT_BOT_SETTINGS.menu_response_5, commonVars) });
         return;
       }
 
@@ -1724,7 +1734,7 @@ class WhatsAppBotService {
         });
 
         if (aiReply) {
-          await this.sock.sendMessage(from, { text: aiReply });
+          await reply( { text: aiReply });
           return;
         }
       } catch (aiErr) {
@@ -1732,11 +1742,49 @@ class WhatsAppBotService {
       }
 
       // 15. Menú por defecto si la IA no está activa
-      await this.sock.sendMessage(from, { text: this.formatTemplate(settings.template_menu, commonVars) });
+      await reply( { text: this.formatTemplate(settings.template_menu, commonVars) });
 
     } catch (err) {
       console.error('[WhatsApp Bot Message Handle Error]:', err);
     }
+  }
+
+  /**
+   * Método público para simular mensajes de clientes en consola o pruebas aisladas
+   */
+  public async simulateCustomerMessage(
+    userText: string,
+    options: {
+      from?: string;
+      pushName?: string;
+      isImage?: boolean;
+    } = {}
+  ): Promise<Array<{ text?: string; image?: any; caption?: string }>> {
+    const from = options.from || '5493826000000_sim@s.whatsapp.net';
+    const pushName = options.pushName || 'Martín (Cliente)';
+    const replies: Array<{ text?: string; image?: any; caption?: string }> = [];
+
+    const simulatedSocket = {
+      sendMessage: async (_to: string, content: any) => {
+        replies.push(content);
+        return { key: { id: 'sim_msg_' + Date.now() } };
+      }
+    };
+
+    const mockMsg = {
+      key: {
+        remoteJid: from,
+        fromMe: false,
+        id: 'sim_in_' + Date.now()
+      },
+      pushName,
+      message: options.isImage
+        ? { imageMessage: { caption: userText } }
+        : { conversation: userText }
+    };
+
+    await this.handleIncomingMessage(mockMsg, simulatedSocket);
+    return replies;
   }
 }
 
