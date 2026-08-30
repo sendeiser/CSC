@@ -9,6 +9,7 @@ import { geminiBot } from './geminiBot';
 import { notifyNewOrder as dispatchAdminNewOrderNotification } from './notifications';
 
 // Directorio temporal seguro compatible con Netlify Lambda y local
+const isSimulator = process.env.IS_SIMULATOR === 'true';
 const isServerless = process.env.NETLIFY === 'true' || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.LAMBDA_TASK_ROOT;
 const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'csc_data') : path.join(process.cwd(), 'data');
 const AUTH_DIR = path.join(DATA_DIR, 'baileys_auth');
@@ -355,9 +356,11 @@ class WhatsAppBotService {
       }
     } catch (_e) {}
 
-    // Iniciar automáticamente en local / servidor para que el QR se imprima de inmediato
-    if (!isServerless) {
+    // Iniciar automáticamente en local / servidor para que el QR se imprima de inmediato (solo si no es simulador ni serverless)
+    const isSim = process.env.IS_SIMULATOR === 'true' || process.argv.some(a => String(a).toLowerCase().includes('simulador'));
+    if (!isServerless && !isSim) {
       setTimeout(() => {
+        if (process.env.IS_SIMULATOR === 'true' || process.argv.some(a => String(a).toLowerCase().includes('simulador'))) return;
         console.log('[WhatsApp Bot]: 🚀 Iniciando servicio de WhatsApp Bot...');
         this.start().catch((err) => {
           console.error('[WhatsApp Bot Auto-Start Error]:', err);
@@ -367,6 +370,7 @@ class WhatsAppBotService {
       // Watchdog periódico para asegurar reconexión 24/7 si el socket se cae silenciosamente
       setInterval(() => {
         try {
+          if (process.env.IS_SIMULATOR === 'true' || process.argv.some(a => String(a).toLowerCase().includes('simulador'))) return;
           if (this.status === 'disconnected' && !this.isInitializing) {
             console.log('[WhatsApp Bot Watchdog]: 🔍 Verificando estado de conexión de WhatsApp...');
             this.start().catch(() => {});

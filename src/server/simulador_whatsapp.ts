@@ -1,6 +1,7 @@
-import readline from 'readline';
+process.env.IS_SIMULATOR = 'true';
 import dotenv from 'dotenv';
 dotenv.config();
+import readline from 'readline';
 import { whatsappBot } from './lib/whatsappBot';
 
 const rl = readline.createInterface({

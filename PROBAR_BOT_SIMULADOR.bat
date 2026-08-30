@@ -2,6 +2,7 @@
 title Chamical Candy Shop - Simulador Aislado de WhatsApp Bot
 color 0a
 cd /d "%~dp0"
+set IS_SIMULATOR=true
 echo ============================================================
 echo      🍬 CSC CANDY SHOP - SIMULADOR AISLADO DE BOT 🍭
 echo ============================================================
