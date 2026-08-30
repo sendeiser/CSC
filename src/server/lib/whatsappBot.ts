@@ -6,6 +6,7 @@ import { serviceClient, supabase } from './supabase';
 import { getStoreSettingsHelper } from '../routes/admin';
 import { generateCatalogCollage, getProductPricingInfo } from './catalogCollage';
 import { geminiBot } from './geminiBot';
+import { notifyNewOrder as dispatchAdminNewOrderNotification } from './notifications';
 
 // Directorio temporal seguro compatible con Netlify Lambda y local
 const isServerless = process.env.NETLIFY === 'true' || !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!process.env.LAMBDA_TASK_ROOT;
@@ -1544,7 +1545,7 @@ class WhatsAppBotService {
                   console.error('[WhatsApp Bot Order Items Error]:', itemsErr);
                 }
 
-                // Notificar al admin
+                // 1. Notificar al admin por Telegram, Discord y CallMeBot
                 try {
                   const detailedItems = activeSession.items.map((it) => ({
                     product_id: it.productId,
@@ -1555,13 +1556,28 @@ class WhatsAppBotService {
                     weight_grams: it.weightGrams,
                     combo_selections: it.comboSelections
                   }));
-                  await this.notifyNewOrder({ ...newOrder, items: detailedItems });
+                  await dispatchAdminNewOrderNotification(newOrder, detailedItems);
                 } catch (_notifErr) {
-                  console.warn('[WhatsApp Bot notifyNewOrder error]:', _notifErr);
+                  console.warn('[WhatsApp Bot dispatchAdminNewOrderNotification error]:', _notifErr);
                 }
 
                 const orderCode = newOrder.id ? newOrder.id.slice(0, 8).toUpperCase() : 'CSC-ORD';
                 const itemsList = activeSession.items.map((i) => `• ${i.name} - \$${i.unitPrice.toLocaleString('es-AR')}`).join('\n');
+
+                // 2. Si el admin tiene configurado su WhatsApp personal, enviarle un aviso directo por WhatsApp
+                try {
+                  const adminPhone = storeSettings?.whatsapp_number_1 || storeSettings?.whatsapp_callmebot_phone;
+                  if (adminPhone && this.status === 'connected' && this.sock) {
+                    const cleanAdmin = String(adminPhone).replace(/\D/g, '');
+                    const cleanClient = from.replace(/\D/g, '');
+                    if (cleanAdmin && cleanAdmin !== cleanClient) {
+                      const adminAlert = `🔔 *¡NUEVO PEDIDO REGISTRADO POR WHATSAPP!* 🍬\n\n🛍️ *Pedido:* #${orderCode}\n👤 *Cliente:* ${activeSession.shippingName} (${from.replace('@s.whatsapp.net', '')})\n💰 *Total:* \$${activeSession.total.toLocaleString('es-AR')}\n📍 *Entrega:* ${activeSession.shippingAddress}\n💳 *Forma de Pago:* ${activeSession.paymentMethod}\n\n📦 *Productos:*\n${itemsList}\n\n👉 _Pedido guardado automáticamente en el panel de administración._ ✨`;
+                      await this.sendTextMessage(adminPhone, adminAlert);
+                    }
+                  }
+                } catch (_adminAlertErr) {
+                  console.warn('[WhatsApp Bot Admin Alert Error]:', _adminAlertErr);
+                }
 
                 let confirmMsg = `🎉 *¡PEDIDO #${orderCode} REGISTRADO CON ÉXITO!* 🍬\n\nMuchas gracias *${activeSession.shippingName}*, tu pedido ya quedó guardado en el sistema.\n\n📦 *Detalle:*\n${itemsList}\n💰 *Total:* \$${activeSession.total.toLocaleString('es-AR')}\n📍 *Entrega:* ${activeSession.shippingAddress}\n`;
 
